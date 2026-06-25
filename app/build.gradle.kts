@@ -4,6 +4,12 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    arg("room.generateKotlin", "true")
+}
+
 android {
     namespace = "dev.wucheng.resource_viewer"
     compileSdk {
