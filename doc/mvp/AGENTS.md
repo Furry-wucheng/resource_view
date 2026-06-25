@@ -51,10 +51,10 @@
 | M05 | 三个 Tab 占位页面 | 0 | M03,M01 | ✅ 已完成 | opencode |
 | M06 | Room Entity + Enum + Converters | 1 | M02 | ✅ 已完成 | opencode/stellar-orchid |
 | M07 | Room DAO 接口 | 1 | M06 | ✅ 已完成 | claude |
-| M08 | AppDatabase 配置+播种+迁移骨架 | 1 | M07 | ⬜ 待开始 | — |
+| M08 | AppDatabase 配置+播种+迁移骨架 | 1 | M07 | ✅ 已完成 | claude |
 | M09 | Domain Models | 1 | M06 | ✅ 已完成 | claude |
 | M10 | Repository 层 + SecurePrefs | 1 | M08,M09 | ⬜ 待开始 | — |
-| M11 | 全部共享接口契约 | 2 | M09 | ⬜ 待开始 | — |
+| M11 | 全部共享接口契约 | 2 | M09 | ✅ 已完成 | claude |
 | M12 | LocalFileSource 实现 | 3 | M10,M11 | ⬜ 待开始 | — |
 | M13 | 文件浏览器 | 3 | M12 | ⬜ 待开始 | — |
 | M14 | 基础查看器 (ImageFolderProvider + HorizontalPager) | 3 | M13 | ⬜ 待开始 | — |
