@@ -58,6 +58,8 @@
 
 ## 验收标准
 
-- [ ] `./gradlew build` 成功，零错误
-- [ ] 所有依赖声明可解析
-- [ ] KSP 插件正确配置（Hilt/Room 代码生成就绪）
+- [x] `./gradlew build` 成功，零错误
+- [x] 所有依赖声明可解析
+- [x] KSP 插件正确配置（Hilt/Room 代码生成就绪）
+
+> **注意**: pdfium-android 版本从 1.0.0 调整为 2.0.0（io.legere:pdfiumandroid），因为原版本在 Maven Central 上不可用且与 AndroidX 不兼容。
