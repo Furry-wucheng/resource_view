@@ -24,7 +24,7 @@ import dev.wucheng.resource_viewer.data.local.entity.TagEntity
         AppConfigEntity::class,
     ],
     version = 1,
-    exportSchema = false,
+    exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -33,4 +33,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun tagDao(): TagDao
     abstract fun resourceTagDao(): ResourceTagDao
     abstract fun appConfigDao(): AppConfigDao
+
+    companion object {
+        const val DATABASE_NAME = "resource_viewer.db"
+        const val DATABASE_VERSION = 1
+    }
 }
