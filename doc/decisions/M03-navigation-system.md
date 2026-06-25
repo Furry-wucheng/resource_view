@@ -49,5 +49,6 @@
 ## 已知问题 / TODO
 
 - [ ] 占位屏幕组件需要在后续 stage 中替换为实际实现
-- [ ] BottomNavBar 的选中状态需要与当前路由同步（M04 实现）
-- [ ] 全屏路由（Viewer, TagManager）需要隐藏底部导航栏（M04 实现）
+- [x] ~~BottomNavBar 的选中状态需要与当前路由同步~~ → M04 AppShell 中通过 `currentBackStackEntryAsState` 实现
+- [x] ~~BottomNavBar.kt 与 AppShell 功能重复~~ → M04 中删除，逻辑统一到 AppShell
+- [ ] 全屏路由（Viewer, TagManager）需要隐藏底部导航栏（后续 stage 实现）

@@ -13,7 +13,7 @@
 | M01 | 主题系统与设计令牌 | 3 | ✅ | opencode/stellar-orchid | 2026-06-25 |
 | M02 | DI 骨架 (Koin) | 2 | ✅ | opencode/clever-wolf | 2026-06-25 |
 | M03 | 导航系统 | 3 | ✅ | opencode/clever-wolf | 2026-06-26 |
-| M04 | AppShell 响应式布局 | — | ⬜ | — | — |
+| M04 | AppShell 响应式布局 | 3 | ✅ | claude | 2026-06-26 |
 | M05 | 三个 Tab 占位页面 | — | ⬜ | — | — |
 | M06 | Room Entity + Enum + Converters | 3 | ✅ | opencode/stellar-orchid | 2026-06-26 |
 | M07 | Room DAO 接口 | — | ⬜ | — | — |

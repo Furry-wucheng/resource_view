@@ -34,7 +34,6 @@ sealed class Screen(val route: String) {
     // }
     // M24: ResourcePicker / TagEditor 作为 Dialog 弹窗，不走路由
 }
-}
 ```
 
 ## NavHost 结构
