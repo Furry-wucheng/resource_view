@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+resource_viewer_flutter/
