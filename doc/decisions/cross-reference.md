@@ -10,9 +10,11 @@
 |------|-----------|---------|
 | `ui/theme/Color.kt` | M01 | — |
 | `ui/theme/Theme.kt` | M01 | — |
-| `ui/navigation/Screen.kt` | M03 + 多个 | — |
-| `ui/navigation/AppNavGraph.kt` | M03 + 多个 | — |
+| `ui/navigation/Screen.kt` | M03 + 多个 | D-001 |
+| `ui/navigation/AppNavGraph.kt` | M03 + 多个 | D-001 |
+| `ui/navigation/BottomNavBar.kt` | M03 | D-002 |
 | `data/local/AppDatabase.kt` | M08 | — |
+| `data/local/converter/Converters.kt` | M06 | D-001, D-002 |
 | `data/local/entity/SourceEntity.kt` | M06 | — |
 | `data/local/entity/ResourceEntity.kt` | M06 | — |
 | `data/local/entity/TagEntity.kt` | M06 | — |
@@ -40,18 +42,18 @@
 | `shared/thumbnail/ImageThumbnailGenerator.kt` | M23 | — |
 | `shared/thumbnail/PdfThumbnailGenerator.kt` | M22 | — |
 | `shared/thumbnail/VideoThumbnailGenerator.kt` | M19 | — |
-| `ui/screens/home/HomeScreen.kt` | M05 → M23 | — |
+| `ui/screens/home/HomeScreen.kt` | M05 → M23 | D-003 |
 | `ui/screens/home/HomeViewModel.kt` | M23 | — |
-| `ui/screens/sources/SourceListScreen.kt` | M05 → M17 | — |
+| `ui/screens/sources/SourceListScreen.kt` | M05 → M17 | D-003 |
 | `ui/screens/sources/SourceListViewModel.kt` | M17 | — |
 | `ui/screens/sources/FileBrowserScreen.kt` | M13 | — |
 | `ui/screens/sources/FileBrowserViewModel.kt` | M13 | — |
-| `ui/screens/viewer/ViewerScreen.kt` | M14 → M19 → M22 | — |
+| `ui/screens/viewer/ViewerScreen.kt` | M14 → M19 → M22 | D-003 |
 | `ui/screens/viewer/ViewerViewModel.kt` | M14 | — |
 | `ui/screens/viewer/ChapterListScreen.kt` | M21 | — |
-| `ui/screens/tags/TagManagerScreen.kt` | M15 | — |
+| `ui/screens/tags/TagManagerScreen.kt` | M15 | D-003 |
 | `ui/screens/tags/TagViewModel.kt` | M15 | — |
-| `ui/screens/settings/SettingsScreen.kt` | M05 → M25 | — |
+| `ui/screens/settings/SettingsScreen.kt` | M05 → M25 | D-003 |
 | `ui/screens/settings/SettingsViewModel.kt` | M25 | — |
 | `ui/components/FilterBar.kt` | M16 | — |
 | `ui/components/ResourceGridItem.kt` | M23 | — |
@@ -86,11 +88,12 @@
 | 标签交集查询 SQL 方案 | M07 | — |
 | 键集分页实现 | M07 | — |
 | 外键约束 + 级联删除 | M06, M08 | — |
+| 枚举序列化方案 (name vs ordinal) | M06 | D-001 |
 | pdfium-android 加密支持 | M22 | — |
 | Coil vs Glide 选型 | M00 | — |
 | Room vs SQLDelight 选型 | M00 | — |
 | 密码安全存储方案 | M10 | — |
-| Navigation 路由设计 | M03 | — |
+| Navigation 路由设计 | M03 | D-001, D-002 |
 
 ---
 

@@ -44,12 +44,12 @@
 | Stage | 名称 | 轨道 | 前置 | 状态 | Agent |
 |-------|------|------|------|------|-------|
 | M00 | 依赖配置与版本同步 | 0 | — | ✅ 已完成 | — |
-| M01 | 主题系统与设计令牌 | 0 | M00 | ⬜ 待开始 | — |
-| M02 | Hilt DI 骨架 | 0 | M00 | ⬜ 待开始 | — |
-| M03 | 导航系统 | 0 | M02 | ⬜ 待开始 | — |
+| M01 | 主题系统与设计令牌 | 0 | M00 | ✅ 已完成 | opencode/stellar-orchid |
+| M02 | DI 骨架 (Koin) | 0 | M00 | ✅ 已完成 | opencode/clever-wolf |
+| M03 | 导航系统 | 0 | M02 | ✅ 已完成 | opencode/clever-wolf |
 | M04 | AppShell 响应式布局 | 0 | M03 | ⬜ 待开始 | — |
 | M05 | 三个 Tab 占位页面 | 0 | M03,M01 | ⬜ 待开始 | — |
-| M06 | Room Entity + Enum + Converters | 1 | M02 | ⬜ 待开始 | — |
+| M06 | Room Entity + Enum + Converters | 1 | M02 | ✅ 已完成 | opencode/stellar-orchid |
 | M07 | Room DAO 接口 | 1 | M06 | ⬜ 待开始 | — |
 | M08 | AppDatabase 配置+播种+迁移骨架 | 1 | M07 | ⬜ 待开始 | — |
 | M09 | Domain Models | 1 | M06 | ⬜ 待开始 | — |

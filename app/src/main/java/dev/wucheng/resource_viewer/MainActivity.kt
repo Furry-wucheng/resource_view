@@ -7,41 +7,46 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import dev.wucheng.resource_viewer.ui.theme.Resource_viewerTheme
+import androidx.navigation.compose.rememberNavController
+import dev.wucheng.resource_viewer.ui.navigation.AppNavGraph
+import dev.wucheng.resource_viewer.ui.navigation.BottomNavBar
+import dev.wucheng.resource_viewer.ui.theme.ResourceViewerTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            Resource_viewerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+            ResourceViewerTheme {
+                MainScreen()
             }
         }
     }
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
+fun MainScreen() {
+    val navController = rememberNavController()
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        bottomBar = {
+            BottomNavBar(navController = navController)
+        },
+    ) { innerPadding ->
+        AppNavGraph(
+            navController = navController,
+            modifier = Modifier.padding(innerPadding),
+        )
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
-    Resource_viewerTheme {
-        Greeting("Android")
+fun MainScreenPreview() {
+    ResourceViewerTheme {
+        MainScreen()
     }
 }
