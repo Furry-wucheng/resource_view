@@ -16,7 +16,7 @@
 | M04 | AppShell 响应式布局 | 3 | ✅ | claude | 2026-06-26 |
 | M05 | 三个 Tab 占位页面 | — | ⬜ | — | — |
 | M06 | Room Entity + Enum + Converters | 3 | ✅ | opencode/stellar-orchid | 2026-06-26 |
-| M07 | Room DAO 接口 | — | ⬜ | — | — |
+| M07 | Room DAO 接口 | 5 | ✅ | claude | 2026-06-26 |
 | M08 | AppDatabase 配置 | — | ⬜ | — | — |
 | M09 | Domain Models | 3 | ✅ | claude | 2026-06-26 |
 | M10 | Repository 层 + SecurePrefs | — | ⬜ | — | — |

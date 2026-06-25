@@ -4,6 +4,11 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import dev.wucheng.resource_viewer.data.local.converter.Converters
+import dev.wucheng.resource_viewer.data.local.dao.AppConfigDao
+import dev.wucheng.resource_viewer.data.local.dao.ResourceDao
+import dev.wucheng.resource_viewer.data.local.dao.ResourceTagDao
+import dev.wucheng.resource_viewer.data.local.dao.SourceDao
+import dev.wucheng.resource_viewer.data.local.dao.TagDao
 import dev.wucheng.resource_viewer.data.local.entity.AppConfigEntity
 import dev.wucheng.resource_viewer.data.local.entity.ResourceEntity
 import dev.wucheng.resource_viewer.data.local.entity.ResourceTagEntity
@@ -22,4 +27,10 @@ import dev.wucheng.resource_viewer.data.local.entity.TagEntity
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
-abstract class AppDatabase : RoomDatabase()
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun sourceDao(): SourceDao
+    abstract fun resourceDao(): ResourceDao
+    abstract fun tagDao(): TagDao
+    abstract fun resourceTagDao(): ResourceTagDao
+    abstract fun appConfigDao(): AppConfigDao
+}

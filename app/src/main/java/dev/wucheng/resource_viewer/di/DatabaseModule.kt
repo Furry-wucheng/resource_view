@@ -12,4 +12,10 @@ val databaseModule = module {
             "resource_viewer.db"
         ).build()
     }
+
+    single { get<AppDatabase>().sourceDao() }
+    single { get<AppDatabase>().resourceDao() }
+    single { get<AppDatabase>().tagDao() }
+    single { get<AppDatabase>().resourceTagDao() }
+    single { get<AppDatabase>().appConfigDao() }
 }
