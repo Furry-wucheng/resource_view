@@ -14,37 +14,37 @@
 
 ## 子任务
 
-### M11.1 FileSource 接口 + FileEntry
+### M11.1 FileSource 接口 + FileEntry ✅
 
 创建 `FileSource` 接口（含 `listDirectory`、`stat`、`readFile`、`readRange`、`openInputStream`、`testConnection`、`disconnect`）。同一文件中定义 `FileEntry` data class。
 
 **产出物**：`shared/filesource/FileSource.kt`
 
-### M11.2 FileSourceFactory
+### M11.2 FileSourceFactory ✅
 
 创建工厂对象，根据 `SourceType` 返回对应实现（当前 LOCAL→LocalFileSource；SMB→SmbFileSource；FTP/WEBDAV→UnsupportedOperationException）。
 
 **产出物**：`shared/filesource/FileSourceFactory.kt`
 
-### M11.3 ContentProvider 接口
+### M11.3 ContentProvider 接口 ✅
 
 创建 `ContentProvider` 接口（`pageCount`、`loadPage(index)`、`dispose()`）。
 
 **产出物**：`shared/content/ContentProvider.kt`
 
-### M11.4 OrganizationStrategy 接口 + Chapter
+### M11.4 OrganizationStrategy 接口 + Chapter ✅
 
 创建 `OrganizationStrategy` 接口（`mode`、`getChapters`、`getContents`、`createProvider`）。同一文件中定义 `Chapter` data class。
 
 **产出物**：`shared/organization/OrganizationStrategy.kt`
 
-### M11.5 ThumbnailGenerator 接口
+### M11.5 ThumbnailGenerator 接口 ✅
 
 创建 `ThumbnailGenerator` 接口（`canHandle(type)`、`generate(resource, fileSource, cacheDir)`）。
 
 **产出物**：`shared/thumbnail/ThumbnailGenerator.kt`
 
-### M11.6 DomainError + Result + Progress
+### M11.6 DomainError + Result + Progress ✅
 
 实现错误处理基础设施（如果 M09 未做的话）。
 
@@ -52,7 +52,7 @@
 
 ## 验收标准
 
-- [ ] 所有接口签名与 `doc/share/02-interfaces.md` 完全一致
-- [ ] FileSourceFactory 支持 LOCAL/SMB 返回正确类型
-- [ ] 编译通过（接口没有实现体依赖）
-- [ ] `./gradlew build` 通过
+- [x] 所有接口签名与 `doc/share/02-interfaces.md` 完全一致
+- [x] FileSourceFactory 支持 LOCAL/SMB 返回正确类型
+- [x] 编译通过（接口没有实现体依赖）
+- [x] `./gradlew build` 通过
