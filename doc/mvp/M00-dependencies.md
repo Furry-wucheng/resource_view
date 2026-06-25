@@ -24,7 +24,8 @@
 
 | 依赖 | 版本 |
 |------|------|
-| navigation-compose | 2.8.x |
+| ksp | 2.3.9 |
+| navigation-compose | 2.8.0 |
 | hilt-android | 2.51 |
 | hilt-compiler | 2.51 |
 | hilt-navigation-compose | 1.2.0 |
@@ -32,19 +33,19 @@
 | room-ktx | 2.6.1 |
 | room-compiler | 2.6.1 |
 | room-testing | 2.6.1 |
-| media3-exoplayer | 1.5.x |
-| media3-ui | 1.5.x |
+| media3-exoplayer | 1.5.0 |
+| media3-ui | 1.5.0 |
 | coil-compose | 3.5.0 |
 | coil-video | 3.5.0 |
-| pdfium-android | 1.0.0 |
+| pdfium-android (io.legere) | 2.0.0 |
 | zip4j | 2.11.6 |
 | commons-compress | 1.28.0 |
 | smbj | 0.13.0 |
 | security-crypto | 1.1.0-alpha06 |
-| kotlinx-coroutines-android | 1.8.x |
+| kotlinx-coroutines-android | 1.8.0 |
 | benasher-uuid | 0.8.2 |
 | mockk | 1.13.16 |
-| kotlinx-coroutines-test | 1.8.x |
+| kotlinx-coroutines-test | 1.8.0 |
 
 ### M00.2 补齐模块依赖
 
