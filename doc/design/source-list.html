@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据源管理 — Resource Viewer</title>
+  <link rel="stylesheet" href="design-tokens.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+
+    .page-content-src { flex: 1; overflow-y: auto; padding: var(--space-md); }
+
+    .source-card {
+      background: var(--color-surface); border-radius: var(--radius-md);
+      padding: var(--space-lg); margin-bottom: var(--space-md);
+      border: 1px solid var(--color-outline);
+    }
+    .source-card.unavailable { opacity: 0.5; border-style: dashed; }
+    .source-header { display: flex; align-items: center; gap: var(--space-md); }
+    .source-icon {
+      width: 48px; height: 48px; border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; flex-shrink: 0;
+    }
+    .source-icon.local { background: #E3F2FD; color: #1565C0; }
+    .source-icon.smb { background: #E8F5E9; color: #2E7D32; }
+    .source-info { flex: 1; min-width: 0; }
+    .source-name { font-size: 16px; font-weight: 500; }
+    .source-path { font-size: 12px; color: var(--color-on-surface-variant); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .source-meta { font-size: 12px; color: var(--color-on-surface-variant); margin-top: 2px; }
+    .source-status { font-size: 10px; display: flex; align-items: center; gap: 2px; }
+    .source-status.danger { color: var(--color-error); }
+    .source-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+    .switch {
+      position: relative; width: 44px; height: 24px; display: inline-block;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0; background: #ccc;
+      border-radius: 24px; cursor: pointer; transition: 0.2s;
+    }
+    .slider::before {
+      content: ""; position: absolute; left: 3px; top: 3px;
+      width: 18px; height: 18px; background: white;
+      border-radius: 50%; transition: 0.2s;
+    }
+    .switch input:checked + .slider { background: var(--color-primary); }
+    .switch input:checked + .slider::before { transform: translateX(20px); }
+
+    .fab-add {
+      position: fixed; bottom: 80px; right: 24px;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--color-primary); color: white;
+      border: none; box-shadow: var(--shadow-md);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 24px; z-index: 10;
+    }
+
+    /* 添加菜单弹出 */
+    .add-menu {
+      position: fixed; bottom: 148px; right: 28px;
+      background: var(--color-surface); border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg); border: 1px solid var(--color-outline);
+      overflow: hidden; z-index: 20;
+    }
+    .add-menu-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 20px; cursor: pointer; font-size: 14px;
+      border: none; background: none; color: var(--color-on-surface);
+      width: 100%; text-align: left; white-space: nowrap;
+    }
+    .add-menu-item:hover { background: var(--color-surface-variant); }
+    .add-menu-item:not(:last-child) { border-bottom: 1px solid var(--color-outline); }
+
+    /* SMB 弹窗遮罩 */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; }
+    .dialog {
+      background: var(--color-surface); border-radius: var(--radius-lg);
+      padding: var(--space-xl); width: 400px; max-width: 90vw;
+      box-shadow: var(--shadow-lg);
+    }
+    .dialog-title { font-size: 20px; font-weight: 600; margin-bottom: 24px; }
+    .smb-form { display: flex; flex-direction: column; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 12px; color: var(--color-on-surface-variant); }
+    .form-group input {
+      padding: 12px; border: 1px solid var(--color-outline);
+      border-radius: var(--radius-md); font-size: 14px;
+      background: var(--color-surface); color: var(--color-on-surface);
+    }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+    .test-result {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 4px; font-size: 12px;
+    }
+    .test-result.success { background: #E8F5E9; color: #2E7D32; }
+    .test-result.fail { background: #FFEBEE; color: #C62828; }
+    .test-result-checking { background: #FFF8E1; color: #F57F17; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+
+    .hidden { display: none !important; }
+    .scanning-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--color-primary); margin-top: 4px; }
+    .scanning-dot { width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+
+    <div class="top-bar">
+      <span class="title">数据源管理</span>
+    </div>
+
+    <div class="page-content-src" id="sourceList">
+      <div class="source-card">
+        <div class="source-header">
+          <div class="source-icon local"><span class="material-icons">computer</span></div>
+          <div class="source-info">
+            <div class="source-name">D盘漫画</div>
+            <div class="source-path">D:\Comics</div>
+            <div class="source-meta">本地 · 12 个资源</div>
+          </div>
+          <div class="source-actions">
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+            <button class="btn-icon material-icons">more_vert</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="source-card unavailable" id="nasCard">
+        <div class="source-header">
+          <div class="source-icon smb"><span class="material-icons">storage</span></div>
+          <div class="source-info">
+            <div class="source-name">NAS 漫画库</div>
+            <div class="source-path">\\192.168.1.100\share\comics</div>
+            <div class="source-meta">SMB · 8 个资源 <span class="source-status danger">⚠ 不可用</span></div>
+          </div>
+          <div class="source-actions">
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+            <button class="btn-icon material-icons">more_vert</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="source-card">
+        <div class="source-header">
+          <div class="source-icon smb"><span class="material-icons">cloud</span></div>
+          <div class="source-info">
+            <div class="source-name">远程图包</div>
+            <div class="source-path">\\10.0.0.5\packs</div>
+            <div class="source-meta">SMB · 5 个资源</div>
+            <div class="scanning-badge"><span class="scanning-dot"></span>扫描中...</div>
+          </div>
+          <div class="source-actions">
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+            <button class="btn-icon material-icons">more_vert</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAB 按钮 -->
+    <button class="fab-add" onclick="showAddMenu()"><span class="material-icons">add</span></button>
+
+    <!-- 添加菜单 -->
+    <div class="add-menu hidden" id="addMenu">
+      <button class="add-menu-item" onclick="simAddLocal()"><span class="material-icons">folder_open</span> 添加本地文件夹</button>
+      <button class="add-menu-item" onclick="showSmbDialog()"><span class="material-icons">storage</span> 添加 SMB 网络共享</button>
+    </div>
+
+    <!-- SMB 弹窗 -->
+    <div class="overlay hidden" id="smbOverlay">
+      <div class="dialog">
+        <div class="dialog-title">添加 SMB 网络共享</div>
+        <div class="smb-form">
+          <div class="form-group"><label>源名称 *</label><input type="text" placeholder="如：NAS 漫画库" value="NAS 漫画库"></div>
+          <div class="form-group"><label>SMB 地址 *</label><input type="text" placeholder="\\192.168.1.100\share" value="\\192.168.1.100\comics"></div>
+          <div class="form-row">
+            <div class="form-group"><label>端口</label><input type="number" value="445"></div>
+            <div class="form-group"><label>域</label><input type="text" placeholder="WORKGROUP"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>用户名</label><input type="text" value="admin"></div>
+            <div class="form-group"><label>密码</label><input type="password" value="password"></div>
+          </div>
+          <div class="test-result hidden" id="testResult">
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn" onclick="simTestConnection()">测试连接</button>
+          <button class="btn" onclick="hideSmbDialog()">取消</button>
+          <button class="btn btn-primary" id="smbAddBtn" onclick="simAddSmbSource()" disabled style="opacity:0.5">添加</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="nav-item"><span class="material-icons nav-icon">home</span><span>资源库</span></button>
+      <button class="nav-item active"><span class="material-icons nav-icon">folder</span><span>数据源</span></button>
+      <button class="nav-item"><span class="material-icons nav-icon">settings</span><span>设置</span></button>
+    </div>
+  </div>
+
+  <script>
+    function showAddMenu() {
+      document.getElementById('addMenu').classList.toggle('hidden');
+    }
+
+    function hideAddMenu() {
+      document.getElementById('addMenu').classList.add('hidden');
+    }
+
+    function showSmbDialog() {
+      hideAddMenu();
+      document.getElementById('smbOverlay').classList.remove('hidden');
+    }
+
+    function hideSmbDialog() {
+      document.getElementById('smbOverlay').classList.add('hidden');
+    }
+
+    function simTestConnection() {
+      const result = document.getElementById('testResult');
+      const addBtn = document.getElementById('smbAddBtn');
+      result.className = 'test-result checking';
+      result.classList.remove('hidden');
+      result.innerHTML = '<span class="material-icons" style="font-size:18px">hourglass_top</span> 测试中...';
+      addBtn.disabled = true;
+      addBtn.style.opacity = '0.5';
+      setTimeout(() => {
+        result.className = 'test-result success';
+        result.innerHTML = '<span class="material-icons" style="font-size:18px">check_circle</span> 连接成功';
+        addBtn.disabled = false;
+        addBtn.style.opacity = '1';
+      }, 1200);
+    }
+
+    function simAddLocal() {
+      hideAddMenu();
+      const list = document.getElementById('sourceList');
+      const card = document.createElement('div');
+      card.className = 'source-card';
+      card.innerHTML = `<div class="source-header">
+        <div class="source-icon local"><span class="material-icons">folder</span></div>
+        <div class="source-info">
+          <div class="source-name">新本地源</div>
+          <div class="source-path">E:\\Pictures</div>
+          <div class="source-meta">本地 · 0 个资源</div>
+        </div>
+        <div class="source-actions">
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          <button class="btn-icon material-icons">more_vert</button>
+        </div>
+      </div>`;
+      list.insertBefore(card, list.firstChild);
+      card.style.transition = 'all 0.3s';
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(-10px)';
+      requestAnimationFrame(() => {
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      });
+    }
+
+    function simAddSmbSource() {
+      hideSmbDialog();
+      const list = document.getElementById('sourceList');
+      const card = document.createElement('div');
+      card.className = 'source-card';
+      card.innerHTML = `<div class="source-header">
+        <div class="source-icon smb"><span class="material-icons">storage</span></div>
+        <div class="source-info">
+          <div class="source-name">NAS 漫画库</div>
+          <div class="source-path">\\\\192.168.1.100\\comics</div>
+          <div class="source-meta">SMB · 0 个资源</div>
+          <div class="scanning-badge"><span class="scanning-dot"></span>扫描中...</div>
+        </div>
+        <div class="source-actions">
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          <button class="btn-icon material-icons">more_vert</button>
+        </div>
+      </div>`;
+      list.insertBefore(card, list.firstChild);
+      card.style.transition = 'all 0.3s';
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(-10px)';
+      requestAnimationFrame(() => {
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      });
+    }
+
+    // 点击遮罩关闭弹窗
+    document.getElementById('smbOverlay').addEventListener('click', function(e) {
+      if (e.target === this) hideSmbDialog();
+    });
+    // 点击菜单外关闭
+    document.addEventListener('click', function(e) {
+      const menu = document.getElementById('addMenu');
+      const fab = document.querySelector('.fab-add');
+      if (!menu.classList.contains('hidden') && !menu.contains(e.target) && !fab.contains(e.target)) {
+        hideAddMenu();
+      }
+    });
+  </script>
+</body>
+</html>

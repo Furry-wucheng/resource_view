@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资源库首页 — Resource Viewer</title>
+  <link rel="stylesheet" href="design-tokens.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    /* ===== 搜索栏 ===== */
+    .search-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; background: var(--color-surface);
+      border-bottom: 1px solid var(--color-outline);
+    }
+    .search-bar input {
+      flex: 1; border: none; background: none; outline: none;
+      font-size: var(--font-size-md); color: var(--color-on-surface);
+    }
+    .search-bar input::placeholder { color: var(--color-on-surface-variant); }
+    .search-bar .search-icon { color: var(--color-on-surface-variant); font-size: 20px; }
+    .search-bar .search-clear {
+      cursor: pointer; border: none; background: none;
+      color: var(--color-on-surface-variant); font-size: 18px;
+      display: none; padding: 2px;
+    }
+    .search-bar .search-clear.visible { display: inline; }
+
+    /* ===== 筛选栏 ===== */
+    .filter-bar {
+      display: flex; align-items: center; gap: var(--space-sm);
+      padding: var(--space-md); background: var(--color-surface);
+      border-bottom: 1px solid var(--color-outline); overflow: hidden;
+    }
+    .filter-fixed { display: flex; gap: var(--space-sm); flex-shrink: 0; }
+    .filter-scroll { display: flex; gap: var(--space-sm); overflow-x: auto; white-space: nowrap; }
+    .filter-chip {
+      padding: 6px var(--space-md); border-radius: var(--radius-full);
+      font-size: var(--font-size-sm); border: 1px solid var(--color-outline);
+      background: var(--color-surface); color: var(--color-on-surface);
+      cursor: pointer; display: flex; align-items: center; gap: 4px;
+      white-space: nowrap; flex-shrink: 0; transition: all 0.15s;
+      user-select: none;
+    }
+    .filter-chip:hover { background: var(--color-surface-variant); }
+    .filter-chip.selected-all { background: var(--color-primary-container); color: var(--color-primary); border-color: var(--color-primary); font-weight: 600; }
+    .filter-chip.selected-star { background: #FFF8E1; color: #F9A825; border-color: #F9A825; }
+    .filter-chip.selected-tag { color: white; }
+    .filter-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .filter-info {
+      padding: var(--space-xs) var(--space-md); font-size: var(--font-size-sm);
+      color: var(--color-on-surface-variant); display: flex; align-items: center; gap: var(--space-sm);
+    }
+    .filter-info .clear-btn {
+      font-size: var(--font-size-xs); color: var(--color-primary);
+      cursor: pointer; border: none; background: none; padding: 2px 8px; border-radius: 4px;
+    }
+    .filter-info .clear-btn:hover { background: var(--color-primary-container); }
+
+    /* ===== 网格 ===== */
+    .resource-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-sm); padding: var(--space-md);
+    }
+    @media (min-width: 600px) { .resource-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (min-width: 900px) { .resource-grid { grid-template-columns: repeat(5, 1fr); } }
+    @media (min-width: 1200px) { .resource-grid { grid-template-columns: repeat(6, 1fr); } }
+    .resource-item { cursor: pointer; }
+    .thumbnail-wrapper {
+      position: relative; width: 100%; aspect-ratio: 2 / 3;
+      border-radius: var(--radius-sm); overflow: hidden;
+      background: var(--color-surface-variant);
+    }
+    .thumbnail-img { width: 100%; height: 100%; object-fit: cover; }
+    .thumbnail-bg {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.7); font-size: 24px; font-weight: bold;
+    }
+    .type-badge {
+      position: absolute; right: 4px; bottom: 4px;
+      background: rgba(0,0,0,0.65); color: white; border-radius: 4px;
+      padding: 2px 5px; font-size: 10px; display: flex; align-items: center; gap: 2px;
+    }
+    .type-badge .material-icons { font-size: 13px; }
+    .star-btn {
+      position: absolute; left: 4px; bottom: 4px;
+      background: rgba(0,0,0,0.5); color: var(--color-star); border: none;
+      border-radius: 50%; width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 16px; transition: transform 0.15s;
+    }
+    .star-btn:hover { transform: scale(1.15); }
+    .star-btn.starred .material-icons { font-variation-settings: 'FILL' 1; }
+    .resource-name {
+      margin-top: 4px; font-size: 12px; text-align: center; line-height: 1.3;
+      overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; word-break: break-all; padding: 0 2px;
+    }
+    .resource-meta { font-size: 10px; color: var(--color-on-surface-variant); text-align: center; margin-top: 1px; }
+    .tag-overlay {
+      position: absolute; left: 4px; top: 4px; display: flex; gap: 2px; flex-wrap: wrap;
+    }
+    .tag-dot-overlay { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.5); }
+
+    /* ===== 空状态 ===== */
+    .empty-state-page {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      flex: 1; padding: 48px 24px; text-align: center; gap: 16px;
+    }
+    .empty-state-page .empty-icon { font-size: 80px; opacity: 0.2; }
+    .empty-state-page .empty-text { font-size: 16px; color: var(--color-on-surface-variant); }
+    .empty-state-page .empty-sub { font-size: 12px; color: var(--color-on-surface-variant); opacity: 0.7; }
+    .empty-state-page .empty-action {
+      margin-top: 8px; padding: 12px 32px; background: var(--color-primary); color: white;
+      border: none; border-radius: 999px; font-size: 14px; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ===== 筛选空结果 ===== */
+    .filter-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      flex: 1; padding: 48px 24px; text-align: center; gap: 16px;
+    }
+    .filter-empty .empty-icon { font-size: 64px; opacity: 0.25; }
+    .filter-empty .empty-text { font-size: 16px; color: var(--color-on-surface-variant); }
+    .filter-empty .empty-sub { font-size: 12px; color: var(--color-on-surface-variant); opacity: 0.6; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- 顶部标题栏 -->
+    <div class="top-bar">
+      <span class="title">资源库</span>
+      <button class="btn btn-icon" onclick="toggleDemoState()" title="切换空状态演示" style="font-size:12px;opacity:0.6">演示:空状态</button>
+    </div>
+
+    <!-- 搜索栏 -->
+    <div class="search-bar">
+      <span class="search-icon material-icons">search</span>
+      <input type="text" id="searchInput" placeholder="搜索资源名称..." oninput="doSearch()">
+      <button class="search-clear material-icons" id="searchClear" onclick="clearSearch()">close</button>
+    </div>
+
+    <!-- 筛选栏 (动态渲染) -->
+    <div class="filter-bar" id="filterBar">
+      <div class="filter-fixed">
+        <span class="filter-chip selected-all" id="chipAll" onclick="toggleAll()">全部</span>
+        <span class="filter-chip star" id="chipStar" onclick="toggleStar()"><span class="material-icons" style="font-size:16px">star</span> 收藏</span>
+      </div>
+      <div class="filter-scroll no-scrollbar" id="filterScroll"></div>
+    </div>
+
+    <!-- 筛选提示 -->
+    <div class="filter-info hidden" id="filterInfo"></div>
+
+    <!-- 页面内容 -->
+    <div class="page-content" id="pageContent">
+      <!-- 资源网格 -->
+      <div class="resource-grid" id="resourceGrid"></div>
+      <!-- 空状态 -->
+      <div class="empty-state-page hidden" id="emptyState">
+        <span class="material-icons empty-icon">photo_library</span>
+        <div class="empty-text">还没有资源</div>
+        <div class="empty-sub">添加数据源，将你的漫画和图包导入资源库</div>
+        <button class="empty-action"><span class="material-icons">add</span>去添加数据源</button>
+      </div>
+      <!-- 筛选空结果 -->
+      <div class="filter-empty hidden" id="filterEmpty">
+        <span class="material-icons empty-icon">search_off</span>
+        <div class="empty-text">没有匹配的资源</div>
+        <div class="empty-sub">试试调整筛选条件</div>
+        <button class="btn btn-primary" onclick="clearAllFilters()">清除筛选</button>
+      </div>
+    </div>
+
+    <!-- 底部导航栏 -->
+    <div class="bottom-nav">
+      <button class="nav-item active"><span class="material-icons nav-icon">home</span><span>资源库</span></button>
+      <button class="nav-item"><span class="material-icons nav-icon">folder</span><span>数据源</span></button>
+      <button class="nav-item"><span class="material-icons nav-icon">settings</span><span>设置</span></button>
+    </div>
+  </div>
+
+  <script>
+    // ===== 数据 =====
+    const tags = [
+      { id: 'star', name: '收藏', color: '#FFC107', builtIn: true },
+      { id: 't1', name: '热血', color: '#E53935' },
+      { id: 't2', name: '已完结', color: '#43A047' },
+      { id: 't3', name: '汉化', color: '#1E88E5' },
+      { id: 't4', name: '未读', color: '#FB8C00' },
+      { id: 't5', name: '长篇', color: '#8E24AA' },
+      { id: 't6', name: '短篇', color: '#039BE5' },
+      { id: 't7', name: '科幻', color: '#00ACC1' },
+    ];
+
+    const allResources = [
+      { id: 'r1', name: '海贼王_卷01', tags: ['t1','t2','t3'], pages: 176, bg: 'linear-gradient(135deg,#1a237e,#4a148c)', starred: false, type: 'folder', text: '海' },
+      { id: 'r2', name: '进击的巨人_卷01', tags: ['t1','t7'], pages: 200, bg: 'linear-gradient(135deg,#4a148c,#311b92)', starred: false, type: 'folder', text: '進撃' },
+      { id: 'r3', name: '设定集.pdf', tags: ['t2'], pages: 32, bg: 'linear-gradient(135deg,#b71c1c,#880e4f)', starred: false, type: 'pdf', text: 'PDF' },
+      { id: 'r4', name: '鬼灭之刃', tags: ['t1','t2','t3','t5'], pages: 205, bg: 'linear-gradient(135deg,#1b5e20,#004d40)', starred: true, type: 'folder', text: '鬼滅' },
+      { id: 'r5', name: '插画合集.zip', tags: ['t6'], pages: 120, bg: 'linear-gradient(135deg,#e65100,#bf360c)', starred: false, type: 'archive', text: 'ZIP' },
+      { id: 'r6', name: 'SPY×FAMILY', tags: ['t3','t4'], pages: 180, bg: 'linear-gradient(135deg,#311b92,#006064)', starred: false, type: 'folder', text: 'SPY' },
+      { id: 'r7', name: 'JOJO的奇妙冒险', tags: ['t1','t2'], pages: 150, bg: 'linear-gradient(135deg,#827717,#33691e)', starred: false, type: 'folder', text: 'JOJO' },
+      { id: 'r8', name: '咒术回战', tags: ['t1','t2','t4'], pages: 190, bg: 'linear-gradient(135deg,#3e2723,#4e342e)', starred: false, type: 'folder', text: '呪術' },
+      { id: 'r9', name: '钢之炼金术师', tags: ['t1','t2'], pages: 108, bg: 'linear-gradient(135deg,#0d47a1,#01579b)', starred: true, type: 'folder', text: '鋼の' },
+      { id: 'r10', name: '一拳超人', tags: ['t1','t3','t5'], pages: 160, bg: 'linear-gradient(135deg,#b71c1c,#ff7043)', starred: false, type: 'folder', text: '一拳' },
+      { id: 'r11', name: '约定的梦幻岛', tags: ['t2','t7'], pages: 181, bg: 'linear-gradient(135deg,#6a1b9a,#ab47bc)', starred: false, type: 'folder', text: '約束' },
+      { id: 'r12', name: '东京喰种', tags: ['t1','t2','t5'], pages: 143, bg: 'linear-gradient(135deg,#d32f2f,#c62828)', starred: false, type: 'folder', text: '東京' },
+    ];
+
+    let selectedTags = new Set();
+    let searchQuery = '';
+    let demoState = 'normal'; // 'normal' | 'empty' — 演示空状态切换
+
+    function toggleDemoState() {
+      demoState = demoState === 'normal' ? 'empty' : 'normal';
+      renderGrid();
+    }
+
+    // ===== 搜索 =====
+    function doSearch() {
+      const input = document.getElementById('searchInput');
+      searchQuery = input.value.trim().toLowerCase();
+      document.getElementById('searchClear').classList.toggle('visible', !!searchQuery);
+      renderGrid();
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      searchQuery = '';
+      document.getElementById('searchClear').classList.remove('visible');
+      renderGrid();
+    }
+
+    // ===== 渲染筛选栏 =====
+    function renderFilterBar() {
+      const scroll = document.getElementById('filterScroll');
+      scroll.innerHTML = tags.filter(t => !t.builtIn).map(t => {
+        const sel = selectedTags.has(t.id);
+        const style = sel ? `background:${t.color};color:white;border-color:${t.color}` : '';
+        return `<span class="filter-chip ${sel ? 'selected-tag' : ''}" style="${style}" data-tag="${t.id}" onclick="toggleTag('${t.id}')"><span class="dot" style="background:${t.color}"></span>${t.name}</span>`;
+      }).join('');
+    }
+
+    // ===== 渲染网格 =====
+    function renderGrid() {
+      let filtered;
+
+      if (demoState === 'empty') {
+        document.getElementById('resourceGrid').innerHTML = '';
+        document.getElementById('resourceGrid').classList.add('hidden');
+        document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('filterEmpty').classList.add('hidden');
+        document.getElementById('filterInfo').classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('emptyState').classList.add('hidden');
+
+      // 标签筛选
+      if (selectedTags.size === 0) {
+        filtered = allResources;
+      } else {
+        filtered = allResources.filter(r => {
+          const tagIds = [...selectedTags];
+          return tagIds.every(tid => {
+            if (tid === 'star') return r.starred;
+            return r.tags.includes(tid);
+          });
+        });
+      }
+
+      // 名称搜索（与标签交集）
+      if (searchQuery) {
+        filtered = filtered.filter(r => r.name.toLowerCase().includes(searchQuery));
+      }
+
+      document.getElementById('resourceGrid').classList.remove('hidden');
+
+      const hasSearch = !!searchQuery;
+      const hasTags = selectedTags.size > 0;
+      const matched = filtered.length;
+
+      if (matched === 0 && (hasTags || hasSearch)) {
+        document.getElementById('resourceGrid').innerHTML = '';
+        document.getElementById('filterEmpty').classList.remove('hidden');
+        document.getElementById('filterInfo').classList.remove('hidden');
+        const parts = [];
+        if (hasSearch) parts.push(`"${searchQuery}"`);
+        if (hasTags) parts.push([...selectedTags].map(id => tags.find(t => t.id === id)?.name || '收藏').join(' + '));
+        document.getElementById('filterInfo').innerHTML = `筛选出 <strong>0</strong> / ${allResources.length} 个资源（${parts.join('，')}）<button class="clear-btn" onclick="clearAllFilters()">清除筛选</button>`;
+      } else {
+        document.getElementById('filterEmpty').classList.add('hidden');
+        const total = allResources.length;
+
+        if (hasTags || hasSearch) {
+          document.getElementById('filterInfo').classList.remove('hidden');
+          const parts = [];
+          if (hasSearch) parts.push(`"${searchQuery}"`);
+          if (hasTags) parts.push([...selectedTags].map(id => tags.find(t => t.id === id)?.name || '收藏').join(' + '));
+          document.getElementById('filterInfo').innerHTML = `筛选出 <strong>${matched}</strong> / ${total} 个资源（${parts.join('，')}）<button class="clear-btn" onclick="clearAllFilters()">清除筛选</button>`;
+        } else {
+          document.getElementById('filterInfo').classList.remove('hidden');
+          document.getElementById('filterInfo').innerHTML = `共 <strong>${total}</strong> 个资源`;
+        }
+
+        document.getElementById('resourceGrid').innerHTML = filtered.map(r => {
+          const typeBadge = r.type === 'pdf' ? `<div class="type-badge"><span class="material-icons">picture_as_pdf</span></div>`
+            : r.type === 'archive' ? `<div class="type-badge"><span class="material-icons">folder_zip</span></div>` : '';
+          const tagDots = r.tags.slice(0, 3).map(tid => {
+            const t = tags.find(x => x.id === tid);
+            return t ? `<span class="tag-dot-overlay" style="background:${t.color}"></span>` : '';
+          }).join('');
+          return `
+            <div class="resource-item">
+              <div class="thumbnail-wrapper">
+                <div class="thumbnail-bg" style="background:${r.bg}">${tagDots ? `<div class="tag-overlay">${tagDots}</div>` : ''}${r.text}</div>
+                ${typeBadge}
+                <button class="star-btn ${r.starred ? 'starred' : ''}" onclick="event.stopPropagation();toggleResourceStar('${r.id}')"><span class="material-icons">star</span></button>
+              </div>
+              <div class="resource-name">${r.name}</div>
+              <div class="resource-meta">${r.pages} 页</div>
+            </div>`;
+        }).join('');
+      }
+
+      updateFilterChips();
+    }
+
+    // ===== 筛选逻辑 =====
+    function toggleTag(tagId) {
+      if (selectedTags.has(tagId)) selectedTags.delete(tagId);
+      else selectedTags.add(tagId);
+      renderFilterBar();
+      renderGrid();
+    }
+
+    function toggleAll() {
+      selectedTags.clear();
+      renderFilterBar();
+      renderGrid();
+    }
+
+    function toggleStar() {
+      toggleTag('star');
+    }
+
+    function clearAllFilters() {
+      selectedTags.clear();
+      document.getElementById('searchInput').value = '';
+      searchQuery = '';
+      document.getElementById('searchClear').classList.remove('visible');
+      renderFilterBar();
+      renderGrid();
+      updateFilterChips();
+    }
+
+    function updateFilterChips() {
+      const allChip = document.getElementById('chipAll');
+      const starChip = document.getElementById('chipStar');
+      allChip.classList.toggle('selected-all', selectedTags.size === 0);
+      starChip.classList.toggle('selected-star', selectedTags.has('star'));
+    }
+
+    // ===== 收藏切换 =====
+    function toggleResourceStar(id) {
+      const r = allResources.find(x => x.id === id);
+      if (r) r.starred = !r.starred;
+      renderGrid();
+    }
+
+    // ===== 初始化 =====
+    renderFilterBar();
+    renderGrid();
+  </script>
+</body>
+</html>

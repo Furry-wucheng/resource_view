@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>统一查看器 — Resource Viewer</title>
+  <link rel="stylesheet" href="design-tokens.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; user-select: none; -webkit-user-select: none; }
+
+    .viewer-root {
+      position: relative; width: 100vw; height: 100vh;
+      background: #000; overflow: hidden;
+    }
+
+    /* ===== 内容区 — 填满全屏 ===== */
+    .viewer-content {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* -- 单页图片 -- */
+    .page-single {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #1a237e, #4a148c);
+      color: rgba(255,255,255,0.4); font-size: 64px; font-weight: bold;
+      position: relative;
+    }
+    .page-num-hint {
+      position: absolute; bottom: 60px; right: 16px;
+      font-size: 12px; opacity: 0.35; font-weight: normal;
+    }
+
+    /* -- 双页 -- */
+    .double-wrap {
+      display: flex; align-items: stretch;
+      width: 100%; height: 100%;
+    }
+    .page-half {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 44px; font-weight: bold; color: rgba(255,255,255,0.35);
+      position: relative;
+    }
+    .page-half.left { background: linear-gradient(135deg, #1a237e, #283593); }
+    .page-half.right { background: linear-gradient(135deg, #4527a0, #4a148c); }
+
+    /* -- 视频 -- */
+    .video-placeholder {
+      display: flex; flex-direction: column; align-items: center;
+      color: rgba(255,255,255,0.25); gap: 16px;
+    }
+    .video-placeholder .vicon { font-size: 72px; }
+    .video-placeholder .vhint { font-size: 13px; }
+
+    .play-pause-indicator {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      font-size: 64px; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .play-pause-indicator.show { opacity: 0.7; animation: ppFade 0.8s forwards; }
+    @keyframes ppFade { 0%{opacity:0;transform:translate(-50%,-50%) scale(0.8)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.1)} }
+
+    .speed-badge {
+      position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.7); color: #fff; padding: 8px 20px;
+      border-radius: 8px; font-size: 20px; font-weight: 700;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .speed-badge.show { opacity: 1; }
+
+    /* ===== 左右触控区（无极显箭头） ===== */
+    .touch-zone {
+      position: absolute; top: 0; bottom: 0; width: 30%;
+      cursor: pointer; z-index: 1;
+    }
+    .touch-zone.left { left: 0; }
+    .touch-zone.right { right: 0; }
+
+    /* ===== 顶部工具栏 — 悬浮叠加 ===== */
+    .top-overlay {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+      background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0));
+      padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top));
+      display: flex; align-items: center; gap: 12px;
+      color: #fff; transition: opacity 0.25s;
+    }
+    .top-overlay.hidden { opacity: 0; pointer-events: none; }
+    .top-overlay button {
+      background: none; border: none; color: #fff; cursor: pointer;
+      font-size: 22px; padding: 4px; display: flex; align-items: center;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .top-title { flex: 1; font-size: 14px; font-weight: 500; text-align: center; }
+    .top-sub { font-size: 12px; color: rgba(255,255,255,0.7); }
+
+    /* ===== 底部工具栏 — 悬浮叠加 ===== */
+    .bottom-overlay {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
+      background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.7));
+      padding: 12px 14px; padding-bottom: max(14px, env(safe-area-inset-bottom));
+      display: flex; align-items: center; gap: 10px;
+      color: #fff; font-size: 11px;
+      transition: opacity 0.25s;
+    }
+    .bottom-overlay.hidden { opacity: 0; pointer-events: none; }
+
+    /* 滑动条 */
+    .slide-bar-wrap {
+      flex: 1; display: flex; align-items: center; gap: 8px;
+    }
+    .slide-label { color: rgba(255,255,255,0.6); font-size: 10px; min-width: 18px; text-align: center; }
+    .slide-bar {
+      flex: 1; height: 5px; background: rgba(255,255,255,0.25);
+      border-radius: 3px; position: relative; cursor: pointer;
+    }
+    .slide-fill {
+      height: 100%; background: #fff; border-radius: 3px;
+      transition: width 0.08s;
+    }
+    .slide-thumb {
+      position: absolute; top: -6px; width: 16px; height: 16px;
+      background: #fff; border-radius: 50%; transform: translateX(-50%);
+      transition: left 0.08s;
+    }
+
+    /* 时间标签（视频模式） */
+    .time-label { color: rgba(255,255,255,0.7); font-size: 11px; min-width: 40px; }
+    .time-label.right { text-align: right; }
+
+    /* 底部按钮 */
+    .bottom-btn {
+      background: none; border: none; color: #fff; cursor: pointer;
+      font-size: 22px; padding: 4px; display: flex; align-items: center;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+
+    /* 跨章节提示 */
+    .chapter-hint {
+      position: absolute; top: 45%; left: 50%; transform: translate(-50%,-50%);
+      background: rgba(0,0,0,0.75); color: #fff;
+      padding: 12px 24px; border-radius: 8px;
+      font-size: 14px; text-align: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+      z-index: 20;
+    }
+    .chapter-hint.show { opacity: 1; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="viewer-root">
+
+    <!-- 左右触控区 -->
+    <div class="touch-zone left" onclick="goPrev()"></div>
+    <div class="touch-zone right" onclick="goNext()"></div>
+
+    <!-- 顶部工具栏 -->
+    <div class="top-overlay" id="topOverlay">
+      <button class="material-icons">arrow_back</button>
+      <span class="top-title" id="viewerTitle">海贼王</span>
+      <span class="top-sub" id="viewerPage">3 / 176</span>
+      <button class="material-icons" onclick="toggleDoubleMode()">settings</button>
+    </div>
+
+    <!-- 内容区 -->
+    <div class="viewer-content" id="viewerContent" onclick="toggleOverlays()">
+
+      <!-- 单页图片 -->
+      <div class="page-single" id="singlePage">
+        <span>📖</span>
+        <span class="page-num-hint">3</span>
+      </div>
+
+      <!-- 双页 -->
+      <div class="double-wrap hidden" id="doublePage">
+        <div class="page-half left">
+          <span>📖</span>
+          <span class="page-num-hint" style="bottom:60px;right:12px">4</span>
+        </div>
+        <div class="page-half right">
+          <span>📖</span>
+          <span class="page-num-hint" style="bottom:60px;right:12px">5</span>
+        </div>
+      </div>
+
+      <!-- 视频 -->
+      <div class="video-placeholder hidden" id="videoContent">
+        <span class="material-icons vicon">play_circle</span>
+        <span class="vhint">OP_特典.mp4 · 单击显控件 · 双击暂停/播放</span>
+      </div>
+
+      <!-- 暂停/播放指示 -->
+      <div class="play-pause-indicator material-icons" id="pauseIndicator">pause_circle</div>
+
+      <!-- 倍速 -->
+      <div class="speed-badge" id="speedBadge">2.0x</div>
+
+      <!-- 跨章节提示 -->
+      <div class="chapter-hint" id="chapterHint">下一章: 第002话<br><small>继续滑动进入</small></div>
+    </div>
+
+    <!-- 底部工具栏 -->
+    <div class="bottom-overlay" id="bottomOverlay">
+
+      <!-- 图片模式控件 -->
+      <div class="slide-bar-wrap" id="imageControls">
+        <span class="slide-label">1</span>
+        <div class="slide-bar" id="pageSlider" onclick="seekPage(event)">
+          <div class="slide-fill" id="pageFill" style="width:1.7%"></div>
+          <div class="slide-thumb" id="pageThumb" style="left:1.7%"></div>
+        </div>
+        <span class="slide-label" id="totalLabel">176</span>
+      </div>
+
+      <!-- 视频模式控件 -->
+      <div class="slide-bar-wrap hidden" id="videoControls">
+        <span class="time-label" id="currentTime">04:23</span>
+        <div class="slide-bar" id="videoSlider" onclick="seekVideo(event)">
+          <div class="slide-fill" id="videoFill" style="width:35%"></div>
+          <div class="slide-thumb" id="videoThumb" style="left:35%"></div>
+        </div>
+        <span class="time-label right">12:34</span>
+      </div>
+
+      <!-- 图片模式按钮 -->
+      <button class="bottom-btn material-icons" id="fullscreenImgBtn" onclick="toggleFullscreen()" title="全屏">fullscreen</button>
+
+      <!-- 视频模式按钮 -->
+      <button class="bottom-btn material-icons hidden" id="pauseBtn" onclick="toggleVideoPlay()" title="暂停">pause</button>
+      <button class="bottom-btn material-icons hidden" id="fullscreenVidBtn" onclick="toggleFullscreen()" title="全屏">fullscreen</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== 浏览列表：图片页 + 视频混合 =====
+    // 模拟: 页1~5是图片, 6是视频, 7~176是图片
+    const TOTAL_ITEMS = 176;
+    let currentIndex = 2; // 0-based, 当前第3页
+    let isDouble = false;
+    let overlaysVisible = true;
+    let isVideoPlaying = true;
+    let videoSpeed = 1.0;
+
+    function isVideo(index) { return index === 5; } // 第6项是视频
+
+    // ===== 翻页 =====
+    function goPrev() {
+      if (currentIndex <= 0) return;
+      currentIndex--;
+      apply();
+    }
+
+    function goNext() {
+      if (currentIndex >= TOTAL_ITEMS - 1) return;
+      currentIndex++;
+      apply();
+    }
+
+    // ===== 应用显示状态 =====
+    function apply() {
+      const page = currentIndex + 1;
+      const single = document.getElementById('singlePage');
+      const double = document.getElementById('doublePage');
+      const video = document.getElementById('videoContent');
+      const imgCtrls = document.getElementById('imageControls');
+      const vidCtrls = document.getElementById('videoControls');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const fsvBtn = document.getElementById('fullscreenVidBtn');
+      const fsiBtn = document.getElementById('fullscreenImgBtn');
+      const title = document.getElementById('viewerTitle');
+      const pageInfo = document.getElementById('viewerPage');
+      const vid = isVideo(currentIndex);
+
+      if (vid) {
+        // 视频模式
+        single.classList.add('hidden');
+        double.classList.add('hidden');
+        video.classList.remove('hidden');
+        imgCtrls.classList.add('hidden');
+        vidCtrls.classList.remove('hidden');
+        pauseBtn.classList.remove('hidden');
+        fsvBtn.classList.remove('hidden');
+        fsiBtn.classList.add('hidden');
+        title.textContent = 'OP_特典.mp4';
+        pageInfo.textContent = `${page} / ${TOTAL_ITEMS}`;
+      } else if (isDouble && !vid) {
+        // 双页图片
+        single.classList.add('hidden');
+        double.classList.remove('hidden');
+        video.classList.add('hidden');
+        imgCtrls.classList.remove('hidden');
+        vidCtrls.classList.add('hidden');
+        pauseBtn.classList.add('hidden');
+        fsvBtn.classList.add('hidden');
+        fsiBtn.classList.remove('hidden');
+        title.textContent = '海贼王 · 双页';
+        pageInfo.textContent = `${page}-${page+1} / ${TOTAL_ITEMS}`;
+        document.getElementById('totalLabel').textContent = TOTAL_ITEMS;
+      } else {
+        // 单页图片
+        single.classList.remove('hidden');
+        double.classList.add('hidden');
+        video.classList.add('hidden');
+        imgCtrls.classList.remove('hidden');
+        vidCtrls.classList.add('hidden');
+        pauseBtn.classList.add('hidden');
+        fsvBtn.classList.add('hidden');
+        fsiBtn.classList.remove('hidden');
+        title.textContent = '海贼王';
+        pageInfo.textContent = `${page} / ${TOTAL_ITEMS}`;
+        document.getElementById('totalLabel').textContent = TOTAL_ITEMS;
+        // 更新单页内页码
+        const hint = single.querySelector('.page-num-hint');
+        if (hint) hint.textContent = page;
+      }
+
+      updatePageSlider();
+      updateVideoSlider();
+    }
+
+    function updatePageSlider() {
+      const pct = ((currentIndex + 1) / TOTAL_ITEMS * 100).toFixed(1);
+      document.getElementById('pageFill').style.width = pct + '%';
+      document.getElementById('pageThumb').style.left = pct + '%';
+    }
+
+    function updateVideoSlider() {
+      const pct = 35; // 静态演示值
+      document.getElementById('videoFill').style.width = pct + '%';
+      document.getElementById('videoThumb').style.left = pct + '%';
+    }
+
+    // ===== 拖拽滑动条跳页 =====
+    function seekPage(e) {
+      const bar = e.currentTarget;
+      const rect = bar.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      currentIndex = Math.round(pct * (TOTAL_ITEMS - 1));
+      apply();
+    }
+
+    function seekVideo(e) {
+      const bar = e.currentTarget;
+      const rect = bar.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      document.getElementById('videoFill').style.width = (pct * 100) + '%';
+      document.getElementById('videoThumb').style.left = (pct * 100) + '%';
+      const totalSec = 754;
+      const sec = Math.round(totalSec * pct);
+      document.getElementById('currentTime').textContent = String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+    }
+
+    // ===== 双页 =====
+    function toggleDoubleMode() {
+      if (window.innerWidth < 900) {
+        alert('双页模式需要屏幕宽度 ≥ 900dp');
+        return;
+      }
+      if (isVideo(currentIndex)) return; // 视频不支持双页
+      isDouble = !isDouble;
+      apply();
+    }
+
+    // 监听窗口大小变化
+    window.addEventListener('resize', () => {
+      if (window.innerWidth < 900 && isDouble) {
+        isDouble = false;
+        apply();
+      }
+    });
+
+    // ===== 悬浮控件显示/隐藏 =====
+    function toggleOverlays() {
+      overlaysVisible = !overlaysVisible;
+      document.getElementById('topOverlay').classList.toggle('hidden', !overlaysVisible);
+      document.getElementById('bottomOverlay').classList.toggle('hidden', !overlaysVisible);
+    }
+
+    // ===== 视频播放/暂停 =====
+    function toggleVideoPlay() {
+      isVideoPlaying = !isVideoPlaying;
+      document.getElementById('pauseBtn').textContent = isVideoPlaying ? 'pause' : 'play_arrow';
+      if (!isVideoPlaying) {
+        const ind = document.getElementById('pauseIndicator');
+        ind.textContent = 'pause_circle';
+        ind.classList.add('show');
+        setTimeout(() => ind.classList.remove('show'), 800);
+      }
+    }
+
+    // ===== 全屏（模拟） =====
+    function toggleFullscreen() {
+      // 移动端模拟旋转
+      const isMobile = window.innerWidth < 900;
+      if (isMobile) {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      }
+    }
+
+    // ===== 视频倍速显示 =====
+    function showSpeed(val) {
+      const badge = document.getElementById('speedBadge');
+      badge.textContent = val.toFixed(1) + 'x';
+      badge.classList.add('show');
+      setTimeout(() => badge.classList.remove('show'), 1500);
+    }
+
+    // ===== 章节提示 =====
+    function showChapterHint() {
+      const hint = document.getElementById('chapterHint');
+      hint.classList.add('show');
+      setTimeout(() => hint.classList.remove('show'), 2000);
+    }
+
+    // ===== 键盘 =====
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') { goPrev(); }
+      else if (e.key === 'ArrowRight') { goNext(); }
+      else if (e.key === 'Escape') { if (!overlaysVisible) toggleOverlays(); }
+      else if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); }
+    });
+
+    // ===== 初始化 =====
+    apply();
+  </script>
+</body>
+</html>

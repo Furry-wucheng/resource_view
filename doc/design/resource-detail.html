@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资源详情 — Resource Viewer</title>
+  <link rel="stylesheet" href="design-tokens.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    body { display: flex; align-items: flex-end; justify-content: center; min-height: 100vh; background: #d0d0d0; margin: 0; }
+
+
+    .detail-sheet {
+      background: var(--color-surface); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      padding: 24px; width: 100%; max-width: 500px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .detail-header { display: flex; gap: 16px; margin-bottom: 24px; }
+    .detail-thumb {
+      width: 80px; height: 110px; border-radius: 4px; flex-shrink: 0;
+      background: linear-gradient(135deg, #1a237e, #4a148c);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 24px; font-weight: bold;
+    }
+    .detail-info { display: flex; flex-direction: column; justify-content: center; flex: 1; }
+    .detail-name { font-size: 20px; font-weight: 600; }
+    .detail-type { font-size: 12px; color: var(--color-on-surface-variant); margin-top: 2px; }
+
+    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 12px; }
+    .detail-row .label { color: var(--color-on-surface-variant); }
+    .detail-row .value { font-weight: 500; }
+
+    .section-label { font-size: 12px; font-weight: 600; color: var(--color-on-surface-variant); margin: 16px 0 8px; }
+
+    .org-mode-select { display: flex; gap: 8px; flex-wrap: wrap; }
+    .org-chip {
+      padding: 8px 16px; border-radius: 999px; font-size: 12px;
+      border: 1px solid var(--color-outline); background: var(--color-surface);
+      cursor: pointer; user-select: none; transition: all 0.15s;
+    }
+    .org-chip.selected { background: var(--color-primary-container); border-color: var(--color-primary); color: var(--color-primary); font-weight: 500; }
+
+    .tag-check-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0; cursor: pointer; user-select: none;
+    }
+    .tag-check-item:not(:last-child) { border-bottom: 1px solid var(--color-outline); }
+    .tag-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .tag-check-name { font-size: 14px; flex: 1; }
+    .check-box {
+      width: 22px; height: 22px; border: 2px solid var(--color-outline);
+      border-radius: 4px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 13px; color: transparent;
+      transition: all 0.15s;
+    }
+    .check-box.checked { background: var(--color-primary); border-color: var(--color-primary); color: white; }
+
+    .new-tag-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 8px 0; margin-top: 4px;
+    }
+    .new-tag-input {
+      flex: 1; padding: 8px 12px; border: 1px solid var(--color-outline);
+      border-radius: 4px; font-size: 14px;
+      background: var(--color-surface); color: var(--color-on-surface);
+      display: none;
+    }
+    .new-tag-input.show { display: block; }
+    .new-tag-color {
+      display: flex; gap: 4px; align-items: center;
+    }
+    .new-tag-color .mini-swatch {
+      width: 16px; height: 16px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: border-color 0.15s;
+    }
+    .new-tag-color .mini-swatch.picked { border-color: var(--color-primary); }
+
+    .detail-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--color-outline); }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <div class="detail-sheet">
+    <div class="detail-header">
+      <div class="detail-thumb">海</div>
+      <div class="detail-info">
+        <div class="detail-name">海贼王_卷01</div>
+        <div class="detail-type">文件夹 · 已入库</div>
+      </div>
+    </div>
+
+    <div class="detail-row"><span class="label">路径</span><span class="value">Comics\海贼王\卷01_东海篇</span></div>
+    <div class="detail-row"><span class="label">文件数</span><span class="value">176 张图片</span></div>
+    <div class="detail-row"><span class="label">大小</span><span class="value">512 MB</span></div>
+    <div class="detail-row"><span class="label">添加时间</span><span class="value">2026-06-15</span></div>
+
+    <div class="section-label">组织模式</div>
+    <div class="org-mode-select" id="orgModes">
+      <span class="org-chip selected" data-mode="direct" onclick="switchOrgMode('direct')">直接阅读</span>
+      <span class="org-chip" data-mode="chapter" onclick="switchOrgMode('chapter')">章节模式</span>
+      <span class="org-chip" data-mode="flatgrid" onclick="switchOrgMode('flatgrid')">平铺网格</span>
+      <span class="org-chip" data-mode="gallery" onclick="switchOrgMode('gallery')">画廊模式</span>
+    </div>
+
+    <div class="section-label">标签</div>
+    <div>
+      <div class="tag-check-item" data-tag="star" onclick="toggleTag(this)">
+        <span class="tag-dot" style="background:var(--color-star)"></span>
+        <span class="tag-check-name">收藏</span>
+        <div class="check-box checked">✓</div>
+      </div>
+      <div class="tag-check-item" data-tag="t1" onclick="toggleTag(this)">
+        <span class="tag-dot" style="background:var(--tag-red)"></span>
+        <span class="tag-check-name">热血</span>
+        <div class="check-box checked">✓</div>
+      </div>
+      <div class="tag-check-item" data-tag="t2" onclick="toggleTag(this)">
+        <span class="tag-dot" style="background:var(--tag-green)"></span>
+        <span class="tag-check-name">已完结</span>
+        <div class="check-box">✓</div>
+      </div>
+      <div class="tag-check-item" data-tag="t3" onclick="toggleTag(this)">
+        <span class="tag-dot" style="background:var(--tag-deep-blue)"></span>
+        <span class="tag-check-name">汉化</span>
+        <div class="check-box checked">✓</div>
+      </div>
+      <div class="tag-check-item" data-tag="t4" onclick="toggleTag(this)">
+        <span class="tag-dot" style="background:var(--tag-orange)"></span>
+        <span class="tag-check-name">未读</span>
+        <div class="check-box">✓</div>
+      </div>
+    </div>
+
+    <div class="new-tag-row">
+      <div class="new-tag-color">
+        <span class="mini-swatch picked" style="background:#E53935" onclick="pickNewTagColor(this, '#E53935')"></span>
+        <span class="mini-swatch" style="background:#43A047" onclick="pickNewTagColor(this, '#43A047')"></span>
+        <span class="mini-swatch" style="background:#1E88E5" onclick="pickNewTagColor(this, '#1E88E5')"></span>
+        <span class="mini-swatch" style="background:#FB8C00" onclick="pickNewTagColor(this, '#FB8C00')"></span>
+      </div>
+      <input type="text" class="new-tag-input" id="newTagInput" placeholder="输入标签名, 回车创建" onkeydown="if(event.key==='Enter')createTag()">
+      <button class="btn btn-sm" id="newTagBtn" onclick="showNewTag()">+ 新建</button>
+    </div>
+
+    <div class="detail-actions">
+      <button class="btn">取消</button>
+      <button class="btn btn-primary">保存</button>
+    </div>
+  </div>
+
+  <script>
+    function toggleTag(el) {
+      const cb = el.querySelector('.check-box');
+      cb.classList.toggle('checked');
+    }
+
+    function toggleAllTags() {
+      document.querySelectorAll('.check-box').forEach(cb => cb.classList.add('checked'));
+    }
+
+    function clearAllTags() {
+      document.querySelectorAll('.check-box').forEach(cb => cb.classList.remove('checked'));
+    }
+
+    function switchOrgMode(mode) {
+      document.querySelectorAll('.org-chip').forEach(chip => chip.classList.remove('selected'));
+      document.querySelector(`.org-chip[data-mode="${mode}"]`).classList.add('selected');
+    }
+
+    function showNewTag() {
+      document.getElementById('newTagInput').classList.add('show');
+      document.getElementById('newTagInput').focus();
+      document.getElementById('newTagBtn').classList.add('hidden');
+    }
+
+    function pickNewTagColor(el, color) {
+      document.querySelectorAll('.mini-swatch').forEach(s => s.classList.remove('picked'));
+      el.classList.add('picked');
+    }
+
+    function createTag() {
+      const input = document.getElementById('newTagInput');
+      const name = input.value.trim();
+      if (!name) return;
+      const picked = document.querySelector('.mini-swatch.picked');
+      const color = picked ? picked.style.background : '#757575';
+      const container = input.closest('.detail-sheet').querySelector('.section-label:last-of-type').nextElementSibling;
+      const div = document.createElement('div');
+      div.className = 'tag-check-item';
+      div.setAttribute('data-tag', name);
+      div.onclick = function() { toggleTag(this); };
+      div.innerHTML = `<span class="tag-dot" style="background:${color}"></span><span class="tag-check-name">${name}</span><div class="check-box checked">✓</div>`;
+      container.appendChild(div);
+      input.value = '';
+      input.classList.remove('show');
+      document.getElementById('newTagBtn').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>

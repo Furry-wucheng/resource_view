@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>平铺网格 — Resource Viewer</title>
+  <link rel="stylesheet" href="design-tokens.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: var(--font-family); background: var(--color-bg); color: var(--color-on-surface); }
+
+    .flat-page {
+      display: flex; flex-direction: column; height: 100vh;
+      max-width: 1280px; margin: 0 auto;
+    }
+
+    .top-bar {
+      display: flex; align-items: center; height: 56px; padding: 0 12px;
+      background: var(--color-surface); border-bottom: 1px solid var(--color-outline);
+      gap: 8px; flex-shrink: 0;
+    }
+    .top-bar .btn-icon {
+      border: none; background: none; color: var(--color-on-surface);
+      cursor: pointer; font-size: 22px; padding: 6px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .top-bar .btn-icon:hover { background: var(--color-surface-variant); }
+    .top-bar .title { font-size: 16px; font-weight: 600; flex: 1; }
+
+    /* 组织模式切换器 */
+    .mode-switcher {
+      display: flex; gap: 2px; padding: 2px;
+      background: var(--color-surface-variant); border-radius: var(--radius-md);
+    }
+    .mode-switcher .mode-opt {
+      padding: 5px 10px; border: none; background: none;
+      border-radius: var(--radius-sm); cursor: pointer;
+      font-size: 12px; color: var(--color-on-surface-variant);
+      display: flex; align-items: center; gap: 3px;
+      white-space: nowrap;
+    }
+    .mode-switcher .mode-opt.active {
+      background: var(--color-surface); color: var(--color-primary);
+      box-shadow: var(--shadow-sm); font-weight: 600;
+    }
+    .mode-switcher .mode-opt .material-icons { font-size: 16px; }
+
+    .flat-body {
+      flex: 1; overflow-y: auto; min-height: 0;
+    }
+
+    /* ===== Grid 视图 ===== */
+    .file-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      padding: 16px;
+    }
+    @media (min-width: 600px) { .file-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (min-width: 900px) { .file-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (min-width: 1200px) { .file-grid { grid-template-columns: repeat(5, 1fr); } }
+
+    .file-card {
+      cursor: pointer; border-radius: var(--radius-md);
+      background: var(--color-surface); border: 1px solid var(--color-outline);
+      overflow: hidden; transition: box-shadow 0.15s;
+      position: relative;
+    }
+    .file-card:hover { box-shadow: var(--shadow-md); }
+
+    .file-card-thumb {
+      width: 100%; aspect-ratio: 2 / 3;
+      background: var(--color-surface-variant);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .file-card-thumb .folder-icon { color: #FFA726; font-size: 40px; }
+    .file-card-thumb .ft-img { color: #43A047; }
+    .file-card-thumb .ft-pdf { color: #D32F2F; }
+    .file-card-thumb .ft-video { color: #1E88E5; }
+    .file-card-thumb .ft-archive { color: #FB8C00; }
+
+    .file-card-name {
+      padding: 6px 8px; font-size: var(--font-size-xs);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      text-align: center;
+    }
+
+    /* 文件夹角标 */
+    .folder-badge {
+      position: absolute; bottom: 4px; right: 4px;
+      background: rgba(0,0,0,0.6); color: white;
+      border-radius: 3px; padding: 1px 5px;
+      font-size: 9px; display: flex; align-items: center; gap: 2px;
+    }
+    .folder-badge .material-icons { font-size: 12px; }
+
+    /* ===== 响应式 ===== */
+    @media (min-width: 900px) {
+      .flat-page { border-left: 1px solid var(--color-outline); border-right: 1px solid var(--color-outline); }
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="flat-page" id="appRoot">
+
+    <!-- ===== 根层级 ===== -->
+    <div id="levelRoot">
+      <div class="top-bar">
+        <button class="btn-icon material-icons">arrow_back</button>
+        <span class="title">杂项收藏</span>
+        <div class="mode-switcher">
+          <button class="mode-opt" onclick="switchOrgMode('chapter')">
+            <span class="material-icons">menu_book</span> 章节
+          </button>
+          <button class="mode-opt active" onclick="switchOrgMode('flatgrid')">
+            <span class="material-icons">grid_view</span> 平铺
+          </button>
+          <button class="mode-opt" onclick="switchOrgMode('gallery')">
+            <span class="material-icons">dashboard</span> 画廊
+          </button>
+        </div>
+      </div>
+
+      <div class="flat-body">
+        <div class="file-grid" id="levelRootGrid">
+          <div class="file-card" onclick="drillDown('画集', 'levelSub')">
+            <div class="file-card-thumb">
+              <span class="material-icons folder-icon">folder</span>
+              <span class="folder-badge"><span class="material-icons">folder</span></span>
+            </div>
+            <div class="file-card-name">画集/</div>
+          </div>
+          <div class="file-card" onclick="drillDown('番外篇', 'levelSub')">
+            <div class="file-card-thumb">
+              <span class="material-icons folder-icon">folder</span>
+              <span class="folder-badge"><span class="material-icons">folder</span></span>
+            </div>
+            <div class="file-card-name">番外篇/</div>
+          </div>
+          <div class="file-card" onclick="openFile('cosplay合集.jpg')">
+            <div class="file-card-thumb"><span class="material-icons ft-img" style="font-size:36px">image</span></div>
+            <div class="file-card-name">cosplay合集.jpg</div>
+          </div>
+          <div class="file-card" onclick="openFile('设定集.pdf')">
+            <div class="file-card-thumb"><span class="material-icons ft-pdf" style="font-size:36px">picture_as_pdf</span></div>
+            <div class="file-card-name">设定集.pdf</div>
+          </div>
+          <div class="file-card" onclick="openFile('花絮.mp4')">
+            <div class="file-card-thumb"><span class="material-icons ft-video" style="font-size:36px">video_file</span></div>
+            <div class="file-card-name">花絮.mp4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 子层级（进入画集/ 后） ===== -->
+    <div id="levelSub" style="display:none">
+      <div class="top-bar">
+        <button class="btn-icon material-icons" onclick="goBack('levelRoot')">arrow_back</button>
+        <span class="title">画集</span>
+        <div class="mode-switcher">
+          <button class="mode-opt" onclick="switchOrgMode('chapter')">
+            <span class="material-icons">menu_book</span> 章节
+          </button>
+          <button class="mode-opt active" onclick="switchOrgMode('flatgrid')">
+            <span class="material-icons">grid_view</span> 平铺
+          </button>
+          <button class="mode-opt" onclick="switchOrgMode('gallery')">
+            <span class="material-icons">dashboard</span> 画廊
+          </button>
+        </div>
+      </div>
+      <div class="flat-body">
+        <div class="file-grid" id="levelSubGrid">
+          <div class="file-card" onclick="openFile('01.jpg')">
+            <div class="file-card-thumb"><span class="material-icons ft-img" style="font-size:36px">image</span></div>
+            <div class="file-card-name">01.jpg</div>
+          </div>
+          <div class="file-card" onclick="openFile('02.jpg')">
+            <div class="file-card-thumb"><span class="material-icons ft-img" style="font-size:36px">image</span></div>
+            <div class="file-card-name">02.jpg</div>
+          </div>
+          <div class="file-card" onclick="openFile('03.jpg')">
+            <div class="file-card-thumb"><span class="material-icons ft-img" style="font-size:36px">image</span></div>
+            <div class="file-card-name">03.jpg</div>
+          </div>
+          <div class="file-card" onclick="openFile('封面.png')">
+            <div class="file-card-thumb"><span class="material-icons ft-img" style="font-size:36px">image</span></div>
+            <div class="file-card-name">封面.png</div>
+          </div>
+          <div class="file-card" onclick="openFile('简介.pdf')">
+            <div class="file-card-thumb"><span class="material-icons ft-pdf" style="font-size:36px">picture_as_pdf</span></div>
+            <div class="file-card-name">简介.pdf</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentLevel = 'levelRoot';
+
+    function switchOrgMode(mode) {
+      alert('切换组织模式到: ' + mode + '\n（demo: 将重新加载对应模式的视图）');
+    }
+
+    function drillDown(name, levelId) {
+      document.getElementById('levelRoot').style.display = 'none';
+      document.getElementById(levelId).style.display = '';
+      currentLevel = 'levelSub';
+    }
+
+    function goBack(levelId) {
+      document.getElementById('levelSub').style.display = 'none';
+      document.getElementById(levelId).style.display = '';
+      currentLevel = 'levelRoot';
+    }
+
+    function openFile(name) {
+      alert('打开文件: ' + name + '\n→ 进入 ViewerPage\n翻页范围：当前平铺网格层级');
+    }
+  </script>
+</body>
+</html>

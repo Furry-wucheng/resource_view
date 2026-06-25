@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设置 — Resource Viewer</title>
+  <link rel="stylesheet" href="design-tokens.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    .settings-wrap { padding: 12px; }
+
+    .setting-group {
+      background: var(--color-surface); border-radius: var(--radius-md);
+      margin-bottom: 16px; border: 1px solid var(--color-outline); overflow: hidden;
+    }
+    .group-title {
+      font-size: 12px; font-weight: 600; color: var(--color-primary);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 16px 16px 8px;
+    }
+    .setting-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; gap: 16px;
+    }
+    .setting-item:not(:last-child) { border-bottom: 1px solid var(--color-outline); }
+    .setting-label { font-size: 14px; font-weight: 500; }
+    .setting-sub { font-size: 12px; color: var(--color-on-surface-variant); margin-top: 2px; }
+
+    .switch { position: relative; width: 44px; height: 24px; display: inline-block; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0; background: #ccc;
+      border-radius: 24px; cursor: pointer; transition: 0.2s;
+    }
+    .slider::before { content: ""; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: 0.2s; }
+    .switch input:checked + .slider { background: var(--color-primary); }
+    .switch input:checked + .slider::before { transform: translateX(20px); }
+
+    .select-row {
+      display: flex; align-items: center; gap: 8px; color: var(--color-on-surface-variant);
+      font-size: 12px; cursor: pointer;
+    }
+    .select-options {
+      display: none; flex-direction: column; gap: 2px;
+      padding: 0 16px 12px;
+    }
+    .select-options.show { display: flex; }
+    .select-option {
+      padding: 10px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .select-option:hover { background: var(--color-surface-variant); }
+    .select-option.active { background: var(--color-primary-container); color: var(--color-primary); }
+    .select-option.active::after { content: "✓"; margin-left: auto; font-weight: bold; }
+
+    .cache-bar-wrap { padding: 16px; border-bottom: 1px solid var(--color-outline); }
+    .cache-info { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; }
+    .cache-bar { height: 8px; background: var(--color-surface-variant); border-radius: 4px; position: relative; }
+    .cache-fill { height: 100%; background: var(--color-primary); border-radius: 4px; width: 60%; transition: width 0.3s; }
+
+    .capacity-options { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px; }
+    .cap-chip {
+      padding: 8px 16px; border-radius: 999px; font-size: 12px;
+      border: 1px solid var(--color-outline); background: var(--color-surface);
+      cursor: pointer; user-select: none; transition: all 0.15s;
+    }
+    .cap-chip.selected { background: var(--color-primary-container); border-color: var(--color-primary); color: var(--color-primary); }
+    .cap-chip input { width: 60px; border: none; background: none; font-size: 12px; outline: none; color: inherit; }
+    .cap-chip input:focus { border-bottom: 1px solid var(--color-primary); }
+
+    .danger-btn {
+      display: block; width: calc(100% - 48px); margin: 16px auto;
+      padding: 12px; background: none; border: 1px solid var(--color-error);
+      border-radius: var(--radius-md); color: var(--color-error);
+      font-size: 14px; cursor: pointer; text-align: center;
+    }
+    .cache-path { padding: 8px 16px 16px; font-size: 10px; color: var(--color-on-surface-variant); word-break: break-all; }
+
+    .about-info { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .about-row { display: flex; justify-content: space-between; font-size: 12px; }
+    .about-row .lbl { color: var(--color-on-surface-variant); }
+
+  </style>
+</head>
+<body>
+  <div class="app-container" style="flex-direction:column">
+
+    <div class="top-bar"><span class="title">设置</span></div>
+
+    <div class="page-content">
+      <div class="settings-wrap">
+
+        <!-- 缓存管理 -->
+        <div class="setting-group">
+          <div class="group-title">缓存管理</div>
+          <div class="cache-bar-wrap">
+            <div class="cache-info">
+              <span>缩略图缓存</span>
+              <span id="cacheText">已用: 1200 MB / 上限: 2000 MB</span>
+            </div>
+            <div class="cache-bar"><div class="cache-fill" id="cacheFill" style="width:60%"></div></div>
+          </div>
+
+          <div style="padding: 16px; border-bottom: 1px solid var(--color-outline)">
+            <div style="font-size:12px;color:var(--color-on-surface-variant);margin-bottom:8px">容量上限</div>
+            <div class="capacity-options" style="padding:0" id="capOptions">
+              <span class="cap-chip" onclick="selectCap('500')">500 MB</span>
+              <span class="cap-chip" onclick="selectCap('1000')">1000 MB</span>
+              <span class="cap-chip" onclick="selectCap('1500')">1500 MB</span>
+              <span class="cap-chip selected" onclick="selectCap('2000')">2000 MB</span>
+              <span class="cap-chip" onclick="enterCustomCap(this)">自定义</span>
+            </div>
+          </div>
+
+          <button class="danger-btn" onclick="simClearCache()">清理缩略图缓存</button>
+          <div class="cache-path">缓存位置: /data/cache/thumbnails/</div>
+        </div>
+
+        <!-- 外观 -->
+        <div class="setting-group">
+          <div class="group-title">外观</div>
+          <div class="setting-item">
+            <div><div class="setting-label">深色模式</div></div>
+            <div class="select-row" onclick="toggleSelect('themeOptions')">
+              <span id="themeLabel">跟随系统</span>
+              <span class="material-icons" style="font-size:18px">chevron_right</span>
+            </div>
+          </div>
+          <div class="select-options" id="themeOptions">
+            <div class="select-option active" onclick="pickTheme('跟随系统', this)">跟随系统</div>
+            <div class="select-option" onclick="pickTheme('深色', this)">深色</div>
+            <div class="select-option" onclick="pickTheme('浅色', this)">浅色</div>
+          </div>
+        </div>
+
+        <!-- 查看器 -->
+        <div class="setting-group">
+          <div class="group-title">查看器默认设置</div>
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">默认翻页方向</div>
+              <div class="setting-sub">日漫默认为右向左阅读</div>
+            </div>
+            <div class="select-row" onclick="toggleSelect('pageDirOptions')">
+              <span id="pageDirLabel">左滑下一页（右→左）</span>
+              <span class="material-icons" style="font-size:18px">chevron_right</span>
+            </div>
+          </div>
+          <div class="select-options" id="pageDirOptions">
+            <div class="select-option active" onclick="pickPageDir('左滑下一页（右→左）', this)">左滑下一页（右→左）</div>
+            <div class="select-option" onclick="pickPageDir('右滑下一页（左→右）', this)">右滑下一页（左→右）</div>
+          </div>
+
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">双页显示</div>
+              <div class="setting-sub">宽度≥900dp时自动双页</div>
+            </div>
+            <div class="select-row" onclick="toggleSelect('doubleOptions')">
+              <span id="doubleLabel">自动</span>
+              <span class="material-icons" style="font-size:18px">chevron_right</span>
+            </div>
+          </div>
+          <div class="select-options" id="doubleOptions">
+            <div class="select-option active" onclick="pickDouble('自动', this)">自动</div>
+            <div class="select-option" onclick="pickDouble('始终单页', this)">始终单页</div>
+            <div class="select-option" onclick="pickDouble('始终双页', this)">始终双页</div>
+          </div>
+
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">跨章节连续阅读</div>
+              <div class="setting-sub">末页继续滑动切换下一章</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" checked id="crossChapterToggle" onchange="updateSwitchBadge()">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 数据源同步 -->
+        <div class="setting-group">
+          <div class="group-title">数据源同步</div>
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">自动同步间隔</div>
+              <div class="setting-sub">自动检查新增/变更文件</div>
+            </div>
+            <div class="select-row" onclick="toggleSelect('syncOptions')">
+              <span id="syncLabel">关闭</span>
+              <span class="material-icons" style="font-size:18px">chevron_right</span>
+            </div>
+          </div>
+          <div class="select-options" id="syncOptions">
+            <div class="select-option active" onclick="pickSync('关闭', this)">关闭</div>
+            <div class="select-option" onclick="pickSync('每小时', this)">每小时</div>
+            <div class="select-option" onclick="pickSync('每 6 小时', this)">每 6 小时</div>
+            <div class="select-option" onclick="pickSync('每天', this)">每天</div>
+          </div>
+        </div>
+
+        <!-- 关于 -->
+        <div class="setting-group">
+          <div class="group-title">关于</div>
+          <div class="about-info">
+            <div class="about-row"><span class="lbl">应用名称</span><span>Resource Viewer</span></div>
+            <div class="about-row"><span class="lbl">版本号</span><span>0.1.0</span></div>
+            <div class="about-row"><span class="lbl">开源许可</span><span>MIT License</span></div>
+            <div class="about-row"><span class="lbl">反馈</span><span style="color:var(--color-primary);cursor:pointer">GitHub Issues</span></div>
+          </div>
+        </div>
+
+        <button class="danger-btn" style="border-color:var(--color-on-surface-variant);color:var(--color-on-surface-variant)">
+          恢复默认设置
+        </button>
+
+        <div style="height:48px"></div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="nav-item"><span class="material-icons nav-icon">home</span><span>资源库</span></button>
+      <button class="nav-item"><span class="material-icons nav-icon">folder</span><span>数据源</span></button>
+      <button class="nav-item active"><span class="material-icons nav-icon">settings</span><span>设置</span></button>
+    </div>
+  </div>
+
+  <script>
+    function toggleSelect(id) {
+      document.querySelectorAll('.select-options').forEach(el => {
+        if (el.id !== id) el.classList.remove('show');
+      });
+      document.getElementById(id).classList.toggle('show');
+    }
+
+    function pickTheme(val, el) {
+      document.getElementById('themeLabel').textContent = val;
+      document.querySelectorAll('#themeOptions .select-option').forEach(o => o.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('themeOptions').classList.remove('show');
+    }
+
+    function pickPageDir(val, el) {
+      document.getElementById('pageDirLabel').textContent = val;
+      document.querySelectorAll('#pageDirOptions .select-option').forEach(o => o.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('pageDirOptions').classList.remove('show');
+    }
+
+    function pickDouble(val, el) {
+      document.getElementById('doubleLabel').textContent = val;
+      document.querySelectorAll('#doubleOptions .select-option').forEach(o => o.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('doubleOptions').classList.remove('show');
+    }
+
+    function pickSync(val, el) {
+      document.getElementById('syncLabel').textContent = val;
+      document.querySelectorAll('#syncOptions .select-option').forEach(o => o.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('syncOptions').classList.remove('show');
+    }
+
+    function selectCap(val) {
+      document.querySelectorAll('#capOptions .cap-chip').forEach(c => c.classList.remove('selected'));
+      const chips = document.querySelectorAll('#capOptions .cap-chip');
+      chips.forEach(c => { if (c.textContent.trim() === val + ' MB') c.classList.add('selected'); });
+      updateCache(parseInt(val));
+    }
+
+    function updateCache(limit) {
+      const used = parseInt(document.getElementById('cacheFill').style.width) * limit / 100;
+      document.getElementById('cacheText').textContent = `已用: ${Math.round(used)} MB / 上限: ${limit} MB`;
+    }
+
+    function enterCustomCap(el) {
+      el.innerHTML = '<input type="number" placeholder="MB" min="500" onblur="doneCustom(this)" onkeydown="if(event.key===\'Enter\')this.blur()">';
+      el.querySelector('input').focus();
+    }
+
+    function doneCustom(input) {
+      const val = parseInt(input.value);
+      const chip = input.parentElement;
+      if (val && val >= 500) {
+        chip.textContent = val + ' MB';
+        chip.setAttribute('onclick', `selectCap('${val}')`);
+        document.querySelectorAll('#capOptions .cap-chip').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+        updateCache(val);
+      } else {
+        chip.textContent = '自定义';
+      }
+    }
+
+    function simClearCache() {
+      document.getElementById('cacheFill').style.width = '0%';
+      const limit = document.querySelector('#capOptions .cap-chip.selected')?.textContent?.match(/\d+/)?.[0] || '2000';
+      document.getElementById('cacheText').textContent = `已用: 0 MB / 上限: ${limit} MB`;
+    }
+
+    function simFillCache() {
+      document.getElementById('cacheFill').style.width = '85%';
+      const limit = document.querySelector('#capOptions .cap-chip.selected')?.textContent?.match(/\d+/)?.[0] || '2000';
+      const used = Math.round(parseInt(limit) * 0.85);
+      document.getElementById('cacheText').textContent = `已用: ${used} MB / 上限: ${limit} MB`;
+    }
+
+    function updateSwitchBadge() {}
+
+    // 点击外部关闭下拉
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.select-row') && !e.target.closest('.select-options')) {
+        document.querySelectorAll('.select-options').forEach(el => el.classList.remove('show'));
+      }
+    });
+  </script>
+</body>
+</html>

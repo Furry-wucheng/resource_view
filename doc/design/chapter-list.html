@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>章节列表 — Resource Viewer</title>
+  <link rel="stylesheet" href="design-tokens.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: var(--font-family); background: var(--color-bg); color: var(--color-on-surface); }
+
+    .chapter-page {
+      display: flex; flex-direction: column; height: 100vh;
+      max-width: 1280px; margin: 0 auto;
+    }
+
+    /* ===== 顶部栏 ===== */
+    .top-bar {
+      display: flex; align-items: center; height: 56px; padding: 0 12px;
+      background: var(--color-surface); border-bottom: 1px solid var(--color-outline);
+      gap: 8px; flex-shrink: 0;
+    }
+    .top-bar .btn-icon {
+      border: none; background: none; color: var(--color-on-surface);
+      cursor: pointer; font-size: 22px; padding: 6px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .top-bar .btn-icon:hover { background: var(--color-surface-variant); }
+    .top-bar .title { font-size: 16px; font-weight: 600; flex: 1; }
+    .top-bar .btn-icon.active-mode { color: var(--color-primary); background: var(--color-primary-container); }
+
+    /* 组织模式切换器 */
+    .mode-switcher {
+      display: flex; gap: 2px; padding: 2px;
+      background: var(--color-surface-variant); border-radius: var(--radius-md);
+    }
+    .mode-switcher .mode-opt {
+      padding: 5px 10px; border: none; background: none;
+      border-radius: var(--radius-sm); cursor: pointer;
+      font-size: 12px; color: var(--color-on-surface-variant);
+      display: flex; align-items: center; gap: 3px;
+      white-space: nowrap;
+    }
+    .mode-switcher .mode-opt.active {
+      background: var(--color-surface); color: var(--color-primary);
+      box-shadow: var(--shadow-sm); font-weight: 600;
+    }
+    .mode-switcher .mode-opt .material-icons { font-size: 16px; }
+
+    /* ===== 主体 ===== */
+    .chapter-body {
+      flex: 1; display: flex; flex-direction: column;
+      overflow: hidden; min-height: 0;
+    }
+
+    @media (min-width: 900px) {
+      .chapter-body { flex-direction: row; }
+    }
+
+    /* ===== 封面区 ===== */
+    .cover-panel {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px 24px; gap: 16px;
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-outline);
+      flex-shrink: 0;
+    }
+
+    @media (min-width: 900px) {
+      .cover-panel {
+        width: 280px; padding: 32px 24px;
+        border-bottom: none;
+        border-right: 1px solid var(--color-outline);
+      }
+      .cover-image { width: 200px; height: 290px; }
+    }
+
+    .cover-image {
+      width: 150px; height: 220px;
+      background: linear-gradient(135deg, #1a237e, #4a148c);
+      border-radius: var(--radius-md); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.7); font-size: 36px; font-weight: bold;
+      box-shadow: var(--shadow-md);
+    }
+    .cover-info { text-align: center; }
+    .cover-name { font-size: var(--font-size-xl); font-weight: 600; }
+    .cover-meta { font-size: var(--font-size-sm); color: var(--color-on-surface-variant); margin-top: 4px; }
+
+    .cover-mode-selector {
+      display: flex; gap: 4px; padding: 3px;
+      background: var(--color-surface-variant); border-radius: var(--radius-md);
+      margin-top: 12px; width: fit-content; margin-left: auto; margin-right: auto;
+    }
+    .cover-mode-selector .mode-btn {
+      padding: 6px 14px; border: none; background: none;
+      border-radius: var(--radius-sm); cursor: pointer;
+      font-size: 13px; color: var(--color-on-surface-variant);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .cover-mode-selector .mode-btn.active {
+      background: var(--color-surface); color: var(--color-on-surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ===== 章节内容区 ===== */
+    .chapter-content {
+      flex: 1; overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; min-height: 0;
+    }
+
+    /* Grid 视图 */
+    .chapter-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    }
+    @media (min-width: 600px) { .chapter-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (min-width: 900px) { .chapter-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 1100px) { .chapter-grid { grid-template-columns: repeat(4, 1fr); } }
+
+    .chapter-card {
+      cursor: pointer; border-radius: var(--radius-md);
+      background: var(--color-surface); border: 1px solid var(--color-outline);
+      overflow: hidden; transition: box-shadow 0.15s;
+    }
+    .chapter-card:hover { box-shadow: var(--shadow-md); }
+    .chapter-card.disabled { opacity: 0.45; cursor: not-allowed; }
+    .chapter-card.disabled:hover { box-shadow: none; }
+
+    .chapter-card-thumb {
+      width: 100%; aspect-ratio: 2 / 3;
+      background: var(--color-surface-variant);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--color-on-surface-variant); font-size: 32px;
+      position: relative;
+    }
+    .chapter-card-thumb .empty-badge {
+      position: absolute; top: 8px; right: 8px;
+      background: var(--color-error); color: white;
+      padding: 2px 8px; border-radius: 4px;
+      font-size: 10px; font-weight: 500;
+    }
+    .chapter-card-info { padding: 8px 10px; }
+    .chapter-card-name {
+      font-size: var(--font-size-sm); font-weight: 500;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .chapter-card-pages {
+      font-size: var(--font-size-xs); color: var(--color-on-surface-variant);
+    }
+
+    /* List 视图 */
+    .chapter-list { display: flex; flex-direction: column; gap: 4px; }
+    .chapter-list .chapter-card {
+      display: flex; flex-direction: row; align-items: center;
+      padding: 10px 12px; gap: 12px; border: 1px solid var(--color-outline);
+    }
+    .chapter-list .chapter-card-thumb {
+      width: 48px; height: 48px; border-radius: var(--radius-sm);
+      aspect-ratio: auto; font-size: 20px; flex-shrink: 0;
+    }
+    .chapter-list .chapter-card-info { flex: 1; padding: 0; display: flex; flex-direction: column; }
+    .chapter-list .chapter-card-name { white-space: normal; }
+    .chapter-list .arrow-icon {
+      font-size: 20px; color: var(--color-on-surface-variant); flex-shrink: 0;
+    }
+    .chapter-list .chapter-card.disabled .arrow-icon { opacity: 0.3; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="chapter-page">
+
+    <!-- 顶部栏 -->
+    <div class="top-bar">
+      <button class="btn-icon material-icons">arrow_back</button>
+      <span class="title">海贼王</span>
+      <div class="mode-switcher">
+        <button class="mode-opt active" onclick="switchOrgMode('chapter')">
+          <span class="material-icons">menu_book</span> 章节
+        </button>
+        <button class="mode-opt" onclick="switchOrgMode('flatgrid')">
+          <span class="material-icons">grid_view</span> 平铺
+        </button>
+        <button class="mode-opt" onclick="switchOrgMode('gallery')">
+          <span class="material-icons">dashboard</span> 画廊
+        </button>
+      </div>
+    </div>
+
+    <!-- 主体 -->
+    <div class="chapter-body">
+
+      <!-- 封面区（窄屏: 上方横条 / 宽屏: 左侧面板） -->
+      <div class="cover-panel">
+        <div class="cover-image">海</div>
+        <div class="cover-info">
+          <div class="cover-name">海贼王</div>
+          <div class="cover-meta">共 12 章 · 1760 页 · 章节模式</div>
+          <div class="cover-mode-selector">
+            <button class="mode-btn active" id="btnGrid" onclick="setViewMode('grid')">
+              <span class="material-icons" style="font-size:16px">grid_view</span> 网格
+            </button>
+            <button class="mode-btn" id="btnList" onclick="setViewMode('list')">
+              <span class="material-icons" style="font-size:16px">view_list</span> 列表
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 章节内容区 -->
+      <div class="chapter-content" id="chapterContent">
+
+        <!-- Grid 视图 -->
+        <div class="chapter-grid" id="chapterGrid">
+          <div class="chapter-card" onclick="openChapter('第001话 冒险的黎明')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第001话 冒险的黎明</div>
+              <div class="chapter-card-pages">53 页</div>
+            </div>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第002话 戴草帽的路飞')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第002话 戴草帽的路飞</div>
+              <div class="chapter-card-pages">47 页</div>
+            </div>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第003话 索隆登场')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第003话 索隆登场</div>
+              <div class="chapter-card-pages">51 页</div>
+            </div>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第004话 摩根大佐')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第004话 摩根大佐</div>
+              <div class="chapter-card-pages">45 页</div>
+            </div>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第005话 巴奇海贼团')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第005话 巴奇海贼团</div>
+              <div class="chapter-card-pages">50 页</div>
+            </div>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第006话 小丑巴奇')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第006话 小丑巴奇</div>
+              <div class="chapter-card-pages">48 页</div>
+            </div>
+          </div>
+          <div class="chapter-card disabled">
+            <div class="chapter-card-thumb">
+              <span class="material-icons">folder_off</span>
+              <span class="empty-badge">空章节</span>
+            </div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第007话 空文件夹</div>
+              <div class="chapter-card-pages">0 页</div>
+            </div>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第008话 索隆VS鹰眼')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第008话 索隆VS鹰眼</div>
+              <div class="chapter-card-pages">55 页</div>
+            </div>
+          </div>
+
+          <!-- 散落文件 -->
+          <div class="chapter-card" onclick="openFile('cover.jpg')">
+            <div class="chapter-card-thumb"><span class="material-icons" style="color:#43A047">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">cover.jpg</div>
+              <div class="chapter-card-pages" style="color:#757575">图片</div>
+            </div>
+          </div>
+          <div class="chapter-card" onclick="openFile('设定集.pdf')">
+            <div class="chapter-card-thumb"><span class="material-icons" style="color:#D32F2F">picture_as_pdf</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">设定集.pdf</div>
+              <div class="chapter-card-pages" style="color:#757575">PDF</div>
+            </div>
+          </div>
+          <div class="chapter-card" onclick="openFile('OP特典.mp4')">
+            <div class="chapter-card-thumb"><span class="material-icons" style="color:#1E88E5">video_file</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">OP特典.mp4</div>
+              <div class="chapter-card-pages" style="color:#757575">视频</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- List 视图 -->
+        <div class="chapter-list hidden" id="chapterList">
+          <div class="chapter-card" onclick="openChapter('第001话 冒险的黎明')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第001话 冒险的黎明</div>
+              <div class="chapter-card-pages">53 页</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第002话 戴草帽的路飞')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第002话 戴草帽的路飞</div>
+              <div class="chapter-card-pages">47 页</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第003话 索隆登场')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第003话 索隆登场</div>
+              <div class="chapter-card-pages">51 页</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第004话 摩根大佐')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第004话 摩根大佐</div>
+              <div class="chapter-card-pages">45 页</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第005话 巴奇海贼团')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第005话 巴奇海贼团</div>
+              <div class="chapter-card-pages">50 页</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第006话 小丑巴奇')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第006话 小丑巴奇</div>
+              <div class="chapter-card-pages">48 页</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+          <div class="chapter-card disabled">
+            <div class="chapter-card-thumb"><span class="material-icons">folder_off</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第007话 空文件夹</div>
+              <div class="chapter-card-pages">0 页</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+          <div class="chapter-card" onclick="openChapter('第008话 索隆VS鹰眼')">
+            <div class="chapter-card-thumb"><span class="material-icons">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">第008话 索隆VS鹰眼</div>
+              <div class="chapter-card-pages">55 页</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+
+          <!-- 散落文件 -->
+          <div class="chapter-card" onclick="openFile('cover.jpg')">
+            <div class="chapter-card-thumb"><span class="material-icons" style="color:#43A047">image</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">cover.jpg</div>
+              <div class="chapter-card-pages">图片</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+          <div class="chapter-card" onclick="openFile('设定集.pdf')">
+            <div class="chapter-card-thumb"><span class="material-icons" style="color:#D32F2F">picture_as_pdf</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">设定集.pdf</div>
+              <div class="chapter-card-pages">PDF</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+          <div class="chapter-card" onclick="openFile('OP特典.mp4')">
+            <div class="chapter-card-thumb"><span class="material-icons" style="color:#1E88E5">video_file</span></div>
+            <div class="chapter-card-info">
+              <div class="chapter-card-name">OP特典.mp4</div>
+              <div class="chapter-card-pages">视频</div>
+            </div>
+            <span class="material-icons arrow-icon">chevron_right</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let viewMode = 'grid';
+
+    function switchOrgMode(mode) {
+      alert('切换组织模式到: ' + mode + '\n（demo: 将重新加载对应模式的视图）');
+    }
+
+    function setViewMode(mode) {
+      viewMode = mode;
+      document.getElementById('chapterGrid').classList.toggle('hidden', mode !== 'grid');
+      document.getElementById('chapterList').classList.toggle('hidden', mode !== 'list');
+      document.getElementById('btnGrid').classList.toggle('active-mode', mode === 'grid');
+      document.getElementById('btnList').classList.toggle('active-mode', mode === 'list');
+    }
+
+    function openChapter(name) {
+      alert('打开章节: ' + name + '\n→ 进入 ViewerPage');
+    }
+
+    function openFile(name) {
+      alert('打开文件: ' + name + '\n→ 进入 ViewerPage');
+    }
+  </script>
+</body>
+</html>

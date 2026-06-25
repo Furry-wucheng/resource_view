@@ -1,0 +1,355 @@
+/* ========================================
+   Resource Viewer — Design Tokens
+   v1.0 — 公共样式变量
+   ======================================== */
+
+:root {
+  /* 颜色 */
+  --color-bg: #FAFAFA;
+  --color-surface: #FFFFFF;
+  --color-surface-variant: #F5F5F5;
+  --color-on-surface: #212121;
+  --color-on-surface-variant: #757575;
+  --color-outline: #E0E0E0;
+  --color-primary: #1565C0;
+  --color-primary-container: #D1E4FF;
+  --color-error: #D32F2F;
+  --color-star: #FFC107;
+  --color-viewer-bg: #000000;
+
+  /* 标签预设 12 色 */
+  --tag-red: #E53935;
+  --tag-pink: #D81B60;
+  --tag-purple: #8E24AA;
+  --tag-deep-blue: #1E88E5;
+  --tag-blue: #039BE5;
+  --tag-cyan: #00ACC1;
+  --tag-green: #43A047;
+  --tag-lime: #7CB342;
+  --tag-orange: #FB8C00;
+  --tag-brown: #6D4C41;
+  --tag-blue-grey: #546E7A;
+  --tag-grey: #757575;
+
+  /* 间距 */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+
+  /* 字体 */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+  --font-size-xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-size-xxl: 24px;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.20);
+
+  /* 导航栏高度 */
+  --topbar-height: 56px;
+  --bottombar-height: 64px;
+
+  /* 侧栏宽度 */
+  --rail-collapsed: 72px;
+  --rail-expanded: 256px;
+}
+
+/* 浅色主题 */
+[data-theme="light"] {
+  --color-bg: #FAFAFA;
+  --color-surface: #FFFFFF;
+  --color-on-surface: #212121;
+}
+
+/* 深色主题 */
+[data-theme="dark"] {
+  --color-bg: #121212;
+  --color-surface: #1E1E1E;
+  --color-surface-variant: #2C2C2C;
+  --color-on-surface: #E0E0E0;
+  --color-on-surface-variant: #9E9E9E;
+  --color-outline: #424242;
+  --color-primary: #BB86FC;
+  --color-primary-container: #4E2070;
+  --color-error: #CF6679;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  color: var(--color-on-surface);
+  background: var(--color-bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 通用布局 */
+.app-container {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-md);
+}
+
+/* 宽屏模式 */
+@media (min-width: 900px) {
+  .app-container.wide {
+    max-width: 1280px;
+    flex-direction: row;
+  }
+  .app-container.wide > .page-content {
+    flex: 1;
+  }
+}
+
+/* 页面内容区 */
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: var(--bottombar-height);
+}
+
+.page-content.no-nav {
+  padding-bottom: 0;
+}
+
+/* 顶部导航栏 */
+.top-bar {
+  display: flex;
+  align-items: center;
+  height: var(--topbar-height);
+  padding: 0 var(--space-md);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-outline);
+  gap: var(--space-md);
+  flex-shrink: 0;
+}
+
+.top-bar .title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  flex: 1;
+}
+
+.top-bar .btn-back {
+  font-size: var(--font-size-xl);
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--color-on-surface);
+  padding: var(--space-xs);
+}
+
+.top-bar .btn-icon {
+  font-size: var(--font-size-xl);
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--color-on-surface);
+  padding: var(--space-xs);
+}
+
+/* 底部导航栏 */
+.bottom-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: var(--bottombar-height);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-outline);
+  flex-shrink: 0;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-xs) var(--space-md);
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--color-on-surface-variant);
+  font-size: var(--font-size-xs);
+}
+
+.nav-item .nav-icon {
+  font-size: 24px;
+}
+
+.nav-item.active {
+  color: var(--color-primary);
+}
+
+/* 侧边导航栏 (宽屏) */
+.side-rail {
+  width: var(--rail-collapsed);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-outline);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: var(--space-lg);
+  flex-shrink: 0;
+}
+
+.side-rail .rail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-md) var(--space-xs);
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--color-on-surface-variant);
+  font-size: var(--font-size-xs);
+}
+
+.side-rail .rail-item .rail-icon {
+  font-size: 24px;
+}
+
+.side-rail .rail-item.active {
+  color: var(--color-primary);
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px var(--space-xl);
+  text-align: center;
+  gap: var(--space-lg);
+}
+
+.empty-state .empty-icon {
+  font-size: 64px;
+  opacity: 0.3;
+}
+
+.empty-state .empty-text {
+  font-size: var(--font-size-lg);
+  color: var(--color-on-surface-variant);
+}
+
+.empty-state .empty-action {
+  padding: var(--space-md) var(--space-xl);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-md);
+  cursor: pointer;
+}
+
+/* 按钮 */
+.btn {
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  border: 1px solid var(--color-outline);
+  background: var(--color-surface);
+  color: var(--color-on-surface);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.btn-danger {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.btn-text {
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.btn-sm {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+}
+
+/* 弹窗/对话框遮罩 */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  min-width: 320px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+
+.dialog .dialog-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  margin-bottom: var(--space-lg);
+}
+
+.dialog .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+}
+
+/* 分割线 */
+.divider {
+  height: 1px;
+  background: var(--color-outline);
+  margin: var(--space-sm) 0;
+}
+
+/* 滚动条隐藏 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
