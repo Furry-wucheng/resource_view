@@ -110,17 +110,16 @@ resource_viewer/
 | `di/DatabaseModule.kt` | M02 | provides 方法末尾追加 |
 | `di/RepositoryModule.kt` | M02 | M10 在 provides 方法末尾追加 |
 
-### 分支命名
+### 分支开发
 
 ```
-mvp-Mxx-功能描述            # 单 stage: mvp-M12-local-file-source
-mvp-Mxx-Mxx-功能描述        # 多 stage 合并: mvp-M06-M08-room-data-layer
+目前你有可能在某个worktree中工作，如果你在worktree中工作请记得完成后将本分支的内容合并进主分支并在本分支rebase同步一下主分支的开发进度
 ```
 
 ### 提交格式
 
 ```
-feat(Mxx): 阶段简要描述
+feat(Mxx): 阶段简要描述（严禁前面带有@）
 
 产出物:
 - 新增 xx 个文件
@@ -138,20 +137,21 @@ feat(Mxx): 阶段简要描述
 ### 1. 取 Stage
 
 ```
+开发规划内文件：
 1. 阅读本文件（AGENTS.md）确认项目约定
 2. 查看 doc/mvp/AGENTS.md 进度表，确认前置 stage 已全部 ✅
 3. 阅读 stage 文档（doc/mvp/Mxx-xxx.md）
 4. 阅读 stage 文档中列出的依赖共享文档（doc/share/0X-xxx.md）
 5. 在 doc/mvp/AGENTS.md 将 stage 标记为 🔵 进行中
+
+用户提出新需求/提案
+请按照提案规范走！！
 ```
 
-### 2. 建 Worktree
+### 2. 确认自己在哪个分支，并按该分支进行工作
 
-```bash
-git fetch origin main
-git worktree add ../resource_viewer-Mxx -b mvp-Mxx-功能描述
-cd ../resource_viewer-Mxx
-```
+如果你正在主分支进行开发，无需考虑其他的，只需要按规范提交即可，如果用户有需求，按用户要求进行
+如果你在worktree中或者其他分支工作，请rebase主分支同步，然后再进行工作，工作完成后请记得推送回主分支或者提醒用户merge，最后再rebase同步一下主分支的状态。
 
 ### 3. 开发
 
@@ -205,7 +205,7 @@ git push origin mvp-Mxx-功能描述
 ### 7. 更新进度
 
 ```
-- 在 doc/mvp/AGENTS.md 将 stage 标记为 ✅ 已完成
+- 在 doc/mvp/AGENTS.md 将自己的 stage 标记为 ✅ 已完成
 - 在 doc/decisions/AGENTS.md 更新对应行
 ```
 
