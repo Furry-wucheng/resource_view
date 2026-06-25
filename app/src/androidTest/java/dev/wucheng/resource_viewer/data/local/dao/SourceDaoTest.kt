@@ -4,8 +4,8 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.wucheng.resource_viewer.data.local.AppDatabase
+import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.data.local.entity.SourceEntity
-import dev.wucheng.resource_viewer.data.local.entity.SourceType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After

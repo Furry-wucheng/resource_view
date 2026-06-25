@@ -32,8 +32,12 @@
 | `data/local/dao/TagDao.kt` | M07 | D-003, D-004 |
 | `data/local/dao/ResourceTagDao.kt` | M07 | — |
 | `data/local/dao/AppConfigDao.kt` | M07 | D-003 |
-| `data/repository/SourceRepository.kt` | M10 | — |
-| `data/repository/ResourceRepository.kt` | M10 | — |
+| `data/repository/SourceRepository.kt` | M10 | D-001 |
+| `data/repository/ResourceRepository.kt` | M10 | D-001, D-003 |
+| `data/repository/TagRepository.kt` | M10 | D-001, D-004 |
+| `data/repository/FilesystemRepository.kt` | M10 | D-001, D-005 |
+| `data/repository/ThumbnailRepository.kt` | M10 | D-001, D-006 |
+| `data/local/secure/SecurePrefs.kt` | M10 | D-002 |
 | `shared/filesource/FileSource.kt` | M11 | — |
 | `shared/filesource/LocalFileSource.kt` | M12 | — |
 | `shared/filesource/SmbFileSource.kt` | M17 | — |
@@ -99,7 +103,12 @@
 | pdfium-android 加密支持 | M22 | — |
 | Coil vs Glide 选型 | M00 | — |
 | Room vs SQLDelight 选型 | M00 | — |
-| 密码安全存储方案 | M10 | — |
+| 密码安全存储方案 | M10 | D-002 |
+| Repository Result 包装策略 | M10 | D-001 |
+| Flow 组合查询策略 | M10 | D-003 |
+| 内置标签保护机制 | M10 | D-004 |
+| FileSource 动态创建策略 | M10 | D-005 |
+| ThumbnailGenerator 策略集合 | M10 | D-006 |
 | Navigation 路由设计 | M03 | D-001, D-002 |
 
 ---

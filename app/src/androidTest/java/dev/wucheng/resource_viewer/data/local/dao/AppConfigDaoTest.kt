@@ -5,9 +5,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.wucheng.resource_viewer.data.local.AppDatabase
 import dev.wucheng.resource_viewer.data.local.entity.AppConfigEntity
-import dev.wucheng.resource_viewer.data.local.entity.DoublePageMode
-import dev.wucheng.resource_viewer.data.local.entity.PageDirection
-import dev.wucheng.resource_viewer.data.local.entity.ThemeMode
+import dev.wucheng.resource_viewer.data.local.converter.DoublePageMode
+import dev.wucheng.resource_viewer.data.local.converter.PageDirection
+import dev.wucheng.resource_viewer.data.local.converter.ThemeMode
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After

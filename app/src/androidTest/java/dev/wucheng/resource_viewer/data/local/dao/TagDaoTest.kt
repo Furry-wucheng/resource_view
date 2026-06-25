@@ -4,11 +4,11 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.wucheng.resource_viewer.data.local.AppDatabase
+import dev.wucheng.resource_viewer.data.local.converter.ResourceType
+import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.data.local.entity.ResourceEntity
-import dev.wucheng.resource_viewer.data.local.entity.ResourceType
 import dev.wucheng.resource_viewer.data.local.entity.ResourceTagEntity
 import dev.wucheng.resource_viewer.data.local.entity.SourceEntity
-import dev.wucheng.resource_viewer.data.local.entity.SourceType
 import dev.wucheng.resource_viewer.data.local.entity.TagEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
