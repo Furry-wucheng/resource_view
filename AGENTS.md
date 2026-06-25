@@ -10,16 +10,20 @@
 | 维度 | 方案 | 版本 |
 |------|------|------|
 | 语言 | Kotlin | 2.4.0 |
+| KSP | KSP | 2.3.9 |
 | UI | Jetpack Compose + Material3 | BOM 2026.06.00 |
 | 架构 | MVVM + Repository | — |
 | DI | Hilt | 2.51 |
-| 导航 | Navigation Compose | 2.8.x |
+| 导航 | Navigation Compose | 2.8.0 |
 | 数据库 | Room | 2.6.1 |
-| 视频 | Media3 ExoPlayer | 1.5.x |
+| 视频 | Media3 ExoPlayer | 1.5.0 |
 | 图片 | Coil | 3.5.0 |
 | SMB | smbj | 0.13.0 |
-| PDF | pdfium-android | 1.0.0 |
+| PDF | pdfium-android (io.legere) | 2.0.0 |
 | 压缩包 | zip4j + Commons Compress | 2.11.6 / 1.28.0 |
+| 安全 | Security Crypto | 1.1.0-alpha06 |
+| 协程 | kotlinx-coroutines | 1.8.0 |
+| UUID | benasher-uuid | 0.8.2 |
 | 测试 | JUnit 4 + MockK | 4.13.2 / 1.13.16 |
 | 最低 SDK | API 33 (Android 13) | — |
 | 目标 SDK | API 36 (Android 15) | — |
