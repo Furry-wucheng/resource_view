@@ -20,11 +20,11 @@
 | `data/local/entity/TagEntity.kt` | M06 | — |
 | `data/local/entity/ResourceTagEntity.kt` | M06 | — |
 | `data/local/entity/AppConfigEntity.kt` | M06 | — |
-| `data/local/dao/SourceDao.kt` | M07 | — |
-| `data/local/dao/ResourceDao.kt` | M07 | — |
-| `data/local/dao/TagDao.kt` | M07 | — |
+| `data/local/dao/SourceDao.kt` | M07 | D-003 |
+| `data/local/dao/ResourceDao.kt` | M07 | D-001, D-002, D-003 |
+| `data/local/dao/TagDao.kt` | M07 | D-003, D-004 |
 | `data/local/dao/ResourceTagDao.kt` | M07 | — |
-| `data/local/dao/AppConfigDao.kt` | M07 | — |
+| `data/local/dao/AppConfigDao.kt` | M07 | D-003 |
 | `data/repository/SourceRepository.kt` | M10 | — |
 | `data/repository/ResourceRepository.kt` | M10 | — |
 | `shared/filesource/FileSource.kt` | M11 | — |
@@ -85,8 +85,8 @@
 | BouncyCastle Android 冲突处理 | M00, M17 | — |
 | SMB 视频流式读取策略 | M18 | — |
 | 缩略图 LRU 淘汰算法 | M23, M25 | — |
-| 标签交集查询 SQL 方案 | M07 | — |
-| 键集分页实现 | M07 | — |
+| 标签交集查询 SQL 方案 | M07 | D-002 |
+| 键集分页实现 | M07 | D-001 |
 | 外键约束 + 级联删除 | M06, M08 | — |
 | 枚举序列化方案 (name vs ordinal) | M06 | D-001 |
 | pdfium-android 加密支持 | M22 | — |
