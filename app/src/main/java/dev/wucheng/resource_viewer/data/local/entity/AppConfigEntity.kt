@@ -6,6 +6,7 @@ import dev.wucheng.resource_viewer.data.local.converter.AutoSyncInterval
 import dev.wucheng.resource_viewer.data.local.converter.DoublePageMode
 import dev.wucheng.resource_viewer.data.local.converter.PageDirection
 import dev.wucheng.resource_viewer.data.local.converter.ThemeMode
+import dev.wucheng.resource_viewer.domain.model.AppConfig
 
 @Entity(tableName = "app_config")
 data class AppConfigEntity(
@@ -18,4 +19,14 @@ data class AppConfigEntity(
     val thumbnailConcurrency: Int = 4,
     val autoSyncInterval: AutoSyncInterval? = null,
     val updatedAt: Long = System.currentTimeMillis(),
+)
+
+fun AppConfigEntity.toDomain(): AppConfig = AppConfig(
+    themeMode = themeMode,
+    pageDirection = pageDirection,
+    doublePageMode = doublePageMode,
+    crossChapter = crossChapter,
+    cacheLimitMB = cacheLimitMB,
+    thumbnailConcurrency = thumbnailConcurrency,
+    autoSyncInterval = autoSyncInterval,
 )

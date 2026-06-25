@@ -18,7 +18,7 @@
 | M06 | Room Entity + Enum + Converters | 3 | ✅ | opencode/stellar-orchid | 2026-06-26 |
 | M07 | Room DAO 接口 | — | ⬜ | — | — |
 | M08 | AppDatabase 配置 | — | ⬜ | — | — |
-| M09 | Domain Models | — | ⬜ | — | — |
+| M09 | Domain Models | 3 | ✅ | claude | 2026-06-26 |
 | M10 | Repository 层 + SecurePrefs | — | ⬜ | — | — |
 | M11 | 全部共享接口契约 | — | ⬜ | — | — |
 | M12 | LocalFileSource 实现 | — | ⬜ | — | — |

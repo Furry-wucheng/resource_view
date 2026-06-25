@@ -15,11 +15,18 @@
 | `ui/navigation/BottomNavBar.kt` | M03 | D-002 |
 | `data/local/AppDatabase.kt` | M08 | — |
 | `data/local/converter/Converters.kt` | M06 | D-001, D-002 |
-| `data/local/entity/SourceEntity.kt` | M06 | — |
-| `data/local/entity/ResourceEntity.kt` | M06 | — |
-| `data/local/entity/TagEntity.kt` | M06 | — |
+| `data/local/entity/SourceEntity.kt` | M06, M09 | — |
+| `data/local/entity/ResourceEntity.kt` | M06, M09 | D-002 |
+| `data/local/entity/TagEntity.kt` | M06, M09 | D-003 |
 | `data/local/entity/ResourceTagEntity.kt` | M06 | — |
-| `data/local/entity/AppConfigEntity.kt` | M06 | — |
+| `data/local/entity/AppConfigEntity.kt` | M06, M09 | — |
+| `domain/model/Source.kt` | M09 | — |
+| `domain/model/Resource.kt` | M09 | D-002 |
+| `domain/model/Tag.kt` | M09 | D-003 |
+| `domain/model/FileEntry.kt` | M09 | — |
+| `domain/model/Chapter.kt` | M09 | — |
+| `domain/model/ViewerItem.kt` | M09 | D-001 |
+| `domain/model/AppConfig.kt` | M09 | — |
 | `data/local/dao/SourceDao.kt` | M07 | — |
 | `data/local/dao/ResourceDao.kt` | M07 | — |
 | `data/local/dao/TagDao.kt` | M07 | — |
