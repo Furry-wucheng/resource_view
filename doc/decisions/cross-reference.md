@@ -207,6 +207,19 @@
 | 批量插入失败处理 | M27 | D-003 |
 | 拆分后父资源状态 | M27 | D-004 |
 
+### M28 — 打磨完善
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `app/proguard-rules.pro` | M28 | D-001 |
+| `app/build.gradle.kts` (R8 配置) | M28 | D-001 |
+| `app/src/test/.../ProGuardRulesTest.kt` | M28 | — |
+| `app/src/test/.../DarkModeTest.kt` | M28 | D-003 |
+| `app/src/test/.../EdgeCaseTest.kt` | M28 | — |
+| ProGuard 规则策略 | M28 | D-001 |
+| mbassy javax.el 兼容处理 | M28 | D-002 |
+| 深色模式验证策略 | M28 | D-003 |
+
 ---
 
 > ⚠️ 各 stage 完成后，Agent 需在此文件中新增自己 stage 涉及的组件行和决策主题行。
