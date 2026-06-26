@@ -62,8 +62,10 @@
 | `ui/screens/viewer/ViewerScreen.kt` | M14 → M19 → M22 | D-003 |
 | `ui/screens/viewer/ViewerViewModel.kt` | M14 | — |
 | `ui/screens/viewer/ChapterListScreen.kt` | M21 | — |
-| `ui/screens/tags/TagManagerScreen.kt` | M15 | D-003 |
-| `ui/screens/tags/TagViewModel.kt` | M15 | — |
+| `ui/screens/tags/TagManagerScreen.kt` | M15 | D-003, D-004 |
+| `ui/screens/tags/TagViewModel.kt` | M15 | D-001, D-002 |
+| `ui/screens/tags/TagEditorDialog.kt` | M15 | D-003 |
+| `di/ViewModelModule.kt` | M15 | D-005 |
 | `ui/screens/settings/SettingsScreen.kt` | M05 → M25 | D-003 |
 | `ui/screens/settings/SettingsViewModel.kt` | M25 | — |
 | `ui/components/FilterBar.kt` | M16 | — |
@@ -110,6 +112,11 @@
 | FileSource 动态创建策略 | M10 | D-005 |
 | ThumbnailGenerator 策略集合 | M10 | D-006 |
 | Navigation 路由设计 | M03 | D-001, D-002 |
+| ViewModel StateFlow 状态管理 | M15 | D-001 |
+| 标签名称校验策略 | M15 | D-002 |
+| 颜色选择器布局方案 | M15 | D-003 |
+| 删除确认交互方案 | M15 | D-004 |
+| Koin ViewModel 注入 | M15 | D-005 |
 
 ---
 
