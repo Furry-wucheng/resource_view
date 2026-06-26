@@ -61,4 +61,24 @@ class ScreenTest {
         // Then
         assertEquals("tags/manager", screen.route)
     }
+
+    // === M16: 底部标签栏路由测试 ===
+
+    @Test
+    fun `should have correct route for Knowledge`() {
+        // Given
+        val screen = Screen.Knowledge
+
+        // Then
+        assertEquals("knowledge", screen.route)
+    }
+
+    @Test
+    fun `should have correct route for Toolbox`() {
+        // Given
+        val screen = Screen.Toolbox
+
+        // Then
+        assertEquals("toolbox", screen.route)
+    }
 }
