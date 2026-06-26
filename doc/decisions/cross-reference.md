@@ -89,9 +89,9 @@
 | `data/remote/pdf/PdfRenderer.kt` | M22 | — |
 | `domain/usecase/FilterResourcesByTagsUseCase.kt` | M16 | — |
 | `domain/usecase/DetectOrganizationModeUseCase.kt` | M20 | — |
-| `domain/usecase/ScanResourcesUseCase.kt` | M27 | — |
-| `domain/usecase/BatchAddResourcesUseCase.kt` | M27 | — |
-| `domain/usecase/SplitResourceUseCase.kt` | M27 | — |
+| `domain/usecase/ScanResourcesUseCase.kt` | M27 | D-001, D-002, D-003 |
+| `domain/usecase/BatchAddResourcesUseCase.kt` | M27 | D-001, D-002, D-003 |
+| `domain/usecase/SplitResourceUseCase.kt` | M27 | D-001, D-004 |
 | `di/DatabaseModule.kt` | M02 → M08 | — |
 | `di/RepositoryModule.kt` | M02 → M10 | — |
 | `di/SecurePrefsModule.kt` | M10 | — |
@@ -194,6 +194,18 @@
 | FilterBar "全部"按钮传 null | M23 | D-002 |
 | Coil 缓存策略 (内存25%/磁盘2%) | M23 | D-003 |
 | ImageThumbnailGenerator 取第一张图片 | M23 | D-004 |
+
+### M27 — 批量添加 + 拆分 UseCase
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| ScanResourcesUseCase | M27 | D-001, D-002, D-003 |
+| BatchAddResourcesUseCase | M27 | D-001, D-002, D-003 |
+| SplitResourceUseCase | M27 | D-001, D-004 |
+| UseCase 返回类型选择 (Flow vs Result) | M27 | D-001 |
+| 文件类型过滤策略 | M27 | D-002 |
+| 批量插入失败处理 | M27 | D-003 |
+| 拆分后父资源状态 | M27 | D-004 |
 
 ---
 
