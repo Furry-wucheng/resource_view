@@ -59,7 +59,7 @@
 | M13 | 核心功能单元测试 | 3 | M12 | ✅ 已完成 | claude |
 | M14 | 基础查看器 (ImageFolderProvider + HorizontalPager) | 3 | M13 | ⬜ 待开始 | — |
 | M15 | 标签 CRUD (TagManager + TagEditor + ViewModel) | 4 | M10 | ✅ 已完成 | — |
-| M16 | 筛选栏 + 标签交集查询 | 4 | M15 | ⬜ 待开始 | — |
+| M16 | 筛选栏 + 标签交集查询 | 4 | M15 | ✅ 已完成 | — |
 | M17 | SmbFileSource + SMB 源配置 UI | 5 | M11,M12 | ⬜ 待开始 | — |
 | M18 | SMB 视频 DataSource | 5 | M17 | ⬜ 待开始 | — |
 | M19 | 视频播放器组件 (Media3 + VideoPlayer) | 6 | M11,M14 | ⬜ 待开始 | — |
