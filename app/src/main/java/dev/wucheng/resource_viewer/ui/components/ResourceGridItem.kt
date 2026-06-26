@@ -1,7 +1,8 @@
 package dev.wucheng.resource_viewer.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,23 +32,28 @@ import dev.wucheng.resource_viewer.domain.model.Tag
 /**
  * 资源缩略图卡片。
  * 竖版卡片，显示封面图片、资源名称（最多 2 行）、标签颜色小圆点（前 3 个）。
- *
- * 注意：此实现遵循 doc/share/05-theme-tokens.md 中的 ThumbnailTokens 定义。
+ * 支持点击和长按。
  *
  * @param resource 资源数据
  * @param onClick 点击回调
+ * @param onLongClick 长按回调（可选）
  * @param modifier Modifier
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ResourceGridItem(
     resource: Resource,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
     ) {
         // 缩略图封面
         Box(

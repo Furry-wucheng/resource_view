@@ -1,5 +1,7 @@
 package dev.wucheng.resource_viewer.ui.screens.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +16,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -26,6 +27,7 @@ import dev.wucheng.resource_viewer.domain.model.Tag
 import dev.wucheng.resource_viewer.ui.base.UiState
 import dev.wucheng.resource_viewer.ui.components.EmptyState
 import dev.wucheng.resource_viewer.ui.components.FilterBar
+import dev.wucheng.resource_viewer.ui.components.ResourceDetailSheet
 import dev.wucheng.resource_viewer.ui.components.ResourceGridItem
 import dev.wucheng.resource_viewer.ui.theme.ThumbnailTokens
 import org.koin.androidx.compose.koinViewModel
@@ -33,8 +35,7 @@ import org.koin.androidx.compose.koinViewModel
 /**
  * 首页完整实现。
  * 显示资源缩略图网格，支持标签筛选。
- *
- * 注意：此实现遵循 doc/mvp/M23-home-grid.md 中的 M23.3 子任务。
+ * 长按资源可打开详情弹窗编辑标签和组织模式。
  *
  * @param onNavigateToViewer 导航到查看器的回调
  * @param onNavigateToAddSource 导航到添加数据源的回调
@@ -52,12 +53,19 @@ fun HomeScreen(
     val tags by viewModel.tags.collectAsStateWithLifecycle()
     val selectedTagIds by viewModel.selectedTagIds.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val detailResource by viewModel.detailResource.collectAsStateWithLifecycle()
+    val detailTagIds by viewModel.detailTagIds.collectAsStateWithLifecycle()
+    val detailOrgMode by viewModel.detailOrgMode.collectAsStateWithLifecycle()
 
     HomeScreenContent(
         resources = resources,
         tags = tags,
         selectedTagIds = selectedTagIds,
         uiState = uiState,
+        detailResource = detailResource,
+        allTags = tags,
+        detailTagIds = detailTagIds,
+        detailOrgMode = detailOrgMode,
         onTagClick = { tagId ->
             if (tagId == null) {
                 viewModel.clearFilter()
@@ -66,8 +74,13 @@ fun HomeScreen(
             }
         },
         onResourceClick = onNavigateToViewer,
+        onResourceLongClick = { viewModel.openResourceDetail(it) },
         onAddSource = onNavigateToAddSource,
         onClearFilter = { viewModel.clearFilter() },
+        onDetailTagToggle = { viewModel.toggleDetailTag(it) },
+        onDetailOrgModeChange = { viewModel.setDetailOrgMode(it) },
+        onDetailSave = { viewModel.saveResourceDetail() },
+        onDetailDismiss = { viewModel.closeResourceDetail() },
         modifier = modifier,
     )
 }
@@ -82,10 +95,19 @@ private fun HomeScreenContent(
     tags: List<Tag>,
     selectedTagIds: Set<String>,
     uiState: UiState,
+    detailResource: Resource?,
+    allTags: List<Tag>,
+    detailTagIds: Set<String>,
+    detailOrgMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode,
     onTagClick: (String?) -> Unit,
     onResourceClick: (String) -> Unit,
+    onResourceLongClick: (Resource) -> Unit,
     onAddSource: () -> Unit,
     onClearFilter: () -> Unit,
+    onDetailTagToggle: (String) -> Unit,
+    onDetailOrgModeChange: (dev.wucheng.resource_viewer.data.local.converter.OrganizationMode) -> Unit,
+    onDetailSave: () -> Unit,
+    onDetailDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -120,14 +142,12 @@ private fun HomeScreenContent(
                     }
                 }
                 resources.isEmpty() && selectedTagIds.isEmpty() -> {
-                    // 无资源，引导添加数据源
                     EmptyState(
                         hasResources = false,
                         onAddSource = onAddSource,
                     )
                 }
                 resources.isEmpty() && selectedTagIds.isNotEmpty() -> {
-                    // 筛选结果为空
                     EmptyState(
                         hasResources = true,
                         isFiltered = true,
@@ -135,25 +155,41 @@ private fun HomeScreenContent(
                     )
                 }
                 else -> {
-                    // 资源网格
                     ResourceGrid(
                         resources = resources,
                         onResourceClick = onResourceClick,
+                        onResourceLongClick = onResourceLongClick,
                     )
                 }
             }
         }
     }
+
+    // 资源详情弹窗
+    detailResource?.let { resource ->
+        ResourceDetailSheet(
+            resource = resource,
+            allTags = allTags,
+            selectedTagIds = detailTagIds,
+            selectedOrgMode = detailOrgMode,
+            onTagToggle = onDetailTagToggle,
+            onOrgModeChange = onDetailOrgModeChange,
+            onSave = onDetailSave,
+            onDismiss = onDetailDismiss,
+        )
+    }
 }
 
 /**
  * 资源网格。
- * 使用 LazyVerticalGrid 显示缩略图卡片。
+ * 使用 LazyVerticalGrid 显示缩略图卡片，支持长按。
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ResourceGrid(
     resources: List<Resource>,
     onResourceClick: (String) -> Unit,
+    onResourceLongClick: (Resource) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
@@ -170,6 +206,7 @@ private fun ResourceGrid(
             ResourceGridItem(
                 resource = resource,
                 onClick = { onResourceClick(resource.id) },
+                onLongClick = { onResourceLongClick(resource) },
             )
         }
     }

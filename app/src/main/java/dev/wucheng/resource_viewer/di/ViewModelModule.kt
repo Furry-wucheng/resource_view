@@ -20,7 +20,7 @@ import org.koin.dsl.module
 val viewModelModule = module {
     viewModel { SettingsViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get()) }
-    viewModel { HomeViewModel(get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get()) }
     viewModel { SourceListViewModel(get(), get(), get()) }
     viewModel { (resourceId: String) -> ViewerViewModel(resourceId, get(), get(), get()) }
     viewModel { (resourceId: String) -> ChapterListViewModel(resourceId, get(), get()) }

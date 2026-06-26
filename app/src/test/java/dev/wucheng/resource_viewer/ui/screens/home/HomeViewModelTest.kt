@@ -2,6 +2,7 @@ package dev.wucheng.resource_viewer.ui.screens.home
 
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
+import dev.wucheng.resource_viewer.data.local.dao.ResourceTagDao
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.TagRepository
 import dev.wucheng.resource_viewer.domain.model.Resource
@@ -29,6 +30,7 @@ class HomeViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var mockResourceRepo: ResourceRepository
     private lateinit var mockTagRepo: TagRepository
+    private lateinit var mockResourceTagDao: ResourceTagDao
 
     private val testTag1 = Tag(
         id = "tag1",
@@ -88,6 +90,7 @@ class HomeViewModelTest {
         Dispatchers.setMain(testDispatcher)
         mockResourceRepo = mockk()
         mockTagRepo = mockk()
+        mockResourceTagDao = mockk()
     }
 
     @After
@@ -100,7 +103,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
         advanceUntilIdle()
 
         assertEquals(UiState.SUCCESS, viewModel.uiState.value)
@@ -111,7 +114,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
         advanceUntilIdle()
 
         val resources = viewModel.resources.value
@@ -125,7 +128,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
         advanceUntilIdle()
 
         viewModel.selectTag("tag1")
@@ -141,7 +144,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
         advanceUntilIdle()
 
         viewModel.selectTag("tag1")
@@ -157,10 +160,8 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(emptyList())
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
 
-        // stateIn(WhileSubscribed) 需要订阅者才能开始收集
-        // 先通过 collect 触发订阅，然后检查值
         val job = launch {
             viewModel.tags.collect { /* 触发订阅 */ }
         }
@@ -179,7 +180,7 @@ class HomeViewModelTest {
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
         every { mockResourceRepo.filterByTags(any()) } returns flowOf(listOf(testResource1, testResource2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
         advanceUntilIdle()
 
         // 初始无筛选，显示全部
@@ -189,7 +190,6 @@ class HomeViewModelTest {
         viewModel.selectTag("tag1")
         advanceUntilIdle()
         val filtered = viewModel.resources.value
-        // filterByTags 应该返回两个资源（都有 tag1）
         assertEquals(2, filtered.size)
     }
 
@@ -198,10 +198,81 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(emptyList())
         every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
         advanceUntilIdle()
 
         assertEquals(UiState.SUCCESS, viewModel.uiState.value)
         assertTrue(viewModel.resources.value.isEmpty())
+    }
+
+    // === 资源详情弹窗测试 ===
+
+    @Test
+    fun `should open resource detail with correct state`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
+        every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        advanceUntilIdle()
+
+        viewModel.openResourceDetail(testResource1)
+        advanceUntilIdle()
+
+        assertEquals(testResource1, viewModel.detailResource.value)
+        assertEquals(setOf("tag1"), viewModel.detailTagIds.value)
+        assertEquals(OrganizationMode.GALLERY, viewModel.detailOrgMode.value)
+    }
+
+    @Test
+    fun `should toggle detail tag`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
+        every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        advanceUntilIdle()
+
+        viewModel.openResourceDetail(testResource1)
+        advanceUntilIdle()
+
+        // tag1 is already selected, toggle it off
+        viewModel.toggleDetailTag("tag1")
+        assertEquals(emptySet<String>(), viewModel.detailTagIds.value)
+
+        // Toggle tag2 on
+        viewModel.toggleDetailTag("tag2")
+        assertEquals(setOf("tag2"), viewModel.detailTagIds.value)
+    }
+
+    @Test
+    fun `should set detail org mode`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
+        every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        advanceUntilIdle()
+
+        viewModel.openResourceDetail(testResource1)
+        advanceUntilIdle()
+
+        viewModel.setDetailOrgMode(OrganizationMode.CHAPTER)
+        assertEquals(OrganizationMode.CHAPTER, viewModel.detailOrgMode.value)
+    }
+
+    @Test
+    fun `should close resource detail`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
+        every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        advanceUntilIdle()
+
+        viewModel.openResourceDetail(testResource1)
+        advanceUntilIdle()
+
+        viewModel.closeResourceDetail()
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.detailResource.value)
+        assertEquals(emptySet<String>(), viewModel.detailTagIds.value)
     }
 }

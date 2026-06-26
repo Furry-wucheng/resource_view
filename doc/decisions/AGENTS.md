@@ -33,7 +33,7 @@
 | M21 | Chapter + ChapterGallery 策略 | — | ⬜ | — | — |
 | M22 | PDF 查看器 | 6 | ✅ | claude | 2026-06-26 |
 | M23 | 首页网格完整实现 | 4 | ✅ | claude | 2026-06-26 |
-| M24 | ResourcePicker + 资源详情弹窗 | — | ⬜ | — | — |
+| M24 | ResourcePicker + 资源详情弹窗 | 5 | ✅ | claude | 2026-06-25 |
 | M25 | 设置页面 | — | ⬜ | — | — |
 | M26 | 错误处理全局组件 | — | ⬜ | — | — |
 | M27 | 批量添加 + 拆分 UseCase | — | ⬜ | — | — |
