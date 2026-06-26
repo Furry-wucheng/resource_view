@@ -228,29 +228,23 @@ class SmbClientWrapperTest {
     }
 
     @Test
-    fun `testConnection should return true when connection succeeds`() {
+    fun `testConnection should succeed when connection works`() {
         // Given
         every { mockClient.connect(testHost, testPort) } returns mockConnection
         every { mockConnection.authenticate(any<AuthenticationContext>()) } returns mockSession
         every { mockSession.connectShare(testShareName) } returns mockShare
 
-        // When
-        val result = wrapper.testConnection(testHost, testPort, testUsername, testPassword, testDomain, testShareName)
-
-        // Then
-        assertTrue(result)
+        // When / Then — 不抛异常即成功
+        wrapper.testConnection(testHost, testPort, testUsername, testPassword, testDomain, testShareName)
     }
 
-    @Test
-    fun `testConnection should return false when connection fails`() {
+    @Test(expected = SmbConnectionException::class)
+    fun `testConnection should throw when connection fails`() {
         // Given
         every { mockClient.connect(testHost, testPort) } throws RuntimeException("Connection failed")
 
-        // When
-        val result = wrapper.testConnection(testHost, testPort, testUsername, testPassword, testDomain, testShareName)
-
-        // Then
-        assertFalse(result)
+        // When / Then
+        wrapper.testConnection(testHost, testPort, testUsername, testPassword, testDomain, testShareName)
     }
 
     @Test

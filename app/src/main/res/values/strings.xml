@@ -1,10 +1,8 @@
 <resources>
     <string name="app_name">resource_viewer</string>
 
-    <!-- M16: 底部标签栏 -->
+    <!-- 底部标签栏 -->
     <string name="tab_home">首页</string>
-    <string name="tab_knowledge">知识</string>
-    <string name="tab_toolbox">工具箱</string>
-    <string name="tab_profile">我的</string>
+    <string name="tab_sources">数据源</string>
     <string name="tab_settings">设置</string>
 </resources>

@@ -1,5 +1,6 @@
 package dev.wucheng.resource_viewer.ui.screens.sources
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
@@ -10,11 +11,13 @@ import dev.wucheng.resource_viewer.data.repository.SourceRepository
 import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.model.Source
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /**
@@ -42,6 +45,7 @@ data class SourceListUiState(
     val sources: List<Source> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
+    val showSourceTypePicker: Boolean = false,
     val showAddLocalDialog: Boolean = false,
     val showAddSmbDialog: Boolean = false,
     val localForm: LocalFormData = LocalFormData(),
@@ -77,10 +81,11 @@ class SourceListViewModel(
                     _uiState.update { it.copy(sources = sources, isLoading = false) }
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "加载数据源失败", e)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = "加载数据源失败: ${e.message}"
+                        error = "加载数据源失败"
                     )
                 }
             }
@@ -88,14 +93,28 @@ class SourceListViewModel(
     }
 
     /**
+     * 显示数据源类型选择器。
+     */
+    fun showSourceTypePicker() {
+        _uiState.update { it.copy(showSourceTypePicker = true) }
+    }
+
+    /**
+     * 隐藏数据源类型选择器。
+     */
+    fun hideSourceTypePicker() {
+        _uiState.update { it.copy(showSourceTypePicker = false) }
+    }
+
+    /**
      * 显示添加 SMB 源对话框。
      */
     fun showAddSmbDialog() {
-        _uiState.update { it.copy(showAddSmbDialog = true, smbForm = SmbFormData()) }
+        _uiState.update { it.copy(showSourceTypePicker = false, showAddSmbDialog = true, smbForm = SmbFormData()) }
     }
 
     fun showAddLocalDialog() {
-        _uiState.update { it.copy(showAddLocalDialog = true, localForm = LocalFormData()) }
+        _uiState.update { it.copy(showSourceTypePicker = false, showAddLocalDialog = true, localForm = LocalFormData()) }
     }
 
     /**
@@ -177,27 +196,30 @@ class SourceListViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isTestingConnection = true, testConnectionSuccess = null, testConnectionError = null) }
             try {
-                val success = smbClientWrapper.testConnection(
-                    host = form.host,
-                    port = form.port,
-                    username = form.username,
-                    password = form.password,
-                    domain = form.domain.ifBlank { null },
-                    shareName = form.shareName
-                )
+                withContext(Dispatchers.IO) {
+                    smbClientWrapper.testConnection(
+                        host = form.host,
+                        port = form.port,
+                        username = form.username,
+                        password = form.password,
+                        domain = form.domain.ifBlank { null },
+                        shareName = form.shareName
+                    )
+                }
                 _uiState.update {
                     it.copy(
                         isTestingConnection = false,
-                        testConnectionSuccess = success,
-                        testConnectionError = if (!success) "连接失败，请检查配置" else null
+                        testConnectionSuccess = true,
+                        testConnectionError = null
                     )
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "SMB 测试连接失败", e)
                 _uiState.update {
                     it.copy(
                         isTestingConnection = false,
                         testConnectionSuccess = false,
-                        testConnectionError = "连接失败: ${e.message}"
+                        testConnectionError = "连接失败，请检查地址、凭据和共享名称"
                     )
                 }
             }
@@ -255,11 +277,12 @@ class SourceListViewModel(
                         hideAddSmbDialog()
                     }
                     is Result.Err -> {
-                        _uiState.update { it.copy(error = "保存失败: ${result.error.message}") }
+                        _uiState.update { it.copy(error = "保存失败") }
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "保存失败: ${e.message}") }
+                Log.e(TAG, "添加 SMB 源失败", e)
+                _uiState.update { it.copy(error = "保存失败") }
             }
         }
     }
@@ -293,10 +316,11 @@ class SourceListViewModel(
 
                 when (val result = sourceRepository.insert(entity)) {
                     is Result.Ok -> hideAddLocalDialog()
-                    is Result.Err -> _uiState.update { it.copy(error = "保存失败: ${result.error.message}") }
+                    is Result.Err -> _uiState.update { it.copy(error = "保存失败") }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "保存失败: ${e.message}") }
+                Log.e(TAG, "添加本地源失败", e)
+                _uiState.update { it.copy(error = "保存失败") }
             }
         }
     }
@@ -311,7 +335,7 @@ class SourceListViewModel(
                     sourceRepository.removePassword(sourceId)
                 }
                 is Result.Err -> {
-                    _uiState.update { it.copy(error = "删除失败: ${result.error.message}") }
+                    _uiState.update { it.copy(error = "删除失败") }
                 }
             }
         }
@@ -341,7 +365,7 @@ class SourceListViewModel(
             when (val result = sourceRepository.update(entity)) {
                 is Result.Ok -> { /* Success */ }
                 is Result.Err -> {
-                    _uiState.update { it.copy(error = "更新失败: ${result.error.message}") }
+                    _uiState.update { it.copy(error = "更新失败") }
                 }
             }
         }
@@ -352,5 +376,9 @@ class SourceListViewModel(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    companion object {
+        private const val TAG = "SourceListViewModel"
     }
 }

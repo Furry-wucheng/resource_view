@@ -6,13 +6,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import dev.wucheng.resource_viewer.ui.screens.home.HomeScreen
-import dev.wucheng.resource_viewer.ui.screens.knowledge.KnowledgeScreen
-import dev.wucheng.resource_viewer.ui.screens.profile.ProfileScreen
 import dev.wucheng.resource_viewer.ui.screens.settings.SettingsScreen
 import dev.wucheng.resource_viewer.ui.screens.sources.FileBrowserScreen
 import dev.wucheng.resource_viewer.ui.screens.sources.SourceListScreen
 import dev.wucheng.resource_viewer.ui.screens.tags.TagManagerScreen
-import dev.wucheng.resource_viewer.ui.screens.toolbox.ToolboxScreen
 import dev.wucheng.resource_viewer.ui.screens.viewer.ChapterListScreen
 import dev.wucheng.resource_viewer.ui.screens.viewer.ViewerScreen
 
@@ -46,17 +43,6 @@ fun AppNavGraph(
         }
         composable(Screen.Settings.route) {
             SettingsScreen()
-        }
-
-        // === M16 创建：底部标签栏 ===
-        composable(Screen.Knowledge.route) {
-            KnowledgeScreen()
-        }
-        composable(Screen.Toolbox.route) {
-            ToolboxScreen()
-        }
-        composable(Screen.Profile.route) {
-            ProfileScreen()
         }
 
         // === 全屏路由 ===

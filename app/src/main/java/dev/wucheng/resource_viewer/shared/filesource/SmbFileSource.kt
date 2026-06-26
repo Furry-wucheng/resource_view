@@ -6,6 +6,8 @@ import dev.wucheng.resource_viewer.data.remote.smb.SmbConnectionException
 import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Source
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.InputStream
 
 /**
@@ -71,8 +73,8 @@ class SmbFileSource(
             .joinToString("/")
     }
 
-    override suspend fun listDirectory(relativePath: String): List<FileEntry> {
-        return try {
+    override suspend fun listDirectory(relativePath: String): List<FileEntry> = withContext(Dispatchers.IO) {
+        try {
             ensureConnected()
             wrapper.listDirectory(buildFullPath(relativePath))
         } catch (e: SmbConnectionException) {
@@ -82,8 +84,8 @@ class SmbFileSource(
         }
     }
 
-    override suspend fun stat(relativePath: String): FileEntry? {
-        return try {
+    override suspend fun stat(relativePath: String): FileEntry? = withContext(Dispatchers.IO) {
+        try {
             ensureConnected()
             wrapper.stat(buildFullPath(relativePath))
         } catch (e: SmbConnectionException) {
@@ -93,8 +95,8 @@ class SmbFileSource(
         }
     }
 
-    override suspend fun readFile(relativePath: String): ByteArray {
-        return try {
+    override suspend fun readFile(relativePath: String): ByteArray = withContext(Dispatchers.IO) {
+        try {
             ensureConnected()
             wrapper.readFile(buildFullPath(relativePath))
         } catch (e: SmbConnectionException) {
@@ -104,14 +106,30 @@ class SmbFileSource(
         }
     }
 
-    override suspend fun readRange(relativePath: String, offset: Long, length: Long): ByteArray {
-        return try {
+    override suspend fun readRange(relativePath: String, offset: Long, length: Long): ByteArray = withContext(Dispatchers.IO) {
+        try {
             ensureConnected()
             wrapper.readRange(buildFullPath(relativePath), offset, length)
         } catch (e: SmbConnectionException) {
             throw e
         } catch (e: SmbAuthException) {
             throw e
+        }
+    }
+
+    override suspend fun testConnection(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            wrapper.testConnection(
+                host = source.host ?: return@withContext false,
+                port = source.port ?: 445,
+                username = source.username ?: "",
+                password = password,
+                domain = source.domain,
+                shareName = shareName
+            )
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -123,21 +141,6 @@ class SmbFileSource(
             throw e
         } catch (e: SmbAuthException) {
             throw e
-        }
-    }
-
-    override suspend fun testConnection(): Boolean {
-        return try {
-            wrapper.testConnection(
-                host = source.host ?: return false,
-                port = source.port ?: 445,
-                username = source.username ?: "",
-                password = password,
-                domain = source.domain,
-                shareName = shareName
-            )
-        } catch (e: Exception) {
-            false
         }
     }
 

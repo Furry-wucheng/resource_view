@@ -16,92 +16,58 @@ class AppShellTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    // === M16: 底部标签栏显示测试 ===
+    // === 底部标签栏显示测试 ===
 
     @Test
-    fun `should display five tabs in bottom navigation bar when compact width`() {
+    fun `should display three tabs in bottom navigation bar when compact width`() {
         composeTestRule.setContent {
             AppShell(widthSizeClass = WindowWidthSizeClass.Compact)
         }
 
-        // Compact 时底部 NavigationBar 可见，共 5 个 Tab
+        // Compact 时底部 NavigationBar 可见，共 3 个 Tab
         composeTestRule.onNodeWithText("首页").assertIsDisplayed()
-        composeTestRule.onNodeWithText("知识").assertIsDisplayed()
-        composeTestRule.onNodeWithText("工具箱").assertIsDisplayed()
-        composeTestRule.onNodeWithText("我的").assertIsDisplayed()
+        composeTestRule.onNodeWithText("数据源").assertIsDisplayed()
         composeTestRule.onNodeWithText("设置").assertIsDisplayed()
     }
 
     @Test
-    fun `should display five tabs in bottom navigation bar when medium width`() {
+    fun `should display three tabs in bottom navigation bar when medium width`() {
         composeTestRule.setContent {
             AppShell(widthSizeClass = WindowWidthSizeClass.Medium)
         }
 
         // Medium 时仍用底部 NavigationBar（平板竖屏）
         composeTestRule.onNodeWithText("首页").assertIsDisplayed()
-        composeTestRule.onNodeWithText("知识").assertIsDisplayed()
-        composeTestRule.onNodeWithText("工具箱").assertIsDisplayed()
-        composeTestRule.onNodeWithText("我的").assertIsDisplayed()
+        composeTestRule.onNodeWithText("数据源").assertIsDisplayed()
         composeTestRule.onNodeWithText("设置").assertIsDisplayed()
     }
 
     @Test
-    fun `should display five tabs in navigation rail when expanded width`() {
+    fun `should display three tabs in navigation rail when expanded width`() {
         composeTestRule.setContent {
             AppShell(widthSizeClass = WindowWidthSizeClass.Expanded)
         }
 
-        // Expanded 时侧边 NavigationRail 可见，共 5 个 Tab
+        // Expanded 时侧边 NavigationRail 可见，共 3 个 Tab
         composeTestRule.onNodeWithText("首页").assertIsDisplayed()
-        composeTestRule.onNodeWithText("知识").assertIsDisplayed()
-        composeTestRule.onNodeWithText("工具箱").assertIsDisplayed()
-        composeTestRule.onNodeWithText("我的").assertIsDisplayed()
+        composeTestRule.onNodeWithText("数据源").assertIsDisplayed()
         composeTestRule.onNodeWithText("设置").assertIsDisplayed()
     }
 
-    // === M16: 导航状态与路由同步测试 ===
+    // === 导航状态与路由同步测试 ===
 
     @Test
-    fun `should navigate to knowledge screen when knowledge tab clicked`() {
+    fun `should navigate to sources screen when sources tab clicked`() {
         // Given
         composeTestRule.setContent {
             AppShell(widthSizeClass = WindowWidthSizeClass.Compact)
         }
 
         // When
-        composeTestRule.onNodeWithText("知识").performClick()
+        composeTestRule.onNodeWithText("数据源").performClick()
 
         // Then
-        composeTestRule.onNodeWithText("Knowledge Screen").assertIsDisplayed()
-    }
-
-    @Test
-    fun `should navigate to toolbox screen when toolbox tab clicked`() {
-        // Given
-        composeTestRule.setContent {
-            AppShell(widthSizeClass = WindowWidthSizeClass.Compact)
-        }
-
-        // When
-        composeTestRule.onNodeWithText("工具箱").performClick()
-
-        // Then
-        composeTestRule.onNodeWithText("Toolbox Screen").assertIsDisplayed()
-    }
-
-    @Test
-    fun `should navigate to profile screen when profile tab clicked`() {
-        // Given
-        composeTestRule.setContent {
-            AppShell(widthSizeClass = WindowWidthSizeClass.Compact)
-        }
-
-        // When
-        composeTestRule.onNodeWithText("我的").performClick()
-
-        // Then
-        composeTestRule.onNodeWithText("Profile Screen").assertIsDisplayed()
+        composeTestRule.onNodeWithText("数据源").assertIsDisplayed()
     }
 
     @Test
@@ -126,7 +92,7 @@ class AppShellTest {
         }
 
         // When
-        composeTestRule.onNodeWithText("知识").performClick()
+        composeTestRule.onNodeWithText("数据源").performClick()
         composeTestRule.onNodeWithText("首页").performClick()
 
         // Then

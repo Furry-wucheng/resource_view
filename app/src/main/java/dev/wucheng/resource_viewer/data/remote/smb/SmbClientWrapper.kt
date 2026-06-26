@@ -1,5 +1,6 @@
 package dev.wucheng.resource_viewer.data.remote.smb
 
+import android.util.Log
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.fileinformation.FileIdBothDirectoryInformation
 import com.hierynomus.mssmb2.SMB2CreateDisposition
@@ -48,6 +49,7 @@ class SmbClientWrapper(private val client: SMBClient) {
         try {
             connection = client.connect(host, port)
         } catch (e: Exception) {
+            Log.e(TAG, "SMB 连接失败: $host:$port", e)
             throw SmbConnectionException("Connection failed: ${e.message}", e)
         }
 
@@ -59,6 +61,7 @@ class SmbClientWrapper(private val client: SMBClient) {
             )
             session = connection!!.authenticate(authContext)
         } catch (e: Exception) {
+            Log.e(TAG, "SMB 认证失败: $host", e)
             connection?.close()
             connection = null
             throw SmbAuthException("Authentication failed: ${e.message}", e)
@@ -67,6 +70,7 @@ class SmbClientWrapper(private val client: SMBClient) {
         try {
             share = session!!.connectShare(shareName) as DiskShare
         } catch (e: Exception) {
+            Log.e(TAG, "SMB 共享连接失败: $shareName", e)
             session?.close()
             connection?.close()
             session = null
@@ -182,7 +186,8 @@ class SmbClientWrapper(private val client: SMBClient) {
      * @param password 密码
      * @param domain 域名
      * @param shareName 共享名称
-     * @return 连接是否成功
+     * @throws SmbConnectionException 连接失败
+     * @throws SmbAuthException 认证失败
      */
     fun testConnection(
         host: String,
@@ -191,26 +196,32 @@ class SmbClientWrapper(private val client: SMBClient) {
         password: String,
         domain: String?,
         shareName: String
-    ): Boolean {
-        return try {
-            val tempConnection = client.connect(host, port)
+    ) {
+        var tempConnection: Connection? = null
+        var tempSession: Session? = null
+        var tempShare: DiskShare? = null
+        try {
+            tempConnection = client.connect(host, port)
             val authContext = AuthenticationContext(
                 username,
                 password.toCharArray(),
                 domain ?: ""
             )
-            val tempSession = tempConnection.authenticate(authContext)
-            val tempShare = tempSession.connectShare(shareName) as DiskShare
-
-            // 尝试列出根目录验证连接
-            tempShare.list("/")
-
-            tempShare.close()
-            tempSession.close()
-            tempConnection.close()
-            true
+            tempSession = tempConnection.authenticate(authContext)
+            tempShare = tempSession.connectShare(shareName) as DiskShare
+        } catch (e: SmbConnectionException) {
+            Log.e(TAG, "SMB 测试连接失败: $host:$port", e)
+            throw e
+        } catch (e: SmbAuthException) {
+            Log.e(TAG, "SMB 测试认证失败: $host", e)
+            throw e
         } catch (e: Exception) {
-            false
+            Log.e(TAG, "SMB 测试连接异常: $host:$port/$shareName", e)
+            throw SmbConnectionException("连接失败: ${e.message}", e)
+        } finally {
+            try { tempShare?.close() } catch (_: Exception) {}
+            try { tempSession?.close() } catch (_: Exception) {}
+            try { tempConnection?.close() } catch (_: Exception) {}
         }
     }
 
@@ -266,5 +277,9 @@ class SmbClientWrapper(private val client: SMBClient) {
     private fun com.hierynomus.msdtyp.FileTime.toEpochMillis(): Long {
         // FileTime 转换为 epoch milliseconds
         return this.toDate().time
+    }
+
+    companion object {
+        private const val TAG = "SmbClientWrapper"
     }
 }

@@ -50,16 +50,11 @@ fun SourceListScreen(
             TopAppBar(
                 title = { Text("数据源") },
                 windowInsets = WindowInsets(0.dp),
-                actions = {
-                    TextButton(onClick = { viewModel.showAddSmbDialog() }) {
-                        Text("SMB")
-                    }
-                },
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { viewModel.showAddLocalDialog() },
+                onClick = { viewModel.showSourceTypePicker() },
             ) {
                 Icon(Icons.Default.Add, contentDescription = "添加数据源")
             }
@@ -72,7 +67,7 @@ fun SourceListScreen(
             if (uiState.sources.isEmpty() && !uiState.isLoading) {
                 EmptyState(
                     hasResources = false,
-                    onAddSource = { viewModel.showAddLocalDialog() },
+                    onAddSource = { viewModel.showSourceTypePicker() },
                 )
             } else {
                 LazyColumn(
@@ -114,7 +109,37 @@ fun SourceListScreen(
         }
     }
 
-    // SMB 添加弹窗
+    // 数据源类型选择弹窗
+    if (uiState.showSourceTypePicker) {
+        AlertDialog(
+            onDismissRequest = { viewModel.hideSourceTypePicker() },
+            title = { Text("选择数据源类型") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = { viewModel.showAddLocalDialog() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("📁 本地文件夹")
+                    }
+                    TextButton(
+                        onClick = { viewModel.showAddSmbDialog() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("🌐 SMB 网络共享")
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { viewModel.hideSourceTypePicker() }) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+
+    // 本地添加弹窗
     if (uiState.showAddLocalDialog) {
         AddLocalDialog(
             formData = uiState.localForm,

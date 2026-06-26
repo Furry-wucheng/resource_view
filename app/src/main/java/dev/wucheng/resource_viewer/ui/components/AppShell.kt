@@ -12,11 +12,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -45,9 +43,9 @@ import dev.wucheng.resource_viewer.ui.navigation.AppNavGraph
 import dev.wucheng.resource_viewer.ui.navigation.Screen
 
 /**
- * M16: 底部/侧边导航栏的 Tab 定义
+ * 底部/侧边导航栏的 Tab 定义
  *
- * 固定 5 个 Tab：首页/知识/工具箱/我的/设置
+ * 3 个 Tab：首页/数据源/设置
  */
 private data class NavTab(
     val labelResId: Int,
@@ -56,7 +54,7 @@ private data class NavTab(
 )
 
 /**
- * M16: 获取导航标签列表
+ * 获取导航标签列表
  *
  * 使用 remember 缓存，避免重组时重复创建。
  */
@@ -65,16 +63,14 @@ private fun rememberNavTabs(): List<NavTab> {
     return remember {
         listOf(
             NavTab(R.string.tab_home, Icons.Default.Home, Screen.Home.route),
-            NavTab(R.string.tab_knowledge, Icons.AutoMirrored.Filled.MenuBook, Screen.Knowledge.route),
-            NavTab(R.string.tab_toolbox, Icons.Default.Build, Screen.Toolbox.route),
-            NavTab(R.string.tab_profile, Icons.Default.Person, Screen.Profile.route),
+            NavTab(R.string.tab_sources, Icons.Default.Storage, Screen.Sources.route),
             NavTab(R.string.tab_settings, Icons.Default.Settings, Screen.Settings.route),
         )
     }
 }
 
 /**
- * M16: 应用外壳组件
+ * 应用外壳组件
  *
  * 根据屏幕宽度选择底部导航栏或侧边导航栏。
  * 实现胶囊底栏指示器动效。
@@ -128,7 +124,7 @@ fun AppShell(
 }
 
 /**
- * M16: 导航状态与路由同步优化
+ * 导航状态与路由同步优化
  *
  * 使用 popUpTo + saveState + restoreState 避免重组抖动。
  */
@@ -143,7 +139,7 @@ private fun NavHostController.navigateWithState(route: String) {
 }
 
 /**
- * M16: 胶囊底栏指示器
+ * 胶囊底栏指示器
  *
  * 使用动画实现平滑的指示器移动效果。
  */
@@ -172,9 +168,9 @@ private fun CapsuleIndicator(
 }
 
 /**
- * M16: 底部导航栏
+ * 底部导航栏
  *
- * 包含 5 个 Tab 和胶囊指示器动效。
+ * 包含 3 个 Tab 和胶囊指示器动效。
  */
 @Composable
 private fun AppNavigationBar(
@@ -213,7 +209,7 @@ private fun AppNavigationBar(
 }
 
 /**
- * M16: 侧边导航栏
+ * 侧边导航栏
  *
  * 用于宽屏设备（Expanded）。
  */

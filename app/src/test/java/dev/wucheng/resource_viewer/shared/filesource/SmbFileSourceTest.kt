@@ -167,7 +167,7 @@ class SmbFileSourceTest {
         // Given
         every {
             mockWrapper.testConnection(any(), any(), any(), any(), any(), any())
-        } returns true
+        } just Runs
 
         // When
         val result = smbFileSource.testConnection()
@@ -181,7 +181,7 @@ class SmbFileSourceTest {
         // Given
         every {
             mockWrapper.testConnection(any(), any(), any(), any(), any(), any())
-        } returns false
+        } throws SmbConnectionException("Connection failed")
 
         // When
         val result = smbFileSource.testConnection()

@@ -3,6 +3,7 @@ package dev.wucheng.resource_viewer.ui.screens.sources
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.data.local.entity.SourceEntity
 import dev.wucheng.resource_viewer.data.remote.smb.SmbClientWrapper
+import dev.wucheng.resource_viewer.data.remote.smb.SmbConnectionException
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.data.repository.SourceRepository
 import dev.wucheng.resource_viewer.domain.model.Source
@@ -131,7 +132,7 @@ class SourceListViewModelTest {
         )
         every {
             mockSmbClientWrapper.testConnection(any(), any(), any(), any(), any(), any())
-        } returns true
+        } just Runs
 
         // When
         viewModel.testSmbConnection()
@@ -153,7 +154,7 @@ class SourceListViewModelTest {
         )
         every {
             mockSmbClientWrapper.testConnection(any(), any(), any(), any(), any(), any())
-        } returns false
+        } throws SmbConnectionException("Connection failed")
 
         // When
         viewModel.testSmbConnection()
