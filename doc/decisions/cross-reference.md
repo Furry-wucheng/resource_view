@@ -25,7 +25,7 @@
 | `domain/model/Tag.kt` | M09 | D-003 |
 | `domain/model/FileEntry.kt` | M09 | — |
 | `domain/model/Chapter.kt` | M09 | — |
-| `domain/model/ViewerItem.kt` | M09 | D-001 |
+| `domain/model/ViewerItem.kt` | M09 → M19 | D-001, D-002 |
 | `domain/model/AppConfig.kt` | M09 | — |
 | `data/local/dao/SourceDao.kt` | M07 | D-003 |
 | `data/local/dao/ResourceDao.kt` | M07 | D-001, D-002, D-003 |
@@ -56,6 +56,9 @@
 | `shared/thumbnail/ImageThumbnailGenerator.kt` | M23 | — |
 | `shared/thumbnail/PdfThumbnailGenerator.kt` | M22 | — |
 | `shared/thumbnail/VideoThumbnailGenerator.kt` | M19 | — |
+| `ui/screens/viewer/VideoPlayerViewModel.kt` | M19 | D-001, D-005 |
+| `ui/screens/viewer/VideoPlayerViewModelTest.kt` | M19 | — |
+| `ui/screens/viewer/components/VideoPlayer.kt` | M19 | D-004 |
 | `ui/screens/home/HomeScreen.kt` | M05 → M23 | D-003 |
 | `ui/screens/home/HomeViewModel.kt` | M23 | — |
 | `ui/screens/sources/SourceListScreen.kt` | M05 → M17 | D-003 |
@@ -63,7 +66,7 @@
 | `ui/screens/sources/FileBrowserScreen.kt` | M13 | — |
 | `ui/screens/sources/FileBrowserViewModel.kt` | M13 | — |
 | `ui/screens/viewer/ViewerScreen.kt` | M14 → M19 → M22 | D-003, D-004 |
-| `ui/screens/viewer/ViewerViewModel.kt` | M14 | D-003 |
+| `ui/screens/viewer/ViewerViewModel.kt` | M14 → M19 | D-003 |
 | `ui/screens/viewer/components/SlideBar.kt` | M14 | D-005 |
 | `ui/screens/viewer/components/ViewerToolbar.kt` | M14 | — |
 | `ui/screens/viewer/ChapterListScreen.kt` | M21 | — |
@@ -131,6 +134,12 @@
 | ViewerViewModel 状态管理 | M14 | D-003 |
 | HorizontalPager 配置 | M14 | D-004 |
 | SlideBar 实现方式 | M14 | D-005 |
+| VideoPlayerViewModel 架构 | M19 | D-001 |
+| VideoMediaSource.SmbFile 设计 | M19 | D-002 |
+| 视频资源检测策略 | M19 | D-003 |
+| 视频手势处理方案 | M19 | D-004 |
+| ExoPlayer 生命周期管理 | M19 | D-005 |
+| VideoThumbnailGenerator 实现 | M19 | D-006 |
 
 ---
 

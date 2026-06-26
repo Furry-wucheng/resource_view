@@ -62,7 +62,7 @@
 | M16 | 筛选栏 + 标签交集查询 | 4 | M15 | ✅ 已完成 | — |
 | M17 | SmbFileSource + SMB 源配置 UI | 5 | M11,M12 | ✅ 已完成 | claude |
 | M18 | SMB 视频 DataSource | 5 | M17 | ✅ 已完成 | claude |
-| M19 | 视频播放器组件 (Media3 + VideoPlayer) | 6 | M11,M14 | ⬜ 待开始 | — |
+| M19 | 视频播放器组件 (Media3 + VideoPlayer) | 6 | M11,M14 | ✅ 已完成 | claude |
 | M20 | Gallery + FlatGrid 策略 | 6 | M11,M14 | ⬜ 待开始 | — |
 | M21 | Chapter + ChapterGallery 策略 + ChapterListScreen | 6 | M11,M20 | ⬜ 待开始 | — |
 | M22 | PDF 查看器 (PdfRenderer + PdfContentProvider) | 6 | M11,M14 | ⬜ 待开始 | — |
