@@ -9,6 +9,7 @@ import dev.wucheng.resource_viewer.domain.model.Source
  *
  * 注意：此实现遵循 doc/mvp/M18-smb-video-datasource.md 中的 M18.2 子任务。
  */
+@androidx.media3.common.util.UnstableApi
 class SmbDataSourceFactory(
     private val source: Source,
     private val password: String,

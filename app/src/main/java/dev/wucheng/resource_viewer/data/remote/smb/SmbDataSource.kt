@@ -15,6 +15,7 @@ import java.io.InputStream
  * 注意：此实现遵循 doc/mvp/M18-smb-video-datasource.md 中的 M18.1 子任务。
  * read() 是同步方法，直接使用 smbj 的同步阻塞 API，不经过协程。
  */
+@androidx.media3.common.util.UnstableApi
 class SmbDataSource(
     private val source: Source,
     private val password: String,
