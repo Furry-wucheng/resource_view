@@ -19,7 +19,7 @@ val viewModelModule = module {
     viewModel { SettingsViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get()) }
     viewModel { SourceListViewModel(get(), get(), get()) }
-    viewModel { (resourceId: String) -> ViewerViewModel(resourceId, get(), get()) }
+    viewModel { (resourceId: String) -> ViewerViewModel(resourceId, get(), get(), get()) }
 
     // M19: VideoPlayerViewModel — 每次创建新实例（含独立 ExoPlayer）
     viewModel<VideoPlayerViewModel> {

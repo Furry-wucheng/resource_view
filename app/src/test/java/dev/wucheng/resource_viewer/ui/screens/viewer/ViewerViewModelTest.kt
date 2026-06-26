@@ -1,5 +1,6 @@
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
+import android.content.Context
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
@@ -28,6 +29,7 @@ import org.junit.Test
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ViewerViewModelTest {
+    private lateinit var mockContext: Context
     private lateinit var mockResourceRepository: ResourceRepository
     private lateinit var mockFilesystemRepository: FilesystemRepository
     private lateinit var mockFileSource: FileSource
@@ -57,6 +59,7 @@ class ViewerViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+        mockContext = mockk(relaxed = true)
         mockResourceRepository = mockk()
         mockFilesystemRepository = mockk()
         mockFileSource = mockk()
@@ -70,6 +73,7 @@ class ViewerViewModelTest {
             resourceId = testResourceId,
             resourceRepository = mockResourceRepository,
             filesystemRepository = mockFilesystemRepository,
+            context = mockContext,
         )
     }
 
@@ -305,6 +309,7 @@ class ViewerViewModelTest {
             resourceId = "video-local-id",
             resourceRepository = mockResourceRepository,
             filesystemRepository = mockFilesystemRepository,
+            context = mockContext,
         )
         coEvery { mockResourceRepository.getById("video-local-id") } returns Result.Ok(localVideoResource)
         coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
@@ -331,6 +336,7 @@ class ViewerViewModelTest {
             resourceId = "video-local-id",
             resourceRepository = mockResourceRepository,
             filesystemRepository = mockFilesystemRepository,
+            context = mockContext,
         )
         coEvery { mockResourceRepository.getById("video-local-id") } returns Result.Ok(localVideoResource)
         coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
