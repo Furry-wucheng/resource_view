@@ -71,7 +71,7 @@
 | M25 | 设置页面 (SettingsScreen + AppConfig + 缓存管理) | 7 | M23 | ✅ 已完成 | claude |
 | M26 | 错误处理全局组件 (ErrorView + BaseViewModel) | 8 | M10 | ✅ 已完成 | claude |
 | M27 | 批量添加 + 拆分 UseCase | 8 | M10,M24 | ✅ 已完成 | claude |
-| M28 | ProGuard + 深色模式完善 + 边界打磨 | 8 | M25 | ⬜ 待开始 | — |
+| M28 | ProGuard + 深色模式完善 + 边界打磨 | 8 | M25 | ✅ 已完成 | claude |
 
 > 状态图例: ⬜ 待开始 · 🔵 进行中 · ✅ 已完成 · ❌ 阻塞
 
