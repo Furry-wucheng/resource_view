@@ -72,6 +72,7 @@
 | M26 | 错误处理全局组件 (ErrorView + BaseViewModel) | 8 | M10 | ✅ 已完成 | claude |
 | M27 | 批量添加 + 拆分 UseCase | 8 | M10,M24 | ✅ 已完成 | claude |
 | M28 | ProGuard + 深色模式完善 + 边界打磨 | 8 | M25 | ✅ 已完成 | claude |
+| M30 | 修复底栏导航 + SMB 线程与权限 | 8 | M17 | ✅ 已完成 | claude |
 
 > 状态图例: ⬜ 待开始 · 🔵 进行中 · ✅ 已完成 · ❌ 阻塞
 

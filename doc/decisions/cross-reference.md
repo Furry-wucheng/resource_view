@@ -43,7 +43,7 @@
 | `di/ViewModelModule.kt` | M12 | — |
 | `shared/filesource/FileSource.kt` | M11 | — |
 | `shared/filesource/LocalFileSource.kt` | M12 | — |
-| `shared/filesource/SmbFileSource.kt` | M17 | — |
+| `shared/filesource/SmbFileSource.kt` | M17 → M30 | — |
 | `shared/content/ContentProvider.kt` | M11 | — |
 | `shared/content/ImageFolderProvider.kt` | M14 | D-001, D-002 |
 | `shared/content/PdfContentProvider.kt` | M22 | — |
@@ -63,8 +63,8 @@
 | `ui/screens/home/HomeViewModel.kt` | M23 | D-001 |
 | `ui/components/FilterBar.kt` | M23 | D-002 |
 | `ui/components/ResourceGridItem.kt` | M23 | — |
-| `ui/screens/sources/SourceListScreen.kt` | M05 → M17 | D-003 |
-| `ui/screens/sources/SourceListViewModel.kt` | M17 | — |
+| `ui/screens/sources/SourceListScreen.kt` | M05 → M17 → M30 | D-003 |
+| `ui/screens/sources/SourceListViewModel.kt` | M17 → M30 | — |
 | `ui/screens/sources/FileBrowserScreen.kt` | M13 | — |
 | `ui/screens/sources/FileBrowserViewModel.kt` | M13 | — |
 | `ui/screens/viewer/ViewerScreen.kt` | M14 → M19 → M22 | D-003, D-004 |
@@ -83,8 +83,8 @@
 | `ui/components/ResourcePickerDialog.kt` | M24 | — |
 | `ui/components/ErrorView.kt` | M26 | — |
 | `ui/components/EmptyState.kt` | M05 | — |
-| `ui/components/AppShell.kt` | M04 | — |
-| `data/remote/smb/SmbClientWrapper.kt` | M17 | — |
+| `ui/components/AppShell.kt` | M04 → M30 | — |
+| `data/remote/smb/SmbClientWrapper.kt` | M17 → M30 | — |
 | `data/remote/smb/SmbDataSource.kt` | M18 | — |
 | `data/remote/pdf/PdfRenderer.kt` | M22 | — |
 | `domain/usecase/FilterResourcesByTagsUseCase.kt` | M16 | — |
@@ -219,6 +219,24 @@
 | ProGuard 规则策略 | M28 | D-001 |
 | mbassy javax.el 兼容处理 | M28 | D-002 |
 | 深色模式验证策略 | M28 | D-003 |
+
+### M30 — 修复底栏导航 + SMB 线程与权限
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `ui/components/AppShell.kt` | M30 | D-001 |
+| `ui/navigation/Screen.kt` | M30 | D-001 |
+| `ui/navigation/AppNavGraph.kt` | M30 | D-001 |
+| `ui/screens/sources/SourceListScreen.kt` | M30 | D-002 |
+| `ui/screens/sources/SourceListViewModel.kt` | M30 | D-002, D-005 |
+| `shared/filesource/SmbFileSource.kt` | M30 | D-003 |
+| `data/remote/smb/SmbClientWrapper.kt` | M30 | D-003, D-005 |
+| `AndroidManifest.xml` | M30 | D-004 |
+| 底栏 Tab 精简 | M30 | D-001 |
+| 添加数据源统一类型选择 | M30 | D-002 |
+| SMB 线程调度 | M30 | D-003 |
+| 网络权限配置 | M30 | D-004 |
+| 错误信息分层 | M30 | D-005 |
 
 ---
 
