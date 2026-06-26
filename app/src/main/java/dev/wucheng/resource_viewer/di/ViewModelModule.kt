@@ -3,6 +3,7 @@
 package dev.wucheng.resource_viewer.di
 
 import androidx.media3.exoplayer.ExoPlayer
+import dev.wucheng.resource_viewer.ui.screens.home.HomeViewModel
 import dev.wucheng.resource_viewer.ui.screens.settings.SettingsViewModel
 import dev.wucheng.resource_viewer.ui.screens.sources.SourceListViewModel
 import dev.wucheng.resource_viewer.ui.screens.tags.TagViewModel
@@ -18,6 +19,7 @@ import org.koin.dsl.module
 val viewModelModule = module {
     viewModel { SettingsViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get()) }
+    viewModel { HomeViewModel(get(), get()) }
     viewModel { SourceListViewModel(get(), get(), get()) }
     viewModel { (resourceId: String) -> ViewerViewModel(resourceId, get(), get(), get()) }
 

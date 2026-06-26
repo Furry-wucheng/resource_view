@@ -30,6 +30,9 @@ fun AppNavGraph(
                 onNavigateToViewer = { resourceId ->
                     navController.navigate(Screen.Viewer.createRoute(resourceId))
                 },
+                onNavigateToAddSource = {
+                    navController.navigate(Screen.Sources.route)
+                },
             )
         }
         composable(Screen.Sources.route) {
