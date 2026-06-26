@@ -62,10 +62,11 @@ class ImageFolderProvider(
         val filePath = files[index]
         val inputStream = fileSource.openInputStream(filePath)
 
-        return inputStream.use { stream ->
-            decodeBitmap(stream, targetWidth, targetHeight)
-                ?: throw IllegalStateException("Failed to decode bitmap from $filePath")
-        }
+        // 先将流读入 ByteArray，确保支持 mark/reset（SMB 流不支持 mark/reset）
+        val imageBytes = inputStream.use { it.readBytes() }
+
+        return decodeBitmap(imageBytes, targetWidth, targetHeight)
+            ?: throw IllegalStateException("Failed to decode bitmap from $filePath")
     }
 
     /**
@@ -78,21 +79,21 @@ class ImageFolderProvider(
 
     /**
      * 解码 Bitmap 并按目标尺寸缩放。
+     * 使用 ByteArrayInputStream 支持 mark/reset，兼容 SMB 等不支持 mark/reset 的流。
      */
-    private fun decodeBitmap(inputStream: java.io.InputStream, targetWidth: Int, targetHeight: Int): Bitmap? {
+    private fun decodeBitmap(imageBytes: ByteArray, targetWidth: Int, targetHeight: Int): Bitmap? {
         // 先获取原始尺寸
         val options = BitmapFactory.Options().apply {
             inJustDecodeBounds = true
         }
-        BitmapFactory.decodeStream(inputStream, null, options)
+        BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
 
         // 计算采样率
         options.inSampleSize = calculateInSampleSize(options, targetWidth, targetHeight)
         options.inJustDecodeBounds = false
 
         // 重新解码
-        inputStream.reset()
-        return BitmapFactory.decodeStream(inputStream, null, options)
+        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
     }
 
     /**

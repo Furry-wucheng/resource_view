@@ -357,6 +357,134 @@ class ViewerViewModelTest {
         assertTrue("Expected SmbFile source", video.videoSource is VideoMediaSource.SmbFile)
     }
 
+    // ===== RED: 测试 PDF 资源加载 =====
+
+    private val pdfResource = dev.wucheng.resource_viewer.domain.model.Resource(
+        id = "pdf-id",
+        sourceId = "source-1",
+        sourceName = "Test Source",
+        name = "Test PDF",
+        type = ResourceType.PDF,
+        organizationMode = null,
+        relativePath = "docs/test.pdf",
+        thumbnailPath = null,
+        fileCount = 10,
+        fileSize = 1024,
+        isAvailable = true,
+        lastScannedAt = System.currentTimeMillis(),
+        tags = emptyList(),
+        createdAt = System.currentTimeMillis(),
+        updatedAt = System.currentTimeMillis(),
+    )
+
+    @Test
+    fun `should emit error state when source is null for video resource`() = runTest {
+        // Arrange
+        coEvery { mockResourceRepository.getById("video-local-id") } returns Result.Ok(localVideoResource)
+        coEvery { mockFilesystemRepository.getSource(any()) } returns Result.Ok(null)
+
+        // Act
+        val videoViewModel = ViewerViewModel(
+            resourceId = "video-local-id",
+            resourceRepository = mockResourceRepository,
+            filesystemRepository = mockFilesystemRepository,
+            context = mockContext,
+        )
+        videoViewModel.loadResource()
+        advanceUntilIdle()
+
+        // Assert
+        assertTrue(videoViewModel.uiState.value is ViewerUiState.Error)
+    }
+
+    @Test
+    fun `should emit error state when source load fails for video resource`() = runTest {
+        // Arrange
+        coEvery { mockResourceRepository.getById("video-local-id") } returns Result.Ok(localVideoResource)
+        coEvery { mockFilesystemRepository.getSource(any()) } returns Result.Err(
+            dev.wucheng.resource_viewer.domain.error.DomainError.DatabaseError("Source load failed")
+        )
+
+        // Act
+        val videoViewModel = ViewerViewModel(
+            resourceId = "video-local-id",
+            resourceRepository = mockResourceRepository,
+            filesystemRepository = mockFilesystemRepository,
+            context = mockContext,
+        )
+        videoViewModel.loadResource()
+        advanceUntilIdle()
+
+        // Assert
+        assertTrue(videoViewModel.uiState.value is ViewerUiState.Error)
+    }
+
+    @Test
+    fun `should not navigate to negative page when goToPage is called with negative value`() = runTest {
+        // Arrange
+        coEvery { mockResourceRepository.getById(testResourceId) } returns Result.Ok(testResource)
+        coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
+        coEvery { mockFileSource.listDirectory(any()) } returns listOf(
+            dev.wucheng.resource_viewer.domain.model.FileEntry(
+                name = "image1.jpg",
+                relativePath = "test/path/image1.jpg",
+                isDirectory = false,
+                size = 1024,
+                modifiedAt = System.currentTimeMillis(),
+                extension = "jpg",
+            ),
+        )
+        viewModel.loadResource()
+        advanceUntilIdle()
+
+        // Act
+        viewModel.goToPage(-1)
+
+        // Assert
+        assertEquals(0, viewModel.currentPage.value)
+    }
+
+    @Test
+    fun `should not navigate beyond totalPages when goToPage is called with large value`() = runTest {
+        // Arrange
+        coEvery { mockResourceRepository.getById(testResourceId) } returns Result.Ok(testResource)
+        coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
+        coEvery { mockFileSource.listDirectory(any()) } returns listOf(
+            dev.wucheng.resource_viewer.domain.model.FileEntry(
+                name = "image1.jpg",
+                relativePath = "test/path/image1.jpg",
+                isDirectory = false,
+                size = 1024,
+                modifiedAt = System.currentTimeMillis(),
+                extension = "jpg",
+            ),
+        )
+        viewModel.loadResource()
+        advanceUntilIdle()
+
+        // Act
+        viewModel.goToPage(100)
+
+        // Assert
+        assertEquals(0, viewModel.currentPage.value)
+    }
+
+    @Test
+    fun `should emit error when getFileSource fails for content provider resource`() = runTest {
+        // Arrange
+        coEvery { mockResourceRepository.getById(testResourceId) } returns Result.Ok(testResource)
+        coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Err(
+            dev.wucheng.resource_viewer.domain.error.DomainError.SourceUnreachableError("Source unreachable")
+        )
+
+        // Act
+        viewModel.loadResource()
+        advanceUntilIdle()
+
+        // Assert
+        assertTrue(viewModel.uiState.value is ViewerUiState.Error)
+    }
+
     // ===== RED: 测试 dispose =====
     // 注意：onCleared 是 protected 方法，无法直接测试
     // 在实际集成测试中验证 dispose 行为

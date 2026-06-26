@@ -102,4 +102,41 @@ class DetectOrganizationModeUseCaseTest {
 
             assertEquals(OrganizationMode.CHAPTER, result)
         }
+
+    @Test
+    fun `should return FLATGRID when subfolders exist but contain no images`() =
+        runTest {
+            val rootEntries =
+                listOf(
+                    FileEntry("docs", "docs", true, 0, System.currentTimeMillis(), ""),
+                    FileEntry("video.mp4", "video.mp4", false, 8192, System.currentTimeMillis(), "mp4"),
+                )
+            val docsEntries =
+                listOf(
+                    FileEntry("readme.txt", "docs/readme.txt", false, 100, System.currentTimeMillis(), "txt"),
+                    FileEntry("data.csv", "docs/data.csv", false, 200, System.currentTimeMillis(), "csv"),
+                )
+            coEvery { mockFileSource.listDirectory("/test/path") } returns rootEntries
+            coEvery { mockFileSource.listDirectory("/test/path/docs") } returns docsEntries
+
+            val result = useCase.invoke(mockFileSource, "/test/path")
+
+            assertEquals(OrganizationMode.FLATGRID, result)
+        }
+
+    @Test
+    fun `should return FLATGRID when folder contains only non-image media files`() =
+        runTest {
+            val entries =
+                listOf(
+                    FileEntry("video1.mp4", "video1.mp4", false, 8192, System.currentTimeMillis(), "mp4"),
+                    FileEntry("document.pdf", "document.pdf", false, 4096, System.currentTimeMillis(), "pdf"),
+                    FileEntry("clip.avi", "clip.avi", false, 2048, System.currentTimeMillis(), "avi"),
+                )
+            coEvery { mockFileSource.listDirectory(any()) } returns entries
+
+            val result = useCase.invoke(mockFileSource, "/test/path")
+
+            assertEquals(OrganizationMode.FLATGRID, result)
+        }
 }
