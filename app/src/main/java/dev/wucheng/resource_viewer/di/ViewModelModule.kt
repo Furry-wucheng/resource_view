@@ -6,6 +6,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import dev.wucheng.resource_viewer.ui.screens.settings.SettingsViewModel
 import dev.wucheng.resource_viewer.ui.screens.sources.SourceListViewModel
 import dev.wucheng.resource_viewer.ui.screens.tags.TagViewModel
+import dev.wucheng.resource_viewer.ui.screens.viewer.ChapterListViewModel
 import dev.wucheng.resource_viewer.ui.screens.viewer.VideoPlayerViewModel
 import dev.wucheng.resource_viewer.ui.screens.viewer.ViewerViewModel
 import org.koin.core.module.dsl.viewModel
@@ -20,6 +21,7 @@ val viewModelModule = module {
     viewModel { TagViewModel(get()) }
     viewModel { SourceListViewModel(get(), get(), get()) }
     viewModel { (resourceId: String) -> ViewerViewModel(resourceId, get(), get(), get()) }
+    viewModel { (resourceId: String) -> ChapterListViewModel(resourceId, get(), get()) }
 
     // M19: VideoPlayerViewModel — 每次创建新实例（含独立 ExoPlayer）
     viewModel<VideoPlayerViewModel> {

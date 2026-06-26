@@ -12,6 +12,7 @@ import dev.wucheng.resource_viewer.ui.screens.settings.SettingsScreen
 import dev.wucheng.resource_viewer.ui.screens.sources.SourceListScreen
 import dev.wucheng.resource_viewer.ui.screens.tags.TagManagerScreen
 import dev.wucheng.resource_viewer.ui.screens.toolbox.ToolboxScreen
+import dev.wucheng.resource_viewer.ui.screens.viewer.ChapterListScreen
 import dev.wucheng.resource_viewer.ui.screens.viewer.ViewerScreen
 
 @Composable
@@ -65,6 +66,18 @@ fun AppNavGraph(
         composable(Screen.TagManager.route) {
             TagManagerScreen(
                 onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        // === M21 创建：章节列表 ===
+        composable(Screen.ChapterList.route) { backStackEntry ->
+            val resourceId = backStackEntry.arguments?.getString("resourceId") ?: return@composable
+            ChapterListScreen(
+                resourceId = resourceId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToViewer = { resId ->
+                    navController.navigate(Screen.Viewer.createRoute(resId))
+                },
             )
         }
 

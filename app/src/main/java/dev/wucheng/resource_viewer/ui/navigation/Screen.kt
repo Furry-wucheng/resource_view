@@ -17,5 +17,10 @@ sealed class Screen(val route: String) {
     }
     data object TagManager : Screen("tags/manager")
 
+    // === M21 创建：章节列表路由 ===
+    data object ChapterList : Screen("chapters/{resourceId}") {
+        fun createRoute(resourceId: String) = "chapters/$resourceId"
+    }
+
     // === 后续 stage 在此追加 ===
 }

@@ -139,4 +139,49 @@ class DetectOrganizationModeUseCaseTest {
 
             assertEquals(OrganizationMode.FLATGRID, result)
         }
+
+    @Test
+    fun `should return CHAPTER_GALLERY when subfolders contain sub-subfolders with images`() =
+        runTest {
+            val rootEntries =
+                listOf(
+                    FileEntry("chapter1", "chapter1", true, 0, System.currentTimeMillis(), ""),
+                )
+            val chapter1Entries =
+                listOf(
+                    FileEntry("part1", "chapter1/part1", true, 0, System.currentTimeMillis(), ""),
+                    FileEntry("photo1.jpg", "chapter1/photo1.jpg", false, 1024, System.currentTimeMillis(), "jpg"),
+                )
+            val part1Entries =
+                listOf(
+                    FileEntry("photo2.jpg", "chapter1/part1/photo2.jpg", false, 2048, System.currentTimeMillis(), "jpg"),
+                )
+            coEvery { mockFileSource.listDirectory("/test/path") } returns rootEntries
+            coEvery { mockFileSource.listDirectory("/test/path/chapter1") } returns chapter1Entries
+            coEvery { mockFileSource.listDirectory("/test/path/chapter1/part1") } returns part1Entries
+
+            val result = useCase.invoke(mockFileSource, "/test/path")
+
+            assertEquals(OrganizationMode.CHAPTER_GALLERY, result)
+        }
+
+    @Test
+    fun `should return CHAPTER when subfolders contain only images without sub-subfolders`() =
+        runTest {
+            val rootEntries =
+                listOf(
+                    FileEntry("chapter1", "chapter1", true, 0, System.currentTimeMillis(), ""),
+                )
+            val chapter1Entries =
+                listOf(
+                    FileEntry("photo1.jpg", "chapter1/photo1.jpg", false, 1024, System.currentTimeMillis(), "jpg"),
+                    FileEntry("photo2.png", "chapter1/photo2.png", false, 2048, System.currentTimeMillis(), "png"),
+                )
+            coEvery { mockFileSource.listDirectory("/test/path") } returns rootEntries
+            coEvery { mockFileSource.listDirectory("/test/path/chapter1") } returns chapter1Entries
+
+            val result = useCase.invoke(mockFileSource, "/test/path")
+
+            assertEquals(OrganizationMode.CHAPTER, result)
+        }
 }

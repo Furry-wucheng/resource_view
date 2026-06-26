@@ -9,9 +9,10 @@ import dev.wucheng.resource_viewer.shared.filesource.FileSource
  * 规则：
  * - 文件夹下仅图片 → FLATGRID
  * - 文件夹下有子文件夹（含图片） → CHAPTER
+ * - 文件夹下有子文件夹（含子子文件夹+图片） → CHAPTER_GALLERY
  * - 文件夹下有图片 + PDF + 视频混合 → FLATGRID
  *
- * 注意：此实现遵循 doc/mvp/M20-gallery-flatgrid-strategies.md 中的 M20.3 子任务。
+ * 注意：此实现遵循 doc/mvp/M20-gallery-flatgrid-strategies.md + doc/mvp/M21-chapter-strategies.md。
  */
 class DetectOrganizationModeUseCase {
     /** 支持的图片扩展名 */
@@ -42,7 +43,13 @@ class DetectOrganizationModeUseCase {
             // 检查子文件夹是否包含图片
             val hasSubfoldersWithImages = checkSubfoldersContainImages(fileSource, relativePath, directories)
             if (hasSubfoldersWithImages) {
-                return OrganizationMode.CHAPTER
+                // 检查子文件夹是否包含子子文件夹（CHAPTER_GALLERY 模式）
+                val hasSubSubfolders = checkSubfoldersContainSubfolders(fileSource, relativePath, directories)
+                return if (hasSubSubfolders) {
+                    OrganizationMode.CHAPTER_GALLERY
+                } else {
+                    OrganizationMode.CHAPTER
+                }
             }
         }
 
@@ -76,6 +83,25 @@ class DetectOrganizationModeUseCase {
             val subEntries = fileSource.listDirectory("$parentPath/${dir.name}")
             val hasImages = subEntries.any { !it.isDirectory && it.extension.lowercase() in imageExtensions }
             if (hasImages) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /**
+     * 检查子文件夹是否包含子子文件夹。
+     * 用于区分 CHAPTER 和 CHAPTER_GALLERY 模式。
+     */
+    private suspend fun checkSubfoldersContainSubfolders(
+        fileSource: FileSource,
+        parentPath: String,
+        directories: List<dev.wucheng.resource_viewer.domain.model.FileEntry>,
+    ): Boolean {
+        for (dir in directories) {
+            val subEntries = fileSource.listDirectory("$parentPath/${dir.name}")
+            val hasSubSubfolders = subEntries.any { it.isDirectory }
+            if (hasSubSubfolders) {
                 return true
             }
         }
