@@ -1,6 +1,7 @@
 package dev.wucheng.resource_viewer.di
 
 import dev.wucheng.resource_viewer.ui.screens.settings.SettingsViewModel
+import dev.wucheng.resource_viewer.ui.screens.tags.TagViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -10,4 +11,5 @@ import org.koin.dsl.module
  */
 val viewModelModule = module {
     viewModel { SettingsViewModel(get(), get(), get()) }
+    viewModel { TagViewModel(get()) }
 }

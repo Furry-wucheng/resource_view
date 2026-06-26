@@ -46,7 +46,9 @@ fun AppNavGraph(
             ViewerScreen(resourceId = resourceId)
         }
         composable(Screen.TagManager.route) {
-            TagManagerScreen()
+            TagManagerScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
 
         // === 后续 stage 在此追加 composable ===
