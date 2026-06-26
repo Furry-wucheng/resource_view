@@ -68,7 +68,7 @@
 | M22 | PDF 查看器 (PdfRenderer + PdfContentProvider) | 6 | M11,M14 | ✅ 完成 | — |
 | M23 | 首页网格完整实现 (HomeScreen + ViewModel + 缩略图 LRU) | 7 | M10,M16 | ✅ 已完成 | claude |
 | M24 | ResourcePicker + 资源详情弹窗 | 7 | M23 | ✅ 已完成 | claude |
-| M25 | 设置页面 (SettingsScreen + AppConfig + 缓存管理) | 7 | M23 | ⬜ 待开始 | — |
+| M25 | 设置页面 (SettingsScreen + AppConfig + 缓存管理) | 7 | M23 | ✅ 已完成 | claude |
 | M26 | 错误处理全局组件 (ErrorView + BaseViewModel) | 8 | M10 | ✅ 已完成 | claude |
 | M27 | 批量添加 + 拆分 UseCase | 8 | M10,M24 | ✅ 已完成 | claude |
 | M28 | ProGuard + 深色模式完善 + 边界打磨 | 8 | M25 | ⬜ 待开始 | — |
