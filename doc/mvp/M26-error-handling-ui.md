@@ -45,7 +45,7 @@
 
 ## 验收标准
 
-- [ ] ErrorView 在所有错误状态场景正确渲染
-- [ ] BaseViewModel 减少 ViewModel 中的重复代码
-- [ ] 数据库损坏时显示全局错误页
-- [ ] `./gradlew build` 通过
+- [x] ErrorView 在所有错误状态场景正确渲染
+- [x] BaseViewModel 减少 ViewModel 中的重复代码
+- [x] 数据库损坏时显示全局错误页
+- [x] `./gradlew build` 通过
