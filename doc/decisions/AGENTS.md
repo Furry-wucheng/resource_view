@@ -29,7 +29,7 @@
 | M17 | SmbFileSource + SMB 源配置 UI | 5 | ✅ | claude | 2026-06-26 |
 | M18 | SMB 视频 DataSource | — | ✅ | claude | 2026-06-26 |
 | M19 | 视频播放器组件 | 6 | ✅ | claude | 2026-06-26 |
-| M20 | Gallery + FlatGrid 策略 | — | ⬜ | — | — |
+| M20 | Gallery + FlatGrid 策略 | 3 | ✅ | claude | 2026-06-26 |
 | M21 | Chapter + ChapterGallery 策略 | — | ⬜ | — | — |
 | M22 | PDF 查看器 | — | ⬜ | — | — |
 | M23 | 首页网格完整实现 | — | ⬜ | — | — |
