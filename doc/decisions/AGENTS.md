@@ -26,7 +26,7 @@
 | M14 | 基础查看器 | — | ⬜ | — | — |
 | M15 | 标签 CRUD | — | ⬜ | — | — |
 | M16 | 筛选栏 + 标签交集查询 | — | ⬜ | — | — |
-| M17 | SmbFileSource + SMB 源配置 UI | — | ⬜ | — | — |
+| M17 | SmbFileSource + SMB 源配置 UI | 5 | ✅ | claude | 2026-06-26 |
 | M18 | SMB 视频 DataSource | — | ⬜ | — | — |
 | M19 | 视频播放器组件 | — | ⬜ | — | — |
 | M20 | Gallery + FlatGrid 策略 | — | ⬜ | — | — |
