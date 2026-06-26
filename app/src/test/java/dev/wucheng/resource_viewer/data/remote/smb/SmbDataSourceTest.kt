@@ -55,10 +55,10 @@ class SmbDataSourceTest {
             .build()
         val inputStream = ByteArrayInputStream("test content".toByteArray())
         every { mockWrapper.isConnected() } returns false
-        every { mockWrapper.openInputStream("/share/videos/test.mp4") } returns inputStream
-        every { mockWrapper.stat("/share/videos/test.mp4") } returns FileEntry(
+        every { mockWrapper.openInputStream("videos/test.mp4") } returns inputStream
+        every { mockWrapper.stat("videos/test.mp4") } returns FileEntry(
             name = "test.mp4",
-            relativePath = "/share/videos/test.mp4",
+            relativePath = "videos/test.mp4",
             isDirectory = false,
             size = 12,
             modifiedAt = System.currentTimeMillis(),
@@ -71,7 +71,7 @@ class SmbDataSourceTest {
         // Then
         assertEquals(12L, bytesRemaining)
         verify { mockWrapper.connect("192.168.1.100", 445, "testuser", "testpass", "WORKGROUP", "share") }
-        verify { mockWrapper.openInputStream("/share/videos/test.mp4") }
+        verify { mockWrapper.openInputStream("videos/test.mp4") }
     }
 
     @Test
@@ -83,10 +83,10 @@ class SmbDataSourceTest {
             .build()
         val inputStream = ByteArrayInputStream(ByteArray(200))
         every { mockWrapper.isConnected() } returns false
-        every { mockWrapper.openInputStream("/share/videos/test.mp4") } returns inputStream
-        every { mockWrapper.stat("/share/videos/test.mp4") } returns FileEntry(
+        every { mockWrapper.openInputStream("videos/test.mp4") } returns inputStream
+        every { mockWrapper.stat("videos/test.mp4") } returns FileEntry(
             name = "test.mp4",
-            relativePath = "/share/videos/test.mp4",
+            relativePath = "videos/test.mp4",
             isDirectory = false,
             size = 300,
             modifiedAt = System.currentTimeMillis(),
@@ -124,10 +124,10 @@ class SmbDataSourceTest {
         val content = "Hello, SMB!".toByteArray()
         val inputStream = ByteArrayInputStream(content)
         every { mockWrapper.isConnected() } returns false
-        every { mockWrapper.openInputStream("/share/videos/test.mp4") } returns inputStream
-        every { mockWrapper.stat("/share/videos/test.mp4") } returns FileEntry(
+        every { mockWrapper.openInputStream("videos/test.mp4") } returns inputStream
+        every { mockWrapper.stat("videos/test.mp4") } returns FileEntry(
             name = "test.mp4",
-            relativePath = "/share/videos/test.mp4",
+            relativePath = "videos/test.mp4",
             isDirectory = false,
             size = content.size.toLong(),
             modifiedAt = System.currentTimeMillis(),
@@ -153,10 +153,10 @@ class SmbDataSourceTest {
         // Given
         val inputStream = ByteArrayInputStream(ByteArray(0))
         every { mockWrapper.isConnected() } returns false
-        every { mockWrapper.openInputStream("/share/videos/test.mp4") } returns inputStream
-        every { mockWrapper.stat("/share/videos/test.mp4") } returns FileEntry(
+        every { mockWrapper.openInputStream("videos/test.mp4") } returns inputStream
+        every { mockWrapper.stat("videos/test.mp4") } returns FileEntry(
             name = "test.mp4",
-            relativePath = "/share/videos/test.mp4",
+            relativePath = "videos/test.mp4",
             isDirectory = false,
             size = 0,
             modifiedAt = System.currentTimeMillis(),
@@ -181,10 +181,10 @@ class SmbDataSourceTest {
         // Given
         val mockInputStream = mockk<InputStream>(relaxed = true)
         every { mockWrapper.isConnected() } returns false
-        every { mockWrapper.openInputStream("/share/videos/test.mp4") } returns mockInputStream
-        every { mockWrapper.stat("/share/videos/test.mp4") } returns FileEntry(
+        every { mockWrapper.openInputStream("videos/test.mp4") } returns mockInputStream
+        every { mockWrapper.stat("videos/test.mp4") } returns FileEntry(
             name = "test.mp4",
-            relativePath = "/share/videos/test.mp4",
+            relativePath = "videos/test.mp4",
             isDirectory = false,
             size = 100,
             modifiedAt = System.currentTimeMillis(),
@@ -238,10 +238,10 @@ class SmbDataSourceTest {
         val dataSource = SmbDataSource(sourceWithDefaultPort, testPassword, mockWrapper)
         val inputStream = ByteArrayInputStream("test".toByteArray())
         every { mockWrapper.isConnected() } returns false
-        every { mockWrapper.openInputStream("/share/videos/test.mp4") } returns inputStream
-        every { mockWrapper.stat("/share/videos/test.mp4") } returns FileEntry(
+        every { mockWrapper.openInputStream("videos/test.mp4") } returns inputStream
+        every { mockWrapper.stat("videos/test.mp4") } returns FileEntry(
             name = "test.mp4",
-            relativePath = "/share/videos/test.mp4",
+            relativePath = "videos/test.mp4",
             isDirectory = false,
             size = 4,
             modifiedAt = System.currentTimeMillis(),
@@ -266,10 +266,10 @@ class SmbDataSourceTest {
         val dataSource = SmbDataSource(sourceWithDeepPath, testPassword, mockWrapper)
         val inputStream = ByteArrayInputStream("test".toByteArray())
         every { mockWrapper.isConnected() } returns false
-        every { mockWrapper.openInputStream("/myshare/videos/movies/test.mp4") } returns inputStream
-        every { mockWrapper.stat("/myshare/videos/movies/test.mp4") } returns FileEntry(
+        every { mockWrapper.openInputStream("videos/movies/test.mp4") } returns inputStream
+        every { mockWrapper.stat("videos/movies/test.mp4") } returns FileEntry(
             name = "test.mp4",
-            relativePath = "/myshare/videos/movies/test.mp4",
+            relativePath = "videos/movies/test.mp4",
             isDirectory = false,
             size = 4,
             modifiedAt = System.currentTimeMillis(),

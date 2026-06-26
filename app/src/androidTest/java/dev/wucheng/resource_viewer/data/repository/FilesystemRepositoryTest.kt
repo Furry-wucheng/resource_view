@@ -39,7 +39,7 @@ class FilesystemRepositoryTest {
             AppDatabase::class.java
         ).allowMainThreadQueries().build()
         mockSecurePrefs = mockk()
-        repo = FilesystemRepository(db.sourceDao(), mockSecurePrefs)
+        repo = FilesystemRepository(db.sourceDao(), mockSecurePrefs, ApplicationProvider.getApplicationContext())
     }
 
     @After

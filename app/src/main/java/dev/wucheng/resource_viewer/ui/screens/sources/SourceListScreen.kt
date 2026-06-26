@@ -1,5 +1,8 @@
 package dev.wucheng.resource_viewer.ui.screens.sources
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.ui.components.EmptyState
@@ -22,6 +26,20 @@ fun SourceListScreen(
     viewModel: SourceListViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) {
+            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            try {
+                context.contentResolver.takePersistableUriPermission(uri, flags)
+            } catch (_: SecurityException) {
+                // Some providers grant transient access only; keep the URI so the user can still proceed.
+            }
+            viewModel.updateLocalForm(rootPath = uri.toString())
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadSources()
@@ -32,11 +50,16 @@ fun SourceListScreen(
             TopAppBar(
                 title = { Text("数据源") },
                 windowInsets = WindowInsets(0.dp),
+                actions = {
+                    TextButton(onClick = { viewModel.showAddSmbDialog() }) {
+                        Text("SMB")
+                    }
+                },
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { viewModel.showAddSmbDialog() },
+                onClick = { viewModel.showAddLocalDialog() },
             ) {
                 Icon(Icons.Default.Add, contentDescription = "添加数据源")
             }
@@ -49,7 +72,7 @@ fun SourceListScreen(
             if (uiState.sources.isEmpty() && !uiState.isLoading) {
                 EmptyState(
                     hasResources = false,
-                    onAddSource = { viewModel.showAddSmbDialog() },
+                    onAddSource = { viewModel.showAddLocalDialog() },
                 )
             } else {
                 LazyColumn(
@@ -92,6 +115,16 @@ fun SourceListScreen(
     }
 
     // SMB 添加弹窗
+    if (uiState.showAddLocalDialog) {
+        AddLocalDialog(
+            formData = uiState.localForm,
+            onNameChange = { name -> viewModel.updateLocalForm(name = name) },
+            onPickFolder = { folderPickerLauncher.launch(null) },
+            onConfirm = { viewModel.addLocalSource() },
+            onDismiss = { viewModel.hideAddLocalDialog() },
+        )
+    }
+
     if (uiState.showAddSmbDialog) {
         AddSmbDialog(
             formData = uiState.smbForm,

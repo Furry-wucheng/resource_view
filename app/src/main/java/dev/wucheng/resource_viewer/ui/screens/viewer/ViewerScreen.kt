@@ -6,15 +6,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
@@ -130,7 +133,7 @@ fun ViewerScreen(
                         when (item) {
                             is ViewerItem.ImagePage -> {
                                 PageContent(
-                                    resourceId = resourceId,
+                                    viewModel = viewModel,
                                     pageIndex = item.pageIndex,
                                     modifier = Modifier.fillMaxSize(),
                                 )
@@ -200,21 +203,57 @@ private fun VideoPageContent(
  */
 @Composable
 private fun PageContent(
-    resourceId: String,
+    viewModel: ViewerViewModel,
     pageIndex: Int,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
+    BoxWithConstraints(modifier = modifier.background(Color.Black)) {
+        val density = LocalDensity.current
+        val targetWidth = with(density) { maxWidth.roundToPx() }.coerceAtLeast(1)
+        val targetHeight = with(density) { maxHeight.roundToPx() }.coerceAtLeast(1)
+        val pageState by produceState<PageBitmapState>(
+            initialValue = PageBitmapState.Loading,
+            pageIndex,
+            targetWidth,
+            targetHeight,
+        ) {
+            value = try {
+                PageBitmapState.Success(
+                    viewModel.loadPageBitmap(pageIndex, targetWidth, targetHeight)
+                )
+            } catch (e: Exception) {
+                PageBitmapState.Error(e.message ?: "页面加载失败")
+            }
+        }
 
-    // TODO: 使用 Coil 加载图片
-    // 目前显示占位符
-    Box(
-        modifier = modifier.background(Color.DarkGray),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "Page $pageIndex",
-            color = Color.White.copy(alpha = 0.4f),
-        )
+        when (val state = pageState) {
+            PageBitmapState.Loading -> {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            }
+            is PageBitmapState.Success -> {
+                Image(
+                    bitmap = state.bitmap.asImageBitmap(),
+                    contentDescription = "Page ${pageIndex + 1}",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            is PageBitmapState.Error -> {
+                Text(
+                    text = state.message,
+                    color = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            }
+        }
     }
+}
+
+private sealed class PageBitmapState {
+    data object Loading : PageBitmapState()
+    data class Success(val bitmap: android.graphics.Bitmap) : PageBitmapState()
+    data class Error(val message: String) : PageBitmapState()
 }

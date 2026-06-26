@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.data.local.dao.ResourceTagDao
-import dev.wucheng.resource_viewer.data.local.entity.ResourceEntity
 import dev.wucheng.resource_viewer.data.local.entity.ResourceTagEntity
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.TagRepository
@@ -18,13 +17,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 /**
  * 首页 ViewModel。
  * 管理资源列表、标签筛选、UI 状态和资源详情编辑。
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
     private val resourceRepository: ResourceRepository,
     private val tagRepository: TagRepository,
@@ -179,15 +179,7 @@ class HomeViewModel(
         val newOrgMode = _detailOrgMode.value
 
         viewModelScope.launch {
-            // 更新组织模式
-            resourceRepository.getById(resource.id).let { result ->
-                if (result is dev.wucheng.resource_viewer.domain.error.Result.Ok) {
-                    result.value?.let { entity ->
-                        // entity is Resource, need to get the ResourceEntity
-                        // For now, we'll update via the repository
-                    }
-                }
-            }
+            resourceRepository.updateOrganizationMode(resource.id, newOrgMode)
 
             // 更新标签关联
             // 先删除旧的

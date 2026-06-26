@@ -34,12 +34,12 @@ class SmbFileSource(
 
     /**
      * 获取共享内的基础路径。
-     * 例如："/myshare/folder" -> "/myshare/folder"
+     * 例如："/myshare/folder" -> "folder"
      */
     private val basePath: String
         get() {
             val path = source.rootPath.trimStart('/')
-            return "/$path"
+            return path.substringAfter('/', missingDelimiterValue = "").trim('/')
         }
 
     /**
@@ -65,11 +65,10 @@ class SmbFileSource(
      * @return 完整的 SMB 路径
      */
     private fun buildFullPath(relativePath: String): String {
-        return if (relativePath.isEmpty()) {
-            basePath
-        } else {
-            "$basePath/$relativePath"
-        }
+        val relative = relativePath.trim('/')
+        return listOf(basePath, relative)
+            .filter { it.isNotEmpty() }
+            .joinToString("/")
     }
 
     override suspend fun listDirectory(relativePath: String): List<FileEntry> {

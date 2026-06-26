@@ -52,12 +52,12 @@ class DatabaseBackupManagerTest {
     }
 
     @Test
-    fun `createBackup should close database before backup`() = runTest {
+    fun `createBackup should not close database singleton`() = runTest {
         val backupDir = File(tempDir, "backups")
 
         backupManager.createBackup(backupDir)
 
-        verify { database.close() }
+        verify(exactly = 0) { database.close() }
     }
 
     @Test

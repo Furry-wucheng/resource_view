@@ -6,7 +6,6 @@ import dev.wucheng.resource_viewer.data.local.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -36,8 +35,7 @@ class DatabaseBackupManager(
      */
     suspend fun createBackup(backupDir: File): Result<File> = withContext(Dispatchers.IO) {
         try {
-            // 确保数据库连接关闭，以便安全复制
-            database.close()
+            checkpointWal()
 
             // 确保备份目录存在
             if (!backupDir.exists()) {
@@ -176,6 +174,20 @@ class DatabaseBackupManager(
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private fun checkpointWal() {
+        try {
+            database.openHelper.writableDatabase
+                .query("PRAGMA wal_checkpoint(FULL)")
+                .use { cursor ->
+                    while (cursor.moveToNext()) {
+                        // Drain the cursor so SQLite completes the checkpoint.
+                    }
+                }
+        } catch (_: Exception) {
+            // A best-effort checkpoint keeps backup creation from closing the app-wide database singleton.
         }
     }
 }

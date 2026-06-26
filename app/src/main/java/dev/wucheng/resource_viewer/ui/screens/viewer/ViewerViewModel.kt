@@ -1,6 +1,7 @@
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
@@ -16,10 +17,14 @@ import dev.wucheng.resource_viewer.domain.model.ViewerItem
 import dev.wucheng.resource_viewer.shared.content.ContentProvider
 import dev.wucheng.resource_viewer.shared.content.ImageFolderProvider
 import dev.wucheng.resource_viewer.shared.content.PdfContentProvider
+import dev.wucheng.resource_viewer.shared.filesource.DocumentTreeFileSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.IOException
 
 /**
@@ -53,6 +58,7 @@ class ViewerViewModel(
     private val resourceRepository: ResourceRepository,
     private val filesystemRepository: FilesystemRepository,
     private val context: Context,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     /** UI 状态 */
     private val _uiState = MutableStateFlow<ViewerUiState>(ViewerUiState.Loading)
@@ -121,9 +127,28 @@ class ViewerViewModel(
 
                 val videoSource = when (source.type) {
                     SourceType.LOCAL -> {
-                        VideoMediaSource.LocalFile(
-                            path = "${source.rootPath.trimEnd('/')}/${resource.relativePath}",
-                        )
+                        if (source.rootPath.startsWith("content://")) {
+                            when (val fsResult = filesystemRepository.getFileSource(source.id)) {
+                                is Result.Ok -> {
+                                    val documentSource = fsResult.value as? DocumentTreeFileSource
+                                    if (documentSource == null) {
+                                        _uiState.value = ViewerUiState.Error("Unsupported local source")
+                                        return
+                                    }
+                                    VideoMediaSource.LocalFile(
+                                        path = documentSource.getDocumentUri(resource.relativePath).toString(),
+                                    )
+                                }
+                                is Result.Err -> {
+                                    _uiState.value = ViewerUiState.Error("Failed to get file source")
+                                    return
+                                }
+                            }
+                        } else {
+                            VideoMediaSource.LocalFile(
+                                path = "${source.rootPath.trimEnd('/')}/${resource.relativePath}",
+                            )
+                        }
                     }
                     SourceType.SMB -> {
                         val password = filesystemRepository.getPassword(source.id)
@@ -169,19 +194,21 @@ class ViewerViewModel(
             is Result.Ok -> {
                 val fileSource = fsResult.value
                 try {
-                    val provider = when (resource.type) {
-                        ResourceType.PDF -> {
-                            PdfContentProvider(
-                                context = context,
-                                fileSource = fileSource,
-                                relativePath = resource.relativePath,
-                            )
-                        }
-                        else -> {
-                            ImageFolderProvider(
-                                fileSource = fileSource,
-                                relativePath = resource.relativePath,
-                            )
+                    val provider = withContext(ioDispatcher) {
+                        when (resource.type) {
+                            ResourceType.PDF -> {
+                                PdfContentProvider(
+                                    context = context,
+                                    fileSource = fileSource,
+                                    relativePath = resource.relativePath,
+                                )
+                            }
+                            else -> {
+                                ImageFolderProvider(
+                                    fileSource = fileSource,
+                                    relativePath = resource.relativePath,
+                                )
+                            }
                         }
                     }
                     contentProvider = provider
@@ -247,6 +274,16 @@ class ViewerViewModel(
         val total = _totalPages.value
         if (page in 0 until total) {
             _currentPage.value = page
+        }
+    }
+
+    /**
+     * 加载当前 ContentProvider 中的页面 Bitmap。
+     */
+    suspend fun loadPageBitmap(pageIndex: Int, targetWidth: Int, targetHeight: Int): Bitmap {
+        val provider = contentProvider ?: throw IllegalStateException("Content provider is not ready")
+        return withContext(ioDispatcher) {
+            provider.loadPage(pageIndex, targetWidth, targetHeight)
         }
     }
 

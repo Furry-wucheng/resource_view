@@ -107,7 +107,7 @@ class SmbClientWrapper(private val client: SMBClient) {
     fun stat(fullPath: String): FileEntry? {
         val currentShare = share ?: throw SmbConnectionException("Not connected")
         return try {
-            val parentPath = fullPath.substringBeforeLast("/")
+            val parentPath = fullPath.substringBeforeLast("/", missingDelimiterValue = "")
             val fileName = fullPath.substringAfterLast("/")
             val entries = currentShare.list(parentPath)
             entries

@@ -9,6 +9,7 @@ import dev.wucheng.resource_viewer.ui.screens.home.HomeScreen
 import dev.wucheng.resource_viewer.ui.screens.knowledge.KnowledgeScreen
 import dev.wucheng.resource_viewer.ui.screens.profile.ProfileScreen
 import dev.wucheng.resource_viewer.ui.screens.settings.SettingsScreen
+import dev.wucheng.resource_viewer.ui.screens.sources.FileBrowserScreen
 import dev.wucheng.resource_viewer.ui.screens.sources.SourceListScreen
 import dev.wucheng.resource_viewer.ui.screens.tags.TagManagerScreen
 import dev.wucheng.resource_viewer.ui.screens.toolbox.ToolboxScreen
@@ -39,7 +40,7 @@ fun AppNavGraph(
         composable(Screen.Sources.route) {
             SourceListScreen(
                 onNavigateToBrowser = { sourceId ->
-                    // TODO: M13 追加 FileBrowser 路由
+                    navController.navigate(Screen.FileBrowser.createRoute(sourceId))
                 },
             )
         }
@@ -68,6 +69,13 @@ fun AppNavGraph(
         }
         composable(Screen.TagManager.route) {
             TagManagerScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable(Screen.FileBrowser.route) { backStackEntry ->
+            val sourceId = backStackEntry.arguments?.getString("sourceId") ?: return@composable
+            FileBrowserScreen(
+                sourceId = sourceId,
                 onNavigateBack = { navController.popBackStack() },
             )
         }

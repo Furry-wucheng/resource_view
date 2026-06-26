@@ -3,6 +3,9 @@ package dev.wucheng.resource_viewer.data.repository
 import dev.wucheng.resource_viewer.data.local.dao.ResourceDao
 import dev.wucheng.resource_viewer.data.local.dao.ResourceTagDao
 import dev.wucheng.resource_viewer.data.local.dao.TagDao
+import dev.wucheng.resource_viewer.data.local.dao.ResourceTagWithTag
+import dev.wucheng.resource_viewer.data.local.dao.ResourceWithSourceName
+import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.data.local.entity.ResourceEntity
 import dev.wucheng.resource_viewer.data.local.entity.toDomain
 import dev.wucheng.resource_viewer.domain.error.DomainError
@@ -30,13 +33,10 @@ class ResourceRepository(
      */
     fun getVisibleResources(): Flow<List<Resource>> {
         return combine(
-            resourceDao.getVisibleResources(),
-            tagDao.getTagResourceCounts(),
-        ) { resources, tagCounts ->
-            resources.map { entity ->
-                val tags = getTagsForResource(entity.id, tagCounts)
-                entity.toDomain(sourceName = "", tags = tags)
-            }
+            resourceDao.getVisibleResourceItems(),
+            tagDao.getAllResourceTagsWithTags(),
+        ) { resources, tagRows ->
+            resources.toDomainList(tagRows)
         }
     }
 
@@ -45,13 +45,10 @@ class ResourceRepository(
      */
     fun getAvailableResources(): Flow<List<Resource>> {
         return combine(
-            resourceDao.getAvailableResources(),
-            tagDao.getTagResourceCounts(),
-        ) { resources, tagCounts ->
-            resources.map { entity ->
-                val tags = getTagsForResource(entity.id, tagCounts)
-                entity.toDomain(sourceName = "", tags = tags)
-            }
+            resourceDao.getAvailableResourceItems(),
+            tagDao.getAllResourceTagsWithTags(),
+        ) { resources, tagRows ->
+            resources.toDomainList(tagRows)
         }
     }
 
@@ -60,10 +57,13 @@ class ResourceRepository(
      */
     suspend fun getById(id: String): Result<Resource?> {
         return try {
-            val entity = resourceDao.getById(id)
-            if (entity != null) {
-                // TODO: 需要查询 sourceName 和 tags
-                entity.toDomain(sourceName = "", tags = emptyList()).asOk()
+            val item = resourceDao.getByIdWithSource(id)
+            if (item != null) {
+                val tagCounts = tagDao.getTagResourceCountsSnapshot()
+                item.resource.toDomain(
+                    sourceName = item.sourceName,
+                    tags = getTagsForResource(item.resource.id, tagCounts),
+                ).asOk()
             } else {
                 null.asOk()
             }
@@ -128,13 +128,29 @@ class ResourceRepository(
     }
 
     /**
+     * 更新资源组织模式。
+     */
+    suspend fun updateOrganizationMode(id: String, organizationMode: OrganizationMode?): Result<Unit> {
+        return try {
+            resourceDao.updateOrganizationMode(id, organizationMode, System.currentTimeMillis()).asOk()
+        } catch (e: Exception) {
+            DomainError.DatabaseError("Failed to update resource organization mode", e).asErr()
+        }
+    }
+
+    /**
      * 键集分页获取资源。
      */
     suspend fun pageAfter(beforeCreatedAt: Long, limit: Int): Result<List<Resource>> {
         return try {
-            val entities = resourceDao.pageAfter(beforeCreatedAt, limit)
-            // TODO: 需要查询 sourceName 和 tags
-            entities.map { it.toDomain(sourceName = "", tags = emptyList()) }.asOk()
+            val items = resourceDao.pageAfterWithSource(beforeCreatedAt, limit)
+            val tagCounts = tagDao.getTagResourceCountsSnapshot()
+            items.map { item ->
+                item.resource.toDomain(
+                    sourceName = item.sourceName,
+                    tags = getTagsForResource(item.resource.id, tagCounts),
+                )
+            }.asOk()
         } catch (e: Exception) {
             DomainError.DatabaseError("Failed to page resources", e).asErr()
         }
@@ -145,13 +161,10 @@ class ResourceRepository(
      */
     fun filterByTags(tagIds: List<String>): Flow<List<Resource>> {
         return combine(
-            resourceDao.filterByTags(tagIds, tagIds.size),
-            tagDao.getTagResourceCounts(),
-        ) { resources, tagCounts ->
-            resources.map { entity ->
-                val tags = getTagsForResource(entity.id, tagCounts)
-                entity.toDomain(sourceName = "", tags = tags)
-            }
+            resourceDao.filterResourceItemsByTags(tagIds, tagIds.size),
+            tagDao.getAllResourceTagsWithTags(),
+        ) { resources, tagRows ->
+            resources.toDomainList(tagRows)
         }
     }
 
@@ -160,13 +173,10 @@ class ResourceRepository(
      */
     fun searchByName(query: String): Flow<List<Resource>> {
         return combine(
-            resourceDao.searchByName(query),
-            tagDao.getTagResourceCounts(),
-        ) { resources, tagCounts ->
-            resources.map { entity ->
-                val tags = getTagsForResource(entity.id, tagCounts)
-                entity.toDomain(sourceName = "", tags = tags)
-            }
+            resourceDao.searchResourceItemsByName(query),
+            tagDao.getAllResourceTagsWithTags(),
+        ) { resources, tagRows ->
+            resources.toDomainList(tagRows)
         }
     }
 
@@ -184,6 +194,32 @@ class ResourceRepository(
                 color = "#000000",
                 createdAt = 0,
                 updatedAt = 0,
+            )
+        }
+    }
+
+    private fun List<ResourceWithSourceName>.toDomainList(tagRows: List<ResourceTagWithTag>): List<Resource> {
+        val countByTagId = tagRows.groupingBy { it.id }.eachCount()
+        val tagsByResourceId = tagRows
+            .groupBy { it.resourceId }
+            .mapValues { (_, rows) ->
+                rows.map { row ->
+                    Tag(
+                        id = row.id,
+                        name = row.name,
+                        color = row.color,
+                        isBuiltIn = row.isBuiltIn,
+                        resourceCount = countByTagId[row.id] ?: 0,
+                        createdAt = row.createdAt,
+                        updatedAt = row.updatedAt,
+                    )
+                }
+            }
+
+        return map { item ->
+            item.resource.toDomain(
+                sourceName = item.sourceName,
+                tags = tagsByResourceId[item.resource.id].orEmpty(),
             )
         }
     }

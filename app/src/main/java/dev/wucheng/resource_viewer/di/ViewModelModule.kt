@@ -5,6 +5,7 @@ package dev.wucheng.resource_viewer.di
 import androidx.media3.exoplayer.ExoPlayer
 import dev.wucheng.resource_viewer.ui.screens.home.HomeViewModel
 import dev.wucheng.resource_viewer.ui.screens.settings.SettingsViewModel
+import dev.wucheng.resource_viewer.ui.screens.sources.FileBrowserViewModel
 import dev.wucheng.resource_viewer.ui.screens.sources.SourceListViewModel
 import dev.wucheng.resource_viewer.ui.screens.tags.TagViewModel
 import dev.wucheng.resource_viewer.ui.screens.viewer.ChapterListViewModel
@@ -22,6 +23,7 @@ val viewModelModule = module {
     viewModel { TagViewModel(get()) }
     viewModel { HomeViewModel(get(), get(), get()) }
     viewModel { SourceListViewModel(get(), get(), get()) }
+    viewModel { (sourceId: String) -> FileBrowserViewModel(sourceId, get(), get()) }
     viewModel { (resourceId: String) -> ViewerViewModel(resourceId, get(), get(), get()) }
     viewModel { (resourceId: String) -> ChapterListViewModel(resourceId, get(), get()) }
 

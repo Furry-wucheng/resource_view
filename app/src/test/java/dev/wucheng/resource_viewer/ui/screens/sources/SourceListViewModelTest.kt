@@ -187,6 +187,38 @@ class SourceListViewModelTest {
     }
 
     @Test
+    fun `addLocalSource should save local source when form is valid`() = runTest {
+        viewModel.updateLocalForm(
+            name = "Local Comics",
+            rootPath = "/storage/emulated/0/Comics",
+        )
+        coEvery { mockSourceRepository.insert(any()) } returns Result.Ok(Unit)
+
+        viewModel.addLocalSource()
+
+        coVerify {
+            mockSourceRepository.insert(
+                match {
+                    it.name == "Local Comics" &&
+                        it.type == SourceType.LOCAL &&
+                        it.rootPath == "/storage/emulated/0/Comics"
+                }
+            )
+        }
+        assertFalse(viewModel.uiState.value.showAddLocalDialog)
+    }
+
+    @Test
+    fun `addLocalSource should show error when root path is empty`() = runTest {
+        viewModel.updateLocalForm(name = "Local Comics", rootPath = "")
+
+        viewModel.addLocalSource()
+
+        assertNotNull(viewModel.uiState.value.error)
+        coVerify(exactly = 0) { mockSourceRepository.insert(any()) }
+    }
+
+    @Test
     fun `addSmbSource should show error when name is empty`() = runTest {
         // Given
         viewModel.updateSmbForm(

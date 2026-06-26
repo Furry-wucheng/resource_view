@@ -1,5 +1,6 @@
 package dev.wucheng.resource_viewer.data.repository
 
+import android.content.Context
 import dev.wucheng.resource_viewer.data.local.dao.SourceDao
 import dev.wucheng.resource_viewer.data.local.secure.SecurePrefs
 import dev.wucheng.resource_viewer.domain.error.DomainError
@@ -21,6 +22,7 @@ import dev.wucheng.resource_viewer.shared.filesource.FileSourceFactory
 class FilesystemRepository(
     private val sourceDao: SourceDao,
     private val securePrefs: SecurePrefs,
+    private val context: Context,
 ) {
     /**
      * 列出指定数据源的目录内容。
@@ -30,7 +32,7 @@ class FilesystemRepository(
     suspend fun listDirectory(source: Source, relativePath: String): Result<List<FileEntry>> {
         return try {
             val password = securePrefs.getPassword(source.id)
-            val fileSource = FileSourceFactory.create(source, password)
+            val fileSource = FileSourceFactory.create(source, password, context)
             val entries = fileSource.listDirectory(relativePath)
             entries.asOk()
         } catch (e: Exception) {
@@ -46,7 +48,7 @@ class FilesystemRepository(
     suspend fun stat(source: Source, relativePath: String): Result<FileEntry?> {
         return try {
             val password = securePrefs.getPassword(source.id)
-            val fileSource = FileSourceFactory.create(source, password)
+            val fileSource = FileSourceFactory.create(source, password, context)
             val entry = fileSource.stat(relativePath)
             entry.asOk()
         } catch (e: Exception) {
@@ -70,7 +72,7 @@ class FilesystemRepository(
     suspend fun testConnection(source: Source): Result<Boolean> {
         return try {
             val password = securePrefs.getPassword(source.id)
-            val fileSource = FileSourceFactory.create(source, password)
+            val fileSource = FileSourceFactory.create(source, password, context)
             fileSource.testConnection().asOk()
         } catch (e: Exception) {
             DomainError.SourceUnreachableError("Connection test failed", e).asErr()
@@ -100,10 +102,9 @@ class FilesystemRepository(
                 ?: return DomainError.DatabaseError("Source not found").asErr()
             val source = entity.toDomain()
             val password = securePrefs.getPassword(sourceId)
-            FileSourceFactory.create(source, password).asOk()
+            FileSourceFactory.create(source, password, context).asOk()
         } catch (e: Exception) {
             DomainError.SourceUnreachableError("Failed to create file source", e).asErr()
         }
     }
 }
-

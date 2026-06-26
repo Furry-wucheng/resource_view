@@ -74,6 +74,7 @@ class ViewerViewModelTest {
             resourceRepository = mockResourceRepository,
             filesystemRepository = mockFilesystemRepository,
             context = mockContext,
+            ioDispatcher = testDispatcher,
         )
     }
 
@@ -310,6 +311,7 @@ class ViewerViewModelTest {
             resourceRepository = mockResourceRepository,
             filesystemRepository = mockFilesystemRepository,
             context = mockContext,
+            ioDispatcher = testDispatcher,
         )
         coEvery { mockResourceRepository.getById("video-local-id") } returns Result.Ok(localVideoResource)
         coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
@@ -337,6 +339,7 @@ class ViewerViewModelTest {
             resourceRepository = mockResourceRepository,
             filesystemRepository = mockFilesystemRepository,
             context = mockContext,
+            ioDispatcher = testDispatcher,
         )
         coEvery { mockResourceRepository.getById("video-local-id") } returns Result.Ok(localVideoResource)
         coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
@@ -389,6 +392,7 @@ class ViewerViewModelTest {
             resourceRepository = mockResourceRepository,
             filesystemRepository = mockFilesystemRepository,
             context = mockContext,
+            ioDispatcher = testDispatcher,
         )
         videoViewModel.loadResource()
         advanceUntilIdle()
@@ -411,6 +415,7 @@ class ViewerViewModelTest {
             resourceRepository = mockResourceRepository,
             filesystemRepository = mockFilesystemRepository,
             context = mockContext,
+            ioDispatcher = testDispatcher,
         )
         videoViewModel.loadResource()
         advanceUntilIdle()

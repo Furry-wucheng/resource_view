@@ -17,6 +17,10 @@ sealed class Screen(val route: String) {
     }
     data object TagManager : Screen("tags/manager")
 
+    data object FileBrowser : Screen("sources/{sourceId}/browser") {
+        fun createRoute(sourceId: String) = "sources/$sourceId/browser"
+    }
+
     // === M21 创建：章节列表路由 ===
     data object ChapterList : Screen("chapters/{resourceId}") {
         fun createRoute(resourceId: String) = "chapters/$resourceId"

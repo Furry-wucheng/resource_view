@@ -10,6 +10,16 @@ import kotlinx.coroutines.flow.Flow
 
 data class TagCount(val id: String, val count: Int)
 
+data class ResourceTagWithTag(
+    val resourceId: String,
+    val id: String,
+    val name: String,
+    val color: String,
+    val isBuiltIn: Boolean,
+    val createdAt: Long,
+    val updatedAt: Long,
+)
+
 @Dao
 interface TagDao {
     @Query("SELECT * FROM tags ORDER BY isBuiltIn DESC, createdAt DESC")
@@ -36,4 +46,18 @@ interface TagDao {
         GROUP BY t.id
     """)
     fun getTagResourceCounts(): Flow<List<TagCount>>
+
+    @Query("""
+        SELECT t.id, COUNT(rt.resourceId) as count
+        FROM tags t LEFT JOIN resource_tags rt ON t.id = rt.tagId
+        GROUP BY t.id
+    """)
+    suspend fun getTagResourceCountsSnapshot(): List<TagCount>
+
+    @Query("""
+        SELECT rt.resourceId, t.id, t.name, t.color, t.isBuiltIn, t.createdAt, t.updatedAt
+        FROM resource_tags rt
+        INNER JOIN tags t ON t.id = rt.tagId
+    """)
+    fun getAllResourceTagsWithTags(): Flow<List<ResourceTagWithTag>>
 }

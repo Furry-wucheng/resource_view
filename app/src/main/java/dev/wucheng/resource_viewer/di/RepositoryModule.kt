@@ -5,6 +5,10 @@ import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.SourceRepository
 import dev.wucheng.resource_viewer.data.repository.TagRepository
 import dev.wucheng.resource_viewer.data.repository.ThumbnailRepository
+import dev.wucheng.resource_viewer.domain.usecase.BatchAddResourcesUseCase
+import dev.wucheng.resource_viewer.domain.usecase.DetectOrganizationModeUseCase
+import dev.wucheng.resource_viewer.domain.usecase.ScanResourcesUseCase
+import dev.wucheng.resource_viewer.domain.usecase.SplitResourceUseCase
 import dev.wucheng.resource_viewer.shared.thumbnail.ImageThumbnailGenerator
 import dev.wucheng.resource_viewer.shared.thumbnail.PdfThumbnailGenerator
 import dev.wucheng.resource_viewer.shared.thumbnail.VideoThumbnailGenerator
@@ -20,7 +24,11 @@ val repositoryModule = module {
     single { SourceRepository(get(), get()) }
     single { ResourceRepository(get(), get(), get()) }
     single { TagRepository(get(), get()) }
-    single { FilesystemRepository(get(), get()) }
+    single { FilesystemRepository(get(), get(), get()) }
+    single { DetectOrganizationModeUseCase() }
+    single { BatchAddResourcesUseCase(get(), get()) }
+    single { ScanResourcesUseCase(get(), get()) }
+    single { SplitResourceUseCase(get()) }
     single {
         ThumbnailRepository(
             setOf(

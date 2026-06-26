@@ -48,10 +48,10 @@ class SmbFileSourceTest {
     fun `listDirectory should connect and return entries`() = runTest {
         // Given
         val entries = listOf(
-            FileEntry("file1.jpg", "/share/file1.jpg", false, 1024, 1000, "jpg"),
-            FileEntry("subfolder", "/share/subfolder", true, 0, 2000, "")
+            FileEntry("file1.jpg", "file1.jpg", false, 1024, 1000, "jpg"),
+            FileEntry("subfolder", "subfolder", true, 0, 2000, "")
         )
-        every { mockWrapper.listDirectory("/share") } returns entries
+        every { mockWrapper.listDirectory("") } returns entries
 
         // When
         val result = smbFileSource.listDirectory("")
@@ -59,23 +59,23 @@ class SmbFileSourceTest {
         // Then
         assertEquals(2, result.size)
         verify { mockWrapper.connect("192.168.1.100", 445, "testuser", "testpass", "WORKGROUP", "share") }
-        verify { mockWrapper.listDirectory("/share") }
+        verify { mockWrapper.listDirectory("") }
     }
 
     @Test
     fun `listDirectory should handle relative path correctly`() = runTest {
         // Given
         val entries = listOf(
-            FileEntry("image.png", "/share/folder/image.png", false, 500, 3000, "png")
+            FileEntry("image.png", "folder/image.png", false, 500, 3000, "png")
         )
-        every { mockWrapper.listDirectory("/share/folder") } returns entries
+        every { mockWrapper.listDirectory("folder") } returns entries
 
         // When
         val result = smbFileSource.listDirectory("folder")
 
         // Then
         assertEquals(1, result.size)
-        verify { mockWrapper.listDirectory("/share/folder") }
+        verify { mockWrapper.listDirectory("folder") }
     }
 
     @Test(expected = SmbConnectionException::class)
@@ -99,8 +99,8 @@ class SmbFileSourceTest {
     @Test
     fun `stat should return file entry`() = runTest {
         // Given
-        val entry = FileEntry("test.txt", "/share/test.txt", false, 100, 5000, "txt")
-        every { mockWrapper.stat("/share/test.txt") } returns entry
+        val entry = FileEntry("test.txt", "test.txt", false, 100, 5000, "txt")
+        every { mockWrapper.stat("test.txt") } returns entry
 
         // When
         val result = smbFileSource.stat("test.txt")
@@ -113,7 +113,7 @@ class SmbFileSourceTest {
     @Test
     fun `stat should return null when file not found`() = runTest {
         // Given
-        every { mockWrapper.stat("/share/nonexistent.txt") } returns null
+        every { mockWrapper.stat("nonexistent.txt") } returns null
 
         // When
         val result = smbFileSource.stat("nonexistent.txt")
@@ -126,7 +126,7 @@ class SmbFileSourceTest {
     fun `readFile should return file content`() = runTest {
         // Given
         val content = "Hello, SMB!".toByteArray()
-        every { mockWrapper.readFile("/share/test.txt") } returns content
+        every { mockWrapper.readFile("test.txt") } returns content
 
         // When
         val result = smbFileSource.readFile("test.txt")
@@ -139,7 +139,7 @@ class SmbFileSourceTest {
     fun `readRange should return specified range`() = runTest {
         // Given
         val rangeContent = "World".toByteArray()
-        every { mockWrapper.readRange("/share/test.txt", 7L, 5L) } returns rangeContent
+        every { mockWrapper.readRange("test.txt", 7L, 5L) } returns rangeContent
 
         // When
         val result = smbFileSource.readRange("test.txt", 7L, 5L)
@@ -152,7 +152,7 @@ class SmbFileSourceTest {
     fun `openInputStream should return InputStream`() {
         // Given
         val content = "Stream content".toByteArray()
-        every { mockWrapper.openInputStream("/share/test.txt") } returns ByteArrayInputStream(content)
+        every { mockWrapper.openInputStream("test.txt") } returns ByteArrayInputStream(content)
 
         // When
         val stream = smbFileSource.openInputStream("test.txt")
@@ -205,14 +205,14 @@ class SmbFileSourceTest {
         val sourceWithSlashes = testSource.copy(rootPath = "/myshare/folder")
         val fileSource = SmbFileSource(sourceWithSlashes, testPassword, mockWrapper)
         val entries = emptyList<FileEntry>()
-        every { mockWrapper.listDirectory("/myshare/folder") } returns entries
+        every { mockWrapper.listDirectory("folder") } returns entries
 
         // When
         fileSource.listDirectory("")
 
         // Then
         verify { mockWrapper.connect("192.168.1.100", 445, "testuser", "testpass", "WORKGROUP", "myshare") }
-        verify { mockWrapper.listDirectory("/myshare/folder") }
+        verify { mockWrapper.listDirectory("folder") }
     }
 
     @Test
@@ -221,14 +221,14 @@ class SmbFileSourceTest {
         val sourceWithShareOnly = testSource.copy(rootPath = "/myshare")
         val fileSource = SmbFileSource(sourceWithShareOnly, testPassword, mockWrapper)
         val entries = emptyList<FileEntry>()
-        every { mockWrapper.listDirectory("/myshare") } returns entries
+        every { mockWrapper.listDirectory("") } returns entries
 
         // When
         fileSource.listDirectory("")
 
         // Then
         verify { mockWrapper.connect("192.168.1.100", 445, "testuser", "testpass", "WORKGROUP", "myshare") }
-        verify { mockWrapper.listDirectory("/myshare") }
+        verify { mockWrapper.listDirectory("") }
     }
 
     @Test
@@ -237,30 +237,30 @@ class SmbFileSourceTest {
         val sourceWithDeepPath = testSource.copy(rootPath = "/share/folder/subfolder")
         val fileSource = SmbFileSource(sourceWithDeepPath, testPassword, mockWrapper)
         val entries = emptyList<FileEntry>()
-        every { mockWrapper.listDirectory("/share/folder/subfolder") } returns entries
+        every { mockWrapper.listDirectory("folder/subfolder") } returns entries
 
         // When
         fileSource.listDirectory("")
 
         // Then
         verify { mockWrapper.connect("192.168.1.100", 445, "testuser", "testpass", "WORKGROUP", "share") }
-        verify { mockWrapper.listDirectory("/share/folder/subfolder") }
+        verify { mockWrapper.listDirectory("folder/subfolder") }
     }
 
     @Test
     fun `should handle relative path with multiple segments`() = runTest {
         // Given
         val entries = listOf(
-            FileEntry("file.txt", "/share/folder/sub/file.txt", false, 100, 1000, "txt")
+            FileEntry("file.txt", "folder/sub/file.txt", false, 100, 1000, "txt")
         )
-        every { mockWrapper.listDirectory("/share/folder/sub") } returns entries
+        every { mockWrapper.listDirectory("folder/sub") } returns entries
 
         // When
         val result = smbFileSource.listDirectory("folder/sub")
 
         // Then
         assertEquals(1, result.size)
-        verify { mockWrapper.listDirectory("/share/folder/sub") }
+        verify { mockWrapper.listDirectory("folder/sub") }
     }
 
     @Test(expected = SmbConnectionException::class)
@@ -368,7 +368,7 @@ class SmbFileSourceTest {
         val sourceWithDefaultPort = testSource.copy(port = null)
         val fileSource = SmbFileSource(sourceWithDefaultPort, testPassword, mockWrapper)
         val entries = emptyList<FileEntry>()
-        every { mockWrapper.listDirectory("/share") } returns entries
+        every { mockWrapper.listDirectory("") } returns entries
 
         // When
         fileSource.listDirectory("")
@@ -383,7 +383,7 @@ class SmbFileSourceTest {
         val sourceWithCustomPort = testSource.copy(port = 8445)
         val fileSource = SmbFileSource(sourceWithCustomPort, testPassword, mockWrapper)
         val entries = emptyList<FileEntry>()
-        every { mockWrapper.listDirectory("/share") } returns entries
+        every { mockWrapper.listDirectory("") } returns entries
 
         // When
         fileSource.listDirectory("")
@@ -398,7 +398,7 @@ class SmbFileSourceTest {
         val sourceWithNullUsername = testSource.copy(username = null)
         val fileSource = SmbFileSource(sourceWithNullUsername, testPassword, mockWrapper)
         val entries = emptyList<FileEntry>()
-        every { mockWrapper.listDirectory("/share") } returns entries
+        every { mockWrapper.listDirectory("") } returns entries
 
         // When
         fileSource.listDirectory("")
@@ -413,7 +413,7 @@ class SmbFileSourceTest {
         val sourceWithNullDomain = testSource.copy(domain = null)
         val fileSource = SmbFileSource(sourceWithNullDomain, testPassword, mockWrapper)
         val entries = emptyList<FileEntry>()
-        every { mockWrapper.listDirectory("/share") } returns entries
+        every { mockWrapper.listDirectory("") } returns entries
 
         // When
         fileSource.listDirectory("")

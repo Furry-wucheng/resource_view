@@ -1,0 +1,90 @@
+package dev.wucheng.resource_viewer.ui.screens.sources
+
+import dev.wucheng.resource_viewer.data.local.converter.SourceType
+import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
+import dev.wucheng.resource_viewer.domain.error.Result
+import dev.wucheng.resource_viewer.domain.error.ScanResult
+import dev.wucheng.resource_viewer.domain.model.FileEntry
+import dev.wucheng.resource_viewer.domain.model.Source
+import dev.wucheng.resource_viewer.domain.usecase.BatchAddResourcesUseCase
+import dev.wucheng.resource_viewer.shared.filesource.FileSource
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class FileBrowserViewModelTest {
+    private val dispatcher = UnconfinedTestDispatcher()
+    private lateinit var filesystemRepository: FilesystemRepository
+    private lateinit var batchAddResourcesUseCase: BatchAddResourcesUseCase
+    private lateinit var fileSource: FileSource
+    private lateinit var viewModel: FileBrowserViewModel
+
+    private val source = Source(
+        id = "source-1",
+        name = "Local",
+        type = SourceType.LOCAL,
+        rootPath = "/root",
+        createdAt = 1L,
+        updatedAt = 1L,
+    )
+
+    @Before
+    fun setup() {
+        Dispatchers.setMain(dispatcher)
+        filesystemRepository = mockk()
+        batchAddResourcesUseCase = mockk()
+        fileSource = mockk()
+        viewModel = FileBrowserViewModel("source-1", filesystemRepository, batchAddResourcesUseCase)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `load should populate current directory entries`() = runTest {
+        val entries = listOf(
+            FileEntry("folder", "folder", true, 0, 1L),
+            FileEntry("book.pdf", "book.pdf", false, 100, 1L, "pdf"),
+        )
+        coEvery { filesystemRepository.getSource("source-1") } returns Result.Ok(source)
+        coEvery { filesystemRepository.getFileSource("source-1") } returns Result.Ok(fileSource)
+        coEvery { filesystemRepository.listDirectory(source, "") } returns Result.Ok(entries)
+
+        viewModel.load()
+
+        assertEquals(source, viewModel.uiState.value.source)
+        assertEquals(listOf("folder", "book.pdf"), viewModel.uiState.value.entries.map { it.name })
+    }
+
+    @Test
+    fun `addSelectedResources should call batch add use case`() = runTest {
+        val entries = listOf(FileEntry("book.pdf", "book.pdf", false, 100, 1L, "pdf"))
+        coEvery { filesystemRepository.getSource("source-1") } returns Result.Ok(source)
+        coEvery { filesystemRepository.getFileSource("source-1") } returns Result.Ok(fileSource)
+        coEvery { filesystemRepository.listDirectory(source, "") } returns Result.Ok(entries)
+        coEvery { batchAddResourcesUseCase(fileSource, source, listOf("book.pdf")) } returns
+            Result.Ok(ScanResult(successCount = 1, skipCount = 0, failures = emptyList()))
+
+        viewModel.load()
+        viewModel.toggleSelection("book.pdf")
+        viewModel.addSelectedResources()
+
+        coVerify { batchAddResourcesUseCase(fileSource, source, listOf("book.pdf")) }
+        assertEquals(1, viewModel.uiState.value.lastAddResult?.successCount)
+        assertTrue(viewModel.uiState.value.selectedPaths.isEmpty())
+    }
+}

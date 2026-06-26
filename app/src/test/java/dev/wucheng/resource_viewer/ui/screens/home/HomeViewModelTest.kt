@@ -8,8 +8,12 @@ import dev.wucheng.resource_viewer.data.repository.TagRepository
 import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.domain.model.Tag
 import dev.wucheng.resource_viewer.ui.base.UiState
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.Runs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -274,5 +278,24 @@ class HomeViewModelTest {
 
         assertEquals(null, viewModel.detailResource.value)
         assertEquals(emptySet<String>(), viewModel.detailTagIds.value)
+    }
+
+    @Test
+    fun `should save selected organization mode when saving resource detail`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
+        every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
+        coEvery { mockResourceRepo.updateOrganizationMode(any(), any()) } returns dev.wucheng.resource_viewer.domain.error.Result.Ok(Unit)
+        coEvery { mockResourceTagDao.deleteByResourceId(any()) } just Runs
+        coEvery { mockResourceTagDao.insertAll(any()) } just Runs
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        advanceUntilIdle()
+
+        viewModel.openResourceDetail(testResource1)
+        viewModel.setDetailOrgMode(OrganizationMode.CHAPTER)
+        viewModel.saveResourceDetail()
+        advanceUntilIdle()
+
+        coVerify { mockResourceRepo.updateOrganizationMode("res1", OrganizationMode.CHAPTER) }
     }
 }

@@ -30,6 +30,11 @@ data class SmbFormData(
     val shareName: String = "",
 )
 
+data class LocalFormData(
+    val name: String = "",
+    val rootPath: String = "",
+)
+
 /**
  * 数据源列表 UI 状态。
  */
@@ -37,7 +42,9 @@ data class SourceListUiState(
     val sources: List<Source> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
+    val showAddLocalDialog: Boolean = false,
     val showAddSmbDialog: Boolean = false,
+    val localForm: LocalFormData = LocalFormData(),
     val smbForm: SmbFormData = SmbFormData(),
     val isTestingConnection: Boolean = false,
     val testConnectionSuccess: Boolean? = null,
@@ -87,6 +94,10 @@ class SourceListViewModel(
         _uiState.update { it.copy(showAddSmbDialog = true, smbForm = SmbFormData()) }
     }
 
+    fun showAddLocalDialog() {
+        _uiState.update { it.copy(showAddLocalDialog = true, localForm = LocalFormData()) }
+    }
+
     /**
      * 隐藏添加 SMB 源对话框。
      */
@@ -97,6 +108,29 @@ class SourceListViewModel(
                 smbForm = SmbFormData(),
                 testConnectionSuccess = null,
                 testConnectionError = null
+            )
+        }
+    }
+
+    fun hideAddLocalDialog() {
+        _uiState.update {
+            it.copy(
+                showAddLocalDialog = false,
+                localForm = LocalFormData(),
+            )
+        }
+    }
+
+    fun updateLocalForm(
+        name: String? = null,
+        rootPath: String? = null,
+    ) {
+        _uiState.update { state ->
+            state.copy(
+                localForm = state.localForm.copy(
+                    name = name ?: state.localForm.name,
+                    rootPath = rootPath ?: state.localForm.rootPath,
+                )
             )
         }
     }
@@ -223,6 +257,43 @@ class SourceListViewModel(
                     is Result.Err -> {
                         _uiState.update { it.copy(error = "保存失败: ${result.error.message}") }
                     }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "保存失败: ${e.message}") }
+            }
+        }
+    }
+
+    fun addLocalSource() {
+        val form = _uiState.value.localForm
+
+        if (form.name.isBlank()) {
+            _uiState.update { it.copy(error = "源名称不能为空") }
+            return
+        }
+        if (form.rootPath.isBlank()) {
+            _uiState.update { it.copy(error = "本地路径不能为空") }
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                val entity = SourceEntity(
+                    id = UUID.randomUUID().toString(),
+                    name = form.name,
+                    type = SourceType.LOCAL,
+                    rootPath = form.rootPath.trim(),
+                    enabled = true,
+                    isAvailable = true,
+                    lastCheckAt = now,
+                    createdAt = now,
+                    updatedAt = now,
+                )
+
+                when (val result = sourceRepository.insert(entity)) {
+                    is Result.Ok -> hideAddLocalDialog()
+                    is Result.Err -> _uiState.update { it.copy(error = "保存失败: ${result.error.message}") }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "保存失败: ${e.message}") }

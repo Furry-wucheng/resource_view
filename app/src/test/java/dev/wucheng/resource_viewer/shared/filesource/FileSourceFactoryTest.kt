@@ -4,6 +4,8 @@ import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.domain.model.Source
 import org.junit.Assert.*
 import org.junit.Test
+import java.io.File
+import java.nio.file.Files
 
 /**
  * FileSourceFactory 测试。
@@ -121,5 +123,39 @@ class FileSourceFactoryTest {
         val fileSource = FileSourceFactory.create(source)
 
         assertEquals("test-source-id", fileSource.sourceId)
+    }
+
+    @Test
+    fun `local file source should list stat and read files under root`() = kotlinx.coroutines.test.runTest {
+        val root = Files.createTempDirectory("resource-viewer-local-source").toFile()
+        try {
+            File(root, "b.txt").writeText("hello")
+            File(root, "a").mkdirs()
+
+            val source = createTestSource(type = SourceType.LOCAL, rootPath = root.absolutePath)
+            val fileSource = FileSourceFactory.create(source)
+
+            val entries = fileSource.listDirectory("")
+            assertEquals(listOf("a", "b.txt"), entries.map { it.name })
+            assertTrue(entries.first { it.name == "a" }.isDirectory)
+            assertEquals("hello", fileSource.readFile("b.txt").decodeToString())
+            assertEquals("b.txt", fileSource.stat("b.txt")?.relativePath)
+            assertTrue(fileSource.testConnection())
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `local file source should reject paths escaping root`() = kotlinx.coroutines.test.runTest {
+        val root = Files.createTempDirectory("resource-viewer-local-source").toFile()
+        try {
+            val source = createTestSource(type = SourceType.LOCAL, rootPath = root.absolutePath)
+            val fileSource = FileSourceFactory.create(source)
+
+            fileSource.stat("../outside.txt")
+        } finally {
+            root.deleteRecursively()
+        }
     }
 }

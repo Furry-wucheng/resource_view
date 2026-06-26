@@ -38,12 +38,12 @@ class SmbDataSource(
 
     /**
      * 获取共享内的基础路径。
-     * 例如："/myshare/folder" -> "/myshare/folder"
+     * 例如："/myshare/folder" -> "folder"
      */
     private val basePath: String
         get() {
             val path = source.rootPath.trimStart('/')
-            return "/$path"
+            return path.substringAfter('/', missingDelimiterValue = "").trim('/')
         }
 
     /**
@@ -70,11 +70,9 @@ class SmbDataSource(
      */
     private fun buildFullPath(uri: Uri): String {
         val relativePath = uri.path?.trimStart('/') ?: ""
-        return if (relativePath.isEmpty()) {
-            basePath
-        } else {
-            "$basePath/$relativePath"
-        }
+        return listOf(basePath, relativePath.trim('/'))
+            .filter { it.isNotEmpty() }
+            .joinToString("/")
     }
 
     override fun addTransferListener(transferListener: TransferListener) {

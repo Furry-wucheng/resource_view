@@ -13,7 +13,7 @@
 | KSP | KSP | 2.3.9 |
 | UI | Jetpack Compose + Material3 | BOM 2026.06.00 |
 | 架构 | MVVM + Repository | — |
-| DI | Hilt | 2.51 |
+| DI | Koin | 4.0.2 |
 | 导航 | Navigation Compose | 2.8.0 |
 | 数据库 | Room | 2.6.1 |
 | 视频 | Media3 ExoPlayer | 1.5.0 |
@@ -50,7 +50,7 @@ resource_viewer/
 │   │   ├── 00-glossary.md          #   术语定义
 │   │   ├── 01-data-models.md       #   Entity/Domain Model/Enum/ViewerItem
 │   │   ├── 02-interfaces.md        #   FileSource/ContentProvider/OrganizationStrategy/ThumbnailGenerator
-│   │   ├── 03-di-contracts.md      #   Hilt Module 契约
+│   │   ├── 03-di-contracts.md      #   Koin Module 契约
 │   │   ├── 04-navigation-routes.md #   路由定义 + NavHost + BottomNavBar
 │   │   ├── 05-theme-tokens.md      #   Color/Type/Shape
 │   │   ├── 06-error-handling.md    #   DomainError/Result/Progress/UiState
