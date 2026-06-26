@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,8 +19,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import dev.wucheng.resource_viewer.data.local.dao.AppConfigDao
-import dev.wucheng.resource_viewer.ui.components.PrivacyConsentDialog
+import dev.wucheng.resource_viewer.ui.base.FatalErrorHolder
 import dev.wucheng.resource_viewer.ui.components.AppShell
+import dev.wucheng.resource_viewer.ui.components.ErrorView
+import dev.wucheng.resource_viewer.ui.components.ErrorViewLevel
+import dev.wucheng.resource_viewer.ui.components.PrivacyConsentDialog
 import dev.wucheng.resource_viewer.ui.theme.ResourceViewerTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,6 +50,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ResourceViewerTheme {
+                val fatalError by FatalErrorHolder.fatalError.collectAsState()
                 val windowSizeClass = calculateWindowSizeClass(this)
                 var showPrivacyDialog by remember { mutableStateOf(false) }
                 var hasAcceptedPrivacy by remember { mutableStateOf(false) }
@@ -75,11 +80,22 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // 显示隐私政策弹窗
-                if (showPrivacyDialog) {
+                // M26: 错误处理
+                if (fatalError != null) {
+                    ErrorView(
+                        message = fatalError!!,
+                        canRetry = true,
+                        onRetry = {
+                            FatalErrorHolder.clear()
+                            recreate()
+                        },
+                        level = ErrorViewLevel.PAGE,
+                    )
+                }
+                // M12: 隐私政策弹窗
+                else if (showPrivacyDialog) {
                     PrivacyConsentDialog(
                         onAccept = {
-                            // 保存同意状态
                             coroutineScope.launch {
                                 withContext(Dispatchers.IO) {
                                     appConfigDao.updatePrivacyAccepted(true)
@@ -89,14 +105,12 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onDecline = {
-                            // 退出应用
                             finish()
                         },
                     )
                 }
-
                 // 主界面
-                if (hasAcceptedPrivacy) {
+                else if (hasAcceptedPrivacy) {
                     AppShell(widthSizeClass = windowSizeClass.widthSizeClass)
                 }
             }
