@@ -63,9 +63,9 @@
 | M17 | SmbFileSource + SMB 源配置 UI | 5 | M11,M12 | ✅ 已完成 | claude |
 | M18 | SMB 视频 DataSource | 5 | M17 | ✅ 已完成 | claude |
 | M19 | 视频播放器组件 (Media3 + VideoPlayer) | 6 | M11,M14 | ✅ 已完成 | claude |
-| M20 | Gallery + FlatGrid 策略 | 6 | M11,M14 | ⬜ 待开始 | — |
+| M20 | Gallery + FlatGrid 策略 | 6 | M11,M14 | ✅ 完成 | — |
 | M21 | Chapter + ChapterGallery 策略 + ChapterListScreen | 6 | M11,M20 | ⬜ 待开始 | — |
-| M22 | PDF 查看器 (PdfRenderer + PdfContentProvider) | 6 | M11,M14 | ⬜ 待开始 | — |
+| M22 | PDF 查看器 (PdfRenderer + PdfContentProvider) | 6 | M11,M14 | ✅ 完成 | — |
 | M23 | 首页网格完整实现 (HomeScreen + ViewModel + 缩略图 LRU) | 7 | M10,M16 | ⬜ 待开始 | — |
 | M24 | ResourcePicker + 资源详情弹窗 | 7 | M23 | ⬜ 待开始 | — |
 | M25 | 设置页面 (SettingsScreen + AppConfig + 缓存管理) | 7 | M23 | ⬜ 待开始 | — |

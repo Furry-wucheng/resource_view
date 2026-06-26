@@ -141,6 +141,31 @@
 | ExoPlayer 生命周期管理 | M19 | D-005 |
 | VideoThumbnailGenerator 实现 | M19 | D-006 |
 
+### M20 — Gallery + FlatGrid 策略
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| FlatGridStrategy | M20 | — |
+| GalleryStrategy | M20 | — |
+| DetectOrganizationModeUseCase | M20 | — |
+| FlatGrid 和 Gallery 策略共享文件获取逻辑 | M20 | D-001 |
+| DetectOrganizationModeUseCase 仅检查一级子目录 | M20 | D-002 |
+| 混合文件类型默认使用 FLATGRID | M20 | D-003 |
+
+### M22 — PDF 查看器
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| PdfRenderer | M22 | — |
+| PdfContentProvider | M22 | — |
+| PdfThumbnailGenerator | M22 | — |
+| pdfium-android 库选择 | M22 | D-001 |
+| PdfRenderer 封装方式 | M22 | D-002 |
+| PdfContentProvider 初始化策略 | M22 | D-003 |
+| 加密 PDF 处理方式 | M22 | D-004 |
+| PdfThumbnailGenerator 缩放策略 | M22 | D-005 |
+| ViewerViewModel Context 依赖 | M22 | D-006 |
+
 ---
 
 > ⚠️ 各 stage 完成后，Agent 需在此文件中新增自己 stage 涉及的组件行和决策主题行。

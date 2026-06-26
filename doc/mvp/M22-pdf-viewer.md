@@ -44,8 +44,8 @@
 
 ## 验收标准
 
-- [ ] PDF 资源进入查看器，显示 PDF 内容
-- [ ] 左右翻页流畅（每页预加载）
-- [ ] 加密 PDF 显示 MediaEncryptedError 提示
-- [ ] 退出查看器后 PDFium 资源正确释放
-- [ ] `./gradlew build` 通过
+- [x] PDF 资源进入查看器，显示 PDF 内容
+- [x] 左右翻页流畅（每页预加载）
+- [x] 加密 PDF 显示 MediaEncryptedError 提示
+- [x] 退出查看器后 PDFium 资源正确释放
+- [x] `./gradlew build` 通过

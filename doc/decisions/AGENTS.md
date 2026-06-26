@@ -31,7 +31,7 @@
 | M19 | 视频播放器组件 | 6 | ✅ | claude | 2026-06-26 |
 | M20 | Gallery + FlatGrid 策略 | 3 | ✅ | claude | 2026-06-26 |
 | M21 | Chapter + ChapterGallery 策略 | — | ⬜ | — | — |
-| M22 | PDF 查看器 | — | ⬜ | — | — |
+| M22 | PDF 查看器 | 6 | ✅ | claude | 2026-06-26 |
 | M23 | 首页网格完整实现 | — | ⬜ | — | — |
 | M24 | ResourcePicker + 资源详情弹窗 | — | ⬜ | — | — |
 | M25 | 设置页面 | — | ⬜ | — | — |
