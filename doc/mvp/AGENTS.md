@@ -56,9 +56,9 @@
 | M10 | Repository 层 + SecurePrefs | 1 | M08,M09 | ✅ 已完成 | claude |
 | M11 | 全部共享接口契约 | 2 | M09 | ✅ 已完成 | claude |
 | M12 | LocalFileSource 实现 | 3 | M10,M11 | ✅ 已完成 | claude |
-| M13 | 文件浏览器 | 3 | M12 | ⬜ 待开始 | — |
+| M13 | 核心功能单元测试 | 3 | M12 | ✅ 已完成 | claude |
 | M14 | 基础查看器 (ImageFolderProvider + HorizontalPager) | 3 | M13 | ⬜ 待开始 | — |
-| M15 | 标签 CRUD (TagManager + TagEditor + ViewModel) | 4 | M10 | ⬜ 待开始 | — |
+| M15 | 标签 CRUD (TagManager + TagEditor + ViewModel) | 4 | M10 | ✅ 已完成 | — |
 | M16 | 筛选栏 + 标签交集查询 | 4 | M15 | ⬜ 待开始 | — |
 | M17 | SmbFileSource + SMB 源配置 UI | 5 | M11,M12 | ⬜ 待开始 | — |
 | M18 | SMB 视频 DataSource | 5 | M17 | ⬜ 待开始 | — |
