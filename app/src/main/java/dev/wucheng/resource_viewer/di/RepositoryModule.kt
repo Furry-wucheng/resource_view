@@ -5,6 +5,7 @@ import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.SourceRepository
 import dev.wucheng.resource_viewer.data.repository.TagRepository
 import dev.wucheng.resource_viewer.data.repository.ThumbnailRepository
+import dev.wucheng.resource_viewer.shared.thumbnail.VideoThumbnailGenerator
 import org.koin.dsl.module
 
 /**
@@ -18,6 +19,15 @@ val repositoryModule = module {
     single { ResourceRepository(get(), get(), get()) }
     single { TagRepository(get(), get()) }
     single { FilesystemRepository(get(), get()) }
-    single { ThumbnailRepository(emptySet()) } // 实际生成器将在后续 Stage 添加
+    single {
+        ThumbnailRepository(
+            setOf(
+                VideoThumbnailGenerator(),
+                // ImageThumbnailGenerator (M23)
+                // PdfThumbnailGenerator (M22)
+                // ArchiveThumbnailGenerator (P2)
+            )
+        )
+    }
 }
 
