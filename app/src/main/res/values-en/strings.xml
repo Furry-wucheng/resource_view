@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Resource Viewer</string>
+
+    <!-- M16: Bottom Tab Bar -->
+    <string name="tab_home">Home</string>
+    <string name="tab_knowledge">Knowledge</string>
+    <string name="tab_toolbox">Toolbox</string>
+    <string name="tab_profile">Profile</string>
+    <string name="tab_settings">Settings</string>
+</resources>
