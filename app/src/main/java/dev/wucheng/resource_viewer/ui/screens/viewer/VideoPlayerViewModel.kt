@@ -1,5 +1,6 @@
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
+import androidx.lifecycle.ViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -20,7 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class VideoPlayerViewModel(
     private val player: ExoPlayer,
-) {
+) : ViewModel() {
     /** ExoPlayer 实例，供 PlayerView 绑定 */
     val exoPlayer: ExoPlayer get() = player
     /** 是否正在播放 */
@@ -116,5 +117,10 @@ class VideoPlayerViewModel(
      */
     fun release() {
         player.release()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        release()
     }
 }

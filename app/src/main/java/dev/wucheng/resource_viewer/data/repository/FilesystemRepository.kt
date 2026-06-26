@@ -55,6 +55,15 @@ class FilesystemRepository(
     }
 
     /**
+     * 获取数据源密码。
+     * @param sourceId 数据源 ID
+     * @return 密码字符串，如果未存储则返回 null
+     */
+    fun getPassword(sourceId: String): String? {
+        return securePrefs.getPassword(sourceId)
+    }
+
+    /**
      * 测试数据源连接。
      * @param source 数据源
      */
@@ -65,6 +74,19 @@ class FilesystemRepository(
             fileSource.testConnection().asOk()
         } catch (e: Exception) {
             DomainError.SourceUnreachableError("Connection test failed", e).asErr()
+        }
+    }
+
+    /**
+     * 根据 ID 获取数据源。
+     * @param sourceId 数据源 ID
+     */
+    suspend fun getSource(sourceId: String): Result<Source?> {
+        return try {
+            val entity = sourceDao.getSourceById(sourceId)
+            entity?.toDomain().asOk()
+        } catch (e: Exception) {
+            DomainError.DatabaseError("Failed to get source", e).asErr()
         }
     }
 

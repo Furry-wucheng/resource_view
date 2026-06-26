@@ -2,9 +2,13 @@ package dev.wucheng.resource_viewer.ui.screens.viewer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.wucheng.resource_viewer.data.local.converter.ResourceType
+import dev.wucheng.resource_viewer.data.local.converter.SourceType
+import dev.wucheng.resource_viewer.data.remote.smb.SmbDataSourceFactory
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.domain.error.Result
+import dev.wucheng.resource_viewer.domain.model.VideoMediaSource
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
 import dev.wucheng.resource_viewer.shared.content.ContentProvider
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +37,9 @@ sealed class ViewerUiState {
  * 查看器 ViewModel。
  * 管理当前页、页面列表、预加载状态。
  *
- * 注意：此实现遵循 doc/mvp/M14-basic-viewer.md 中的 M14.2 子任务。
+ * 支持图片文件夹（M14）和视频资源（M19）。
+ *
+ * 注意：此实现遵循 doc/mvp/M14-basic-viewer.md + doc/mvp/M19-video-player.md。
  */
 class ViewerViewModel(
     private val resourceId: String,
@@ -56,11 +62,12 @@ class ViewerViewModel(
     private val _resourceName = MutableStateFlow("")
     val resourceName: StateFlow<String> = _resourceName.asStateFlow()
 
-    /** ContentProvider 实例 */
+    /** ContentProvider 实例（图片文件夹模式） */
     private var contentProvider: ContentProvider? = null
 
     /**
      * 加载资源。
+     * 根据资源类型（VIDEO / FOLDER / PDF 等）创建不同的 ViewerItem 列表。
      */
     fun loadResource() {
         viewModelScope.launch {
@@ -76,41 +83,108 @@ class ViewerViewModel(
 
                     _resourceName.value = resource.name
 
-                    // 获取 FileSource
-                    when (val fsResult = filesystemRepository.getFileSource(resource.sourceId)) {
-                        is Result.Ok -> {
-                            // TODO: 根据资源类型创建 ContentProvider
-                            // 目前使用 ImageFolderProvider
-                            val fileSource = fsResult.value
-                            val provider = dev.wucheng.resource_viewer.shared.content.ImageFolderProvider(
-                                fileSource = fileSource,
-                                relativePath = resource.relativePath,
-                            )
-                            contentProvider = provider
-                            _totalPages.value = provider.pageCount
-
-                            // 创建 ViewerItem 列表
-                            val items = (0 until provider.pageCount).map { index ->
-                                ViewerItem.ImagePage(
-                                    title = resource.name,
-                                    pageIndex = index,
-                                    providerKey = resourceId,
-                                )
-                            }
-
-                            _uiState.value = ViewerUiState.Success(
-                                items = items,
-                                resourceName = resource.name,
-                            )
-                        }
-                        is Result.Err -> {
-                            _uiState.value = ViewerUiState.Error("Failed to get file source")
-                        }
+                    if (resource.type == ResourceType.VIDEO) {
+                        // 视频资源
+                        loadVideoResource(resource)
+                    } else {
+                        // 图片/PDF/压缩包资源
+                        loadContentProviderResource(resource)
                     }
                 }
                 is Result.Err -> {
                     _uiState.value = ViewerUiState.Error("Failed to load resource")
                 }
+            }
+        }
+    }
+
+    /**
+     * 加载视频资源。
+     * 根据数据源类型（LOCAL / SMB）创建不同的 VideoMediaSource。
+     */
+    private suspend fun loadVideoResource(resource: dev.wucheng.resource_viewer.domain.model.Resource) {
+        when (val sourceResult = filesystemRepository.getSource(resource.sourceId)) {
+            is Result.Ok -> {
+                val source = sourceResult.value
+                if (source == null) {
+                    _uiState.value = ViewerUiState.Error("Source not found")
+                    return
+                }
+
+                val videoSource = when (source.type) {
+                    SourceType.LOCAL -> {
+                        VideoMediaSource.LocalFile(
+                            path = "${source.rootPath.trimEnd('/')}/${resource.relativePath}",
+                        )
+                    }
+                    SourceType.SMB -> {
+                        val password = filesystemRepository.getPassword(source.id)
+                            ?: ""
+                        val smbFactory = SmbDataSourceFactory(source, password)
+                        VideoMediaSource.SmbFile(
+                            dataSourceFactory = smbFactory,
+                            relativePath = resource.relativePath,
+                            fileSize = resource.fileSize ?: 0L,
+                        )
+                    }
+                    else -> {
+                        _uiState.value = ViewerUiState.Error("Unsupported source type for video")
+                        return
+                    }
+                }
+
+                val items = listOf(
+                    ViewerItem.Video(
+                        title = resource.name,
+                        videoSource = videoSource,
+                    )
+                )
+
+                _totalPages.value = 1
+                _uiState.value = ViewerUiState.Success(
+                    items = items,
+                    resourceName = resource.name,
+                )
+            }
+            is Result.Err -> {
+                _uiState.value = ViewerUiState.Error("Failed to get source")
+            }
+        }
+    }
+
+    /**
+     * 加载图片/PDF/压缩包资源。
+     * 使用 ContentProvider 提供页面内容。
+     */
+    private suspend fun loadContentProviderResource(resource: dev.wucheng.resource_viewer.domain.model.Resource) {
+        when (val fsResult = filesystemRepository.getFileSource(resource.sourceId)) {
+            is Result.Ok -> {
+                // TODO: 根据资源类型创建不同的 ContentProvider
+                // 目前使用 ImageFolderProvider
+                val fileSource = fsResult.value
+                val provider = dev.wucheng.resource_viewer.shared.content.ImageFolderProvider(
+                    fileSource = fileSource,
+                    relativePath = resource.relativePath,
+                )
+                contentProvider = provider
+                _totalPages.value = provider.pageCount
+
+                // 创建 ViewerItem 列表
+                val items = (0 until provider.pageCount).map { index ->
+                    ViewerItem.ImagePage(
+                        title = resource.name,
+                        pageIndex = index,
+                        providerKey = resourceId,
+                    )
+                }
+
+                _uiState.value = ViewerUiState.Success(
+                    items = items,
+                    resourceName = resource.name,
+                )
+            }
+            is Result.Err -> {
+                _uiState.value = ViewerUiState.Error("Failed to get file source")
             }
         }
     }

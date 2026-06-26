@@ -1,10 +1,14 @@
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
+import dev.wucheng.resource_viewer.data.local.converter.ResourceType
+import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.model.Resource
+import dev.wucheng.resource_viewer.domain.model.Source
+import dev.wucheng.resource_viewer.domain.model.VideoMediaSource
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
 import dev.wucheng.resource_viewer.shared.content.ContentProvider
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
@@ -250,6 +254,101 @@ class ViewerViewModelTest {
 
         // Assert
         assertEquals("Test Resource", viewModel.resourceName.value)
+    }
+
+    // ===== RED: 测试视频资源加载 =====
+
+    private val localVideoResource = Resource(
+        id = "video-local-id",
+        sourceId = "local-source-1",
+        sourceName = "Local Source",
+        name = "Test Video",
+        type = ResourceType.VIDEO,
+        organizationMode = null,
+        relativePath = "videos/movie.mp4",
+        thumbnailPath = null,
+        fileCount = null,
+        fileSize = 1024L * 1024 * 100,
+        isAvailable = true,
+        lastScannedAt = System.currentTimeMillis(),
+        tags = emptyList(),
+        createdAt = System.currentTimeMillis(),
+        updatedAt = System.currentTimeMillis(),
+    )
+
+    private val localSource = Source(
+        id = "local-source-1",
+        name = "Local Source",
+        type = SourceType.LOCAL,
+        rootPath = "/storage/emulated/0",
+        createdAt = System.currentTimeMillis(),
+        updatedAt = System.currentTimeMillis(),
+    )
+
+    private val smbSource = Source(
+        id = "smb-source-1",
+        name = "SMB Source",
+        type = SourceType.SMB,
+        rootPath = "/share/videos",
+        host = "192.168.1.100",
+        port = 445,
+        username = "testuser",
+        domain = "WORKGROUP",
+        createdAt = System.currentTimeMillis(),
+        updatedAt = System.currentTimeMillis(),
+    )
+
+    @Test
+    fun `should emit ViewerItem Video when resource type is VIDEO and source is LOCAL`() = runTest {
+        // Arrange
+        val videoViewModel = ViewerViewModel(
+            resourceId = "video-local-id",
+            resourceRepository = mockResourceRepository,
+            filesystemRepository = mockFilesystemRepository,
+        )
+        coEvery { mockResourceRepository.getById("video-local-id") } returns Result.Ok(localVideoResource)
+        coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
+        coEvery { mockFilesystemRepository.getSource(any()) } returns Result.Ok(localSource)
+
+        // Act
+        videoViewModel.loadResource()
+        advanceUntilIdle()
+
+        // Assert
+        val state = videoViewModel.uiState.value
+        assertTrue("Expected Success state", state is ViewerUiState.Success)
+        val success = state as ViewerUiState.Success
+        assertEquals(1, success.items.size)
+        assertTrue("Expected ViewerItem.Video", success.items[0] is ViewerItem.Video)
+        val video = success.items[0] as ViewerItem.Video
+        assertTrue("Expected LocalFile source", video.videoSource is VideoMediaSource.LocalFile)
+    }
+
+    @Test
+    fun `should emit ViewerItem Video when resource type is VIDEO and source is SMB`() = runTest {
+        // Arrange
+        val videoViewModel = ViewerViewModel(
+            resourceId = "video-local-id",
+            resourceRepository = mockResourceRepository,
+            filesystemRepository = mockFilesystemRepository,
+        )
+        coEvery { mockResourceRepository.getById("video-local-id") } returns Result.Ok(localVideoResource)
+        coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
+        coEvery { mockFilesystemRepository.getSource(any()) } returns Result.Ok(smbSource)
+        every { mockFilesystemRepository.getPassword(any()) } returns "testpass"
+
+        // Act
+        videoViewModel.loadResource()
+        advanceUntilIdle()
+
+        // Assert
+        val state = videoViewModel.uiState.value
+        assertTrue("Expected Success state", state is ViewerUiState.Success)
+        val success = state as ViewerUiState.Success
+        assertEquals(1, success.items.size)
+        assertTrue("Expected ViewerItem.Video", success.items[0] is ViewerItem.Video)
+        val video = success.items[0] as ViewerItem.Video
+        assertTrue("Expected SmbFile source", video.videoSource is VideoMediaSource.SmbFile)
     }
 
     // ===== RED: 测试 dispose =====
