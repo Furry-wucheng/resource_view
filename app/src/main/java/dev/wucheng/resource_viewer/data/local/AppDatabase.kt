@@ -3,6 +3,8 @@ package dev.wucheng.resource_viewer.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import dev.wucheng.resource_viewer.data.local.converter.Converters
 import dev.wucheng.resource_viewer.data.local.dao.AppConfigDao
 import dev.wucheng.resource_viewer.data.local.dao.ResourceDao
@@ -23,7 +25,7 @@ import dev.wucheng.resource_viewer.data.local.entity.TagEntity
         ResourceTagEntity::class,
         AppConfigEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -36,6 +38,6 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         const val DATABASE_NAME = "resource_viewer.db"
-        const val DATABASE_VERSION = 1
+        const val DATABASE_VERSION = 2
     }
 }

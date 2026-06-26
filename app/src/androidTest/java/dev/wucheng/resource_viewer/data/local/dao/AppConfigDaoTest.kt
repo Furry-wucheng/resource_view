@@ -93,4 +93,66 @@ class AppConfigDaoTest {
         assertEquals(4, result?.thumbnailConcurrency)
         assertEquals(null, result?.autoSyncInterval)
     }
+
+    // M12: 隐私政策测试
+
+    @Test
+    fun `should return false when privacy not accepted`() = runTest {
+        val config = AppConfigEntity()
+        appConfigDao.save(config)
+
+        val result = appConfigDao.hasAcceptedPrivacy()
+        assertEquals(false, result)
+    }
+
+    @Test
+    fun `should return true when privacy accepted`() = runTest {
+        val config = AppConfigEntity(hasAcceptedPrivacy = true)
+        appConfigDao.save(config)
+
+        val result = appConfigDao.hasAcceptedPrivacy()
+        assertEquals(true, result)
+    }
+
+    @Test
+    fun `should return null when no config exists for privacy check`() = runTest {
+        val result = appConfigDao.hasAcceptedPrivacy()
+        assertNull(result)
+    }
+
+    @Test
+    fun `should update privacy accepted status`() = runTest {
+        val config = AppConfigEntity(hasAcceptedPrivacy = false)
+        appConfigDao.save(config)
+
+        appConfigDao.updatePrivacyAccepted(true)
+
+        val result = appConfigDao.hasAcceptedPrivacy()
+        assertEquals(true, result)
+    }
+
+    @Test
+    fun `should update privacy accepted status to false`() = runTest {
+        val config = AppConfigEntity(hasAcceptedPrivacy = true)
+        appConfigDao.save(config)
+
+        appConfigDao.updatePrivacyAccepted(false)
+
+        val result = appConfigDao.hasAcceptedPrivacy()
+        assertEquals(false, result)
+    }
+
+    @Test
+    fun `should update timestamp when privacy accepted`() = runTest {
+        val config = AppConfigEntity(hasAcceptedPrivacy = false)
+        appConfigDao.save(config)
+
+        val beforeUpdate = System.currentTimeMillis()
+        appConfigDao.updatePrivacyAccepted(true)
+        val afterUpdate = System.currentTimeMillis()
+
+        val result = appConfigDao.getConfig().first()
+        assertNotNull(result)
+        assert(result!!.updatedAt in beforeUpdate..afterUpdate)
+    }
 }

@@ -55,7 +55,7 @@
 | M09 | Domain Models | 1 | M06 | ✅ 已完成 | claude |
 | M10 | Repository 层 + SecurePrefs | 1 | M08,M09 | ✅ 已完成 | claude |
 | M11 | 全部共享接口契约 | 2 | M09 | ✅ 已完成 | claude |
-| M12 | LocalFileSource 实现 | 3 | M10,M11 | ⬜ 待开始 | — |
+| M12 | LocalFileSource 实现 | 3 | M10,M11 | ✅ 已完成 | claude |
 | M13 | 文件浏览器 | 3 | M12 | ⬜ 待开始 | — |
 | M14 | 基础查看器 (ImageFolderProvider + HorizontalPager) | 3 | M13 | ⬜ 待开始 | — |
 | M15 | 标签 CRUD (TagManager + TagEditor + ViewModel) | 4 | M10 | ⬜ 待开始 | — |
@@ -80,7 +80,7 @@
 ## 并行窗口
 
 ### 瓶颈点：谁能同时开工？
-/
+
 ```
          M00 (依赖配置)
         /            \

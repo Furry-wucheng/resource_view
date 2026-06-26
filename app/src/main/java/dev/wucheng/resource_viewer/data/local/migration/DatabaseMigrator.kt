@@ -129,12 +129,13 @@ class DatabaseMigrator(
     companion object {
         /**
          * Migration 1 -> 2
-         * 示例迁移：添加数据库版本常量
+         * M12: 添加隐私政策同意字段
          */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 示例：如果需要添加新列或表，在此实现
-                // db.execSQL("ALTER TABLE sources ADD COLUMN new_column TEXT DEFAULT NULL")
+                db.execSQL(
+                    "ALTER TABLE app_config ADD COLUMN hasAcceptedPrivacy INTEGER NOT NULL DEFAULT 0"
+                )
             }
         }
     }

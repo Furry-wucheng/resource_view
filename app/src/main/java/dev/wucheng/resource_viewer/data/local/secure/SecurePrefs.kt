@@ -8,7 +8,7 @@ import android.content.SharedPreferences
  *
  * 注意：此实现遵循 doc/share/03-di-contracts.md 中的 SecurePrefsModule 契约。
  */
-class SecurePrefs(private val prefs: SharedPreferences) {
+class SecurePrefs(val prefs: SharedPreferences) {
 
     companion object {
         private const val KEY_PREFIX_PASSWORD = "password_"

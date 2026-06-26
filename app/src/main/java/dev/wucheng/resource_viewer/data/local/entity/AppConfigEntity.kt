@@ -19,6 +19,8 @@ data class AppConfigEntity(
     val thumbnailConcurrency: Int = 4,
     val autoSyncInterval: AutoSyncInterval? = null,
     val updatedAt: Long = System.currentTimeMillis(),
+    // M12: 隐私政策同意状态
+    val hasAcceptedPrivacy: Boolean = false,
 )
 
 fun AppConfigEntity.toDomain(): AppConfig = AppConfig(

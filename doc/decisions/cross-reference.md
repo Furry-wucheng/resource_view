@@ -37,7 +37,10 @@
 | `data/repository/TagRepository.kt` | M10 | D-001, D-004 |
 | `data/repository/FilesystemRepository.kt` | M10 | D-001, D-005 |
 | `data/repository/ThumbnailRepository.kt` | M10 | D-001, D-006 |
-| `data/local/secure/SecurePrefs.kt` | M10 | D-002 |
+| `data/local/secure/SecurePrefs.kt` | M10, M12 | D-002 |
+| `ui/components/PrivacyConsentDialog.kt` | M12 | D-002 |
+| `ui/screens/settings/SettingsViewModel.kt` | M12 | D-003 |
+| `di/ViewModelModule.kt` | M12 | — |
 | `shared/filesource/FileSource.kt` | M11 | — |
 | `shared/filesource/LocalFileSource.kt` | M12 | — |
 | `shared/filesource/SmbFileSource.kt` | M17 | — |
@@ -110,6 +113,10 @@
 | FileSource 动态创建策略 | M10 | D-005 |
 | ThumbnailGenerator 策略集合 | M10 | D-006 |
 | Navigation 路由设计 | M03 | D-001, D-002 |
+| 权限请求时机与方式 | M12 | D-001 |
+| 隐私政策存储方式 | M12 | D-002 |
+| 数据清除策略 | M12 | D-003 |
+| 数据库迁移策略 | M12 | D-004 |
 
 ---
 
