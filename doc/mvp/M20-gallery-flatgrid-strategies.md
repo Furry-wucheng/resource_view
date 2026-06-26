@@ -40,6 +40,6 @@
 
 ## 验收标准
 
-- [ ] FlatGrid 模式资源进入查看器显示网格布局
-- [ ] 仅图片的文件夹自动判定为 FLATGRID
-- [ ] `./gradlew build` 通过
+- [x] FlatGrid 模式资源进入查看器显示网格布局
+- [x] 仅图片的文件夹自动判定为 FLATGRID
+- [x] `./gradlew build` 通过
