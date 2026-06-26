@@ -112,4 +112,75 @@ class DatabaseBackupManagerTest {
         assertFalse(walFile.exists())
         assertFalse(shmFile.exists())
     }
+
+    @Test
+    fun `deleteBackup should succeed when backup file does not exist`() = runTest {
+        val backupFile = File(tempDir, "non_existent_backup.db")
+
+        val result = backupManager.deleteBackup(backupFile)
+
+        assertTrue(result.isSuccess)
+    }
+
+    @Test
+    fun `restoreFromBackup should fail when backup file does not exist`() = runTest {
+        val backupFile = File(tempDir, "non_existent_backup.db")
+
+        val result = backupManager.restoreFromBackup(backupFile)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is BackupFileNotFoundException)
+    }
+
+    @Test
+    fun `restoreFromBackup should succeed with valid backup file`() = runTest {
+        // Create a backup first
+        val backupDir = File(tempDir, "backups")
+        val backupResult = backupManager.createBackup(backupDir)
+        assertTrue(backupResult.isSuccess)
+        val backupFile = backupResult.getOrNull()!!
+
+        // Now restore from it
+        val restoreResult = backupManager.restoreFromBackup(backupFile)
+        assertTrue(restoreResult.isSuccess)
+    }
+
+    @Test
+    fun `getBackupFiles should return empty list for non-existent directory`() {
+        val nonExistentDir = File(tempDir, "non_existent_dir")
+
+        val files = backupManager.getBackupFiles(nonExistentDir)
+
+        assertTrue(files.isEmpty())
+    }
+
+    @Test
+    fun `getBackupFiles should ignore non-backup files`() {
+        val backupDir = File(tempDir, "backups")
+        backupDir.mkdirs()
+
+        // Create test backup files
+        val backupFile = File(backupDir, "backup_20260101_120000.db")
+        val nonBackupFile = File(backupDir, "other_file.db")
+        val txtFile = File(backupDir, "backup_test.txt")
+
+        backupFile.createNewFile()
+        nonBackupFile.createNewFile()
+        txtFile.createNewFile()
+
+        val files = backupManager.getBackupFiles(backupDir)
+
+        assertEquals(1, files.size)
+        assertEquals(backupFile.name, files[0].file.name)
+    }
+
+    @Test
+    fun `createBackup should create backup directory if it does not exist`() = runTest {
+        val backupDir = File(tempDir, "new_backup_dir")
+
+        val result = backupManager.createBackup(backupDir)
+
+        assertTrue(result.isSuccess)
+        assertTrue(backupDir.exists())
+    }
 }

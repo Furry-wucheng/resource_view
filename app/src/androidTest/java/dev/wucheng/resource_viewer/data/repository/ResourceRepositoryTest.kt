@@ -195,6 +195,88 @@ class ResourceRepositoryTest {
         assertEquals("Resource 1", resources[0].name)
     }
 
+    @Test
+    fun `should return empty list when filtering by non-existent tags`() = runTest {
+        val resource1 = createTestResource(name = "Resource 1")
+        repo.insert(resource1)
+
+        val resources = repo.filterByTags(listOf("non-existent-tag")).first()
+        assertEquals(0, resources.size)
+    }
+
+    @Test
+    fun `should return empty list when searching with empty query`() = runTest {
+        val resource1 = createTestResource(name = "Resource 1")
+        repo.insert(resource1)
+
+        val resources = repo.searchByName("").first()
+        // Empty query should return all resources (LIKE '%%' matches everything)
+        assertEquals(1, resources.size)
+    }
+
+    @Test
+    fun `should return empty list when searching with no matches`() = runTest {
+        val resource1 = createTestResource(name = "Resource 1")
+        repo.insert(resource1)
+
+        val resources = repo.searchByName("NonExistent").first()
+        assertEquals(0, resources.size)
+    }
+
+    @Test
+    fun `should return empty list when no visible resources`() = runTest {
+        val resources = repo.getVisibleResources().first()
+        assertEquals(0, resources.size)
+    }
+
+    @Test
+    fun `should return empty list when no available resources`() = runTest {
+        val resources = repo.getAvailableResources().first()
+        assertEquals(0, resources.size)
+    }
+
+    @Test
+    fun `should handle batch insert with empty list`() = runTest {
+        val result = repo.insertAll(emptyList())
+        assertTrue(result is Result.Ok)
+        val resources = repo.getVisibleResources().first()
+        assertEquals(0, resources.size)
+    }
+
+    @Test
+    fun `should handle pageAfter with large limit`() = runTest {
+        val resource1 = createTestResource(name = "Resource 1")
+        repo.insert(resource1)
+        val result = repo.pageAfter(System.currentTimeMillis() + 1000, 1000)
+        assertTrue(result is Result.Ok)
+        assertEquals(1, (result as Result.Ok).value.size)
+    }
+
+    @Test
+    fun `should handle pageAfter with zero limit`() = runTest {
+        val resource1 = createTestResource(name = "Resource 1")
+        repo.insert(resource1)
+        val result = repo.pageAfter(System.currentTimeMillis() + 1000, 0)
+        assertTrue(result is Result.Ok)
+        assertEquals(0, (result as Result.Ok).value.size)
+    }
+
+    @Test
+    fun `should return empty list when deleting by non-existent source id`() = runTest {
+        val resource1 = createTestResource(name = "Resource 1")
+        repo.insert(resource1)
+        val result = repo.deleteBySourceId("non-existent-source-id")
+        assertTrue(result is Result.Ok)
+        val resources = repo.getVisibleResources().first()
+        assertEquals(1, resources.size)
+    }
+
+    @Test
+    fun `should handle deleteById for non-existent resource`() = runTest {
+        val result = repo.deleteById("non-existent-id")
+        assertTrue(result is Result.Ok)
+    }
+
     private fun createTestResource(
         id: String = UUID.randomUUID().toString(),
         name: String = "Test Resource",

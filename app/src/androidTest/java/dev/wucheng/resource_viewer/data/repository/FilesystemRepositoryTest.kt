@@ -13,6 +13,9 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -95,6 +98,174 @@ class FilesystemRepositoryTest {
         // Note: This test will throw NotImplementedError because LocalFileSource is a placeholder
         // In a real implementation, this would test actual connection
         val result = repo.testConnection(source)
+        assertTrue(result is Result.Err)
+    }
+
+    @Test
+    fun `should return error when listing directory for FTP source`() = runTest {
+        val sourceId = UUID.randomUUID().toString()
+        db.sourceDao().insert(SourceEntity(
+            id = sourceId,
+            name = "FTP Source",
+            type = SourceType.FTP,
+            rootPath = "/ftp/path",
+        ))
+        every { mockSecurePrefs.getPassword(sourceId) } returns null
+
+        val source = Source(
+            id = sourceId,
+            name = "FTP Source",
+            type = SourceType.FTP,
+            rootPath = "/ftp/path",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+        )
+        val result = repo.listDirectory(source, "/")
+        assertTrue(result is Result.Err)
+    }
+
+    @Test
+    fun `should return error when listing directory for WebDAV source`() = runTest {
+        val sourceId = UUID.randomUUID().toString()
+        db.sourceDao().insert(SourceEntity(
+            id = sourceId,
+            name = "WebDAV Source",
+            type = SourceType.WEBDAV,
+            rootPath = "/webdav/path",
+        ))
+        every { mockSecurePrefs.getPassword(sourceId) } returns null
+
+        val source = Source(
+            id = sourceId,
+            name = "WebDAV Source",
+            type = SourceType.WEBDAV,
+            rootPath = "/webdav/path",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+        )
+        val result = repo.listDirectory(source, "/")
+        assertTrue(result is Result.Err)
+    }
+
+    @Test
+    fun `should return error when stat for SMB source without password`() = runTest {
+        val sourceId = UUID.randomUUID().toString()
+        db.sourceDao().insert(SourceEntity(
+            id = sourceId,
+            name = "SMB Source",
+            type = SourceType.SMB,
+            rootPath = "smb://192.168.1.100/share",
+        ))
+        every { mockSecurePrefs.getPassword(sourceId) } returns null
+
+        val source = Source(
+            id = sourceId,
+            name = "SMB Source",
+            type = SourceType.SMB,
+            rootPath = "smb://192.168.1.100/share",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+        )
+        val result = repo.stat(source, "/file.txt")
+        assertTrue(result is Result.Err)
+    }
+
+    @Test
+    fun `should return error when stat for FTP source`() = runTest {
+        val sourceId = UUID.randomUUID().toString()
+        db.sourceDao().insert(SourceEntity(
+            id = sourceId,
+            name = "FTP Source",
+            type = SourceType.FTP,
+            rootPath = "/ftp/path",
+        ))
+        every { mockSecurePrefs.getPassword(sourceId) } returns null
+
+        val source = Source(
+            id = sourceId,
+            name = "FTP Source",
+            type = SourceType.FTP,
+            rootPath = "/ftp/path",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+        )
+        val result = repo.stat(source, "/file.txt")
+        assertTrue(result is Result.Err)
+    }
+
+    @Test
+    fun `should return error when testing connection for FTP source`() = runTest {
+        val sourceId = UUID.randomUUID().toString()
+        db.sourceDao().insert(SourceEntity(
+            id = sourceId,
+            name = "FTP Source",
+            type = SourceType.FTP,
+            rootPath = "/ftp/path",
+        ))
+        every { mockSecurePrefs.getPassword(sourceId) } returns null
+
+        val source = Source(
+            id = sourceId,
+            name = "FTP Source",
+            type = SourceType.FTP,
+            rootPath = "/ftp/path",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+        )
+        val result = repo.testConnection(source)
+        assertTrue(result is Result.Err)
+    }
+
+    @Test
+    fun `should return error when testing connection for WebDAV source`() = runTest {
+        val sourceId = UUID.randomUUID().toString()
+        db.sourceDao().insert(SourceEntity(
+            id = sourceId,
+            name = "WebDAV Source",
+            type = SourceType.WEBDAV,
+            rootPath = "/webdav/path",
+        ))
+        every { mockSecurePrefs.getPassword(sourceId) } returns null
+
+        val source = Source(
+            id = sourceId,
+            name = "WebDAV Source",
+            type = SourceType.WEBDAV,
+            rootPath = "/webdav/path",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+        )
+        val result = repo.testConnection(source)
+        assertTrue(result is Result.Err)
+    }
+
+    @Test
+    fun `should return error when getFileSource for FTP source`() = runTest {
+        val sourceId = UUID.randomUUID().toString()
+        db.sourceDao().insert(SourceEntity(
+            id = sourceId,
+            name = "FTP Source",
+            type = SourceType.FTP,
+            rootPath = "/ftp/path",
+        ))
+        every { mockSecurePrefs.getPassword(sourceId) } returns null
+
+        val result = repo.getFileSource(sourceId)
+        assertTrue(result is Result.Err)
+    }
+
+    @Test
+    fun `should return error when getFileSource for WebDAV source`() = runTest {
+        val sourceId = UUID.randomUUID().toString()
+        db.sourceDao().insert(SourceEntity(
+            id = sourceId,
+            name = "WebDAV Source",
+            type = SourceType.WEBDAV,
+            rootPath = "/webdav/path",
+        ))
+        every { mockSecurePrefs.getPassword(sourceId) } returns null
+
+        val result = repo.getFileSource(sourceId)
         assertTrue(result is Result.Err)
     }
 }

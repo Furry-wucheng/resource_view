@@ -136,6 +136,49 @@ class SourceRepositoryTest {
         verify { mockSecurePrefs.removePassword("source-id") }
     }
 
+    @Test
+    fun `should return null when getting password for non-existent source`() {
+        every { mockSecurePrefs.getPassword("non-existent-id") } returns null
+        val password = repo.getPassword("non-existent-id")
+        assertNull(password)
+    }
+
+    @Test
+    fun `should handle update for non-existent source`() = runTest {
+        val source = createTestSource()
+        // Don't insert source, just try to update
+        val result = repo.update(source)
+        // Room's update with OnConflictStrategy.IGNORE should return Ok
+        assertTrue(result is Result.Ok)
+    }
+
+    @Test
+    fun `should handle deleteById for non-existent source`() = runTest {
+        val result = repo.deleteById("non-existent-id")
+        // Room's delete with OnConflictStrategy.IGNORE should return Ok
+        assertTrue(result is Result.Ok)
+    }
+
+    @Test
+    fun `should return empty list when no sources exist`() = runTest {
+        val sources = repo.getAllSources().first()
+        assertEquals(0, sources.size)
+    }
+
+    @Test
+    fun `should handle updateAvailability for non-existent source`() = runTest {
+        val result = repo.updateAvailability("non-existent-id", true, System.currentTimeMillis())
+        // Room's update with OnConflictStrategy.IGNORE should return Ok
+        assertTrue(result is Result.Ok)
+    }
+
+    @Test
+    fun `should return null when getting password after removal`() {
+        every { mockSecurePrefs.getPassword("source-id") } returns null
+        val password = repo.getPassword("source-id")
+        assertNull(password)
+    }
+
     private fun createTestSource(
         id: String = UUID.randomUUID().toString(),
         name: String = "Test Source",

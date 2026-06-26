@@ -230,4 +230,195 @@ class SmbFileSourceTest {
         verify { mockWrapper.connect("192.168.1.100", 445, "testuser", "testpass", "WORKGROUP", "myshare") }
         verify { mockWrapper.listDirectory("/myshare") }
     }
+
+    @Test
+    fun `should handle rootPath with multiple path segments`() = runTest {
+        // Given
+        val sourceWithDeepPath = testSource.copy(rootPath = "/share/folder/subfolder")
+        val fileSource = SmbFileSource(sourceWithDeepPath, testPassword, mockWrapper)
+        val entries = emptyList<FileEntry>()
+        every { mockWrapper.listDirectory("/share/folder/subfolder") } returns entries
+
+        // When
+        fileSource.listDirectory("")
+
+        // Then
+        verify { mockWrapper.connect("192.168.1.100", 445, "testuser", "testpass", "WORKGROUP", "share") }
+        verify { mockWrapper.listDirectory("/share/folder/subfolder") }
+    }
+
+    @Test
+    fun `should handle relative path with multiple segments`() = runTest {
+        // Given
+        val entries = listOf(
+            FileEntry("file.txt", "/share/folder/sub/file.txt", false, 100, 1000, "txt")
+        )
+        every { mockWrapper.listDirectory("/share/folder/sub") } returns entries
+
+        // When
+        val result = smbFileSource.listDirectory("folder/sub")
+
+        // Then
+        assertEquals(1, result.size)
+        verify { mockWrapper.listDirectory("/share/folder/sub") }
+    }
+
+    @Test(expected = SmbConnectionException::class)
+    fun `stat should throw SmbConnectionException when connection fails`() = runTest {
+        // Given
+        every { mockWrapper.connect(any(), any(), any(), any(), any(), any()) } throws SmbConnectionException("Connection failed")
+
+        // When / Then
+        smbFileSource.stat("test.txt")
+    }
+
+    @Test(expected = SmbAuthException::class)
+    fun `stat should throw SmbAuthException when authentication fails`() = runTest {
+        // Given
+        every { mockWrapper.connect(any(), any(), any(), any(), any(), any()) } throws SmbAuthException("Auth failed")
+
+        // When / Then
+        smbFileSource.stat("test.txt")
+    }
+
+    @Test(expected = SmbConnectionException::class)
+    fun `readFile should throw SmbConnectionException when connection fails`() = runTest {
+        // Given
+        every { mockWrapper.connect(any(), any(), any(), any(), any(), any()) } throws SmbConnectionException("Connection failed")
+
+        // When / Then
+        smbFileSource.readFile("test.txt")
+    }
+
+    @Test(expected = SmbAuthException::class)
+    fun `readFile should throw SmbAuthException when authentication fails`() = runTest {
+        // Given
+        every { mockWrapper.connect(any(), any(), any(), any(), any(), any()) } throws SmbAuthException("Auth failed")
+
+        // When / Then
+        smbFileSource.readFile("test.txt")
+    }
+
+    @Test(expected = SmbConnectionException::class)
+    fun `readRange should throw SmbConnectionException when connection fails`() = runTest {
+        // Given
+        every { mockWrapper.connect(any(), any(), any(), any(), any(), any()) } throws SmbConnectionException("Connection failed")
+
+        // When / Then
+        smbFileSource.readRange("test.txt", 0L, 100L)
+    }
+
+    @Test(expected = SmbAuthException::class)
+    fun `readRange should throw SmbAuthException when authentication fails`() = runTest {
+        // Given
+        every { mockWrapper.connect(any(), any(), any(), any(), any(), any()) } throws SmbAuthException("Auth failed")
+
+        // When / Then
+        smbFileSource.readRange("test.txt", 0L, 100L)
+    }
+
+    @Test(expected = SmbConnectionException::class)
+    fun `openInputStream should throw SmbConnectionException when connection fails`() {
+        // Given
+        every { mockWrapper.connect(any(), any(), any(), any(), any(), any()) } throws SmbConnectionException("Connection failed")
+
+        // When / Then
+        smbFileSource.openInputStream("test.txt")
+    }
+
+    @Test(expected = SmbAuthException::class)
+    fun `openInputStream should throw SmbAuthException when authentication fails`() {
+        // Given
+        every { mockWrapper.connect(any(), any(), any(), any(), any(), any()) } throws SmbAuthException("Auth failed")
+
+        // When / Then
+        smbFileSource.openInputStream("test.txt")
+    }
+
+    @Test
+    fun `testConnection should return false when host is null`() = runTest {
+        // Given
+        val sourceWithoutHost = testSource.copy(host = null)
+        val fileSource = SmbFileSource(sourceWithoutHost, testPassword, mockWrapper)
+
+        // When
+        val result = fileSource.testConnection()
+
+        // Then
+        assertFalse(result)
+    }
+
+    @Test
+    fun `testConnection should return false when exception occurs`() = runTest {
+        // Given
+        every {
+            mockWrapper.testConnection(any(), any(), any(), any(), any(), any())
+        } throws RuntimeException("Unexpected error")
+
+        // When
+        val result = smbFileSource.testConnection()
+
+        // Then
+        assertFalse(result)
+    }
+
+    @Test
+    fun `should handle source with default port`() = runTest {
+        // Given
+        val sourceWithDefaultPort = testSource.copy(port = null)
+        val fileSource = SmbFileSource(sourceWithDefaultPort, testPassword, mockWrapper)
+        val entries = emptyList<FileEntry>()
+        every { mockWrapper.listDirectory("/share") } returns entries
+
+        // When
+        fileSource.listDirectory("")
+
+        // Then
+        verify { mockWrapper.connect("192.168.1.100", 445, "testuser", "testpass", "WORKGROUP", "share") }
+    }
+
+    @Test
+    fun `should handle source with custom port`() = runTest {
+        // Given
+        val sourceWithCustomPort = testSource.copy(port = 8445)
+        val fileSource = SmbFileSource(sourceWithCustomPort, testPassword, mockWrapper)
+        val entries = emptyList<FileEntry>()
+        every { mockWrapper.listDirectory("/share") } returns entries
+
+        // When
+        fileSource.listDirectory("")
+
+        // Then
+        verify { mockWrapper.connect("192.168.1.100", 8445, "testuser", "testpass", "WORKGROUP", "share") }
+    }
+
+    @Test
+    fun `should handle source with null username`() = runTest {
+        // Given
+        val sourceWithNullUsername = testSource.copy(username = null)
+        val fileSource = SmbFileSource(sourceWithNullUsername, testPassword, mockWrapper)
+        val entries = emptyList<FileEntry>()
+        every { mockWrapper.listDirectory("/share") } returns entries
+
+        // When
+        fileSource.listDirectory("")
+
+        // Then
+        verify { mockWrapper.connect("192.168.1.100", 445, "", "testpass", "WORKGROUP", "share") }
+    }
+
+    @Test
+    fun `should handle source with null domain`() = runTest {
+        // Given
+        val sourceWithNullDomain = testSource.copy(domain = null)
+        val fileSource = SmbFileSource(sourceWithNullDomain, testPassword, mockWrapper)
+        val entries = emptyList<FileEntry>()
+        every { mockWrapper.listDirectory("/share") } returns entries
+
+        // When
+        fileSource.listDirectory("")
+
+        // Then
+        verify { mockWrapper.connect("192.168.1.100", 445, "testuser", "testpass", null, "share") }
+    }
 }
