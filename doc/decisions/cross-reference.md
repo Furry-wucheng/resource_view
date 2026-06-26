@@ -45,7 +45,7 @@
 | `shared/filesource/LocalFileSource.kt` | M12 | — |
 | `shared/filesource/SmbFileSource.kt` | M17 | — |
 | `shared/content/ContentProvider.kt` | M11 | — |
-| `shared/content/ImageFolderProvider.kt` | M14 | — |
+| `shared/content/ImageFolderProvider.kt` | M14 | D-001, D-002 |
 | `shared/content/PdfContentProvider.kt` | M22 | — |
 | `shared/organization/OrganizationStrategy.kt` | M11 | — |
 | `shared/organization/FlatGridStrategy.kt` | M20 | — |
@@ -62,8 +62,10 @@
 | `ui/screens/sources/SourceListViewModel.kt` | M17 | — |
 | `ui/screens/sources/FileBrowserScreen.kt` | M13 | — |
 | `ui/screens/sources/FileBrowserViewModel.kt` | M13 | — |
-| `ui/screens/viewer/ViewerScreen.kt` | M14 → M19 → M22 | D-003 |
-| `ui/screens/viewer/ViewerViewModel.kt` | M14 | — |
+| `ui/screens/viewer/ViewerScreen.kt` | M14 → M19 → M22 | D-003, D-004 |
+| `ui/screens/viewer/ViewerViewModel.kt` | M14 | D-003 |
+| `ui/screens/viewer/components/SlideBar.kt` | M14 | D-005 |
+| `ui/screens/viewer/components/ViewerToolbar.kt` | M14 | — |
 | `ui/screens/viewer/ChapterListScreen.kt` | M21 | — |
 | `ui/screens/tags/TagManagerScreen.kt` | M15 | D-003, D-004 |
 | `ui/screens/tags/TagViewModel.kt` | M15 | D-001, D-002 |
@@ -124,6 +126,11 @@
 | 颜色选择器布局方案 | M15 | D-003 |
 | 删除确认交互方案 | M15 | D-004 |
 | Koin ViewModel 注入 | M15 | D-005 |
+| ImageFolderProvider 初始化策略 | M14 | D-001 |
+| 图片文件识别方式 | M14 | D-002 |
+| ViewerViewModel 状态管理 | M14 | D-003 |
+| HorizontalPager 配置 | M14 | D-004 |
+| SlideBar 实现方式 | M14 | D-005 |
 
 ---
 

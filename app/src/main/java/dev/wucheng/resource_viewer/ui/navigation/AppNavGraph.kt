@@ -54,10 +54,13 @@ fun AppNavGraph(
             ProfileScreen()
         }
 
-        // === 全屏路由占位 ===
+        // === 全屏路由 ===
         composable(Screen.Viewer.route) { backStackEntry ->
             val resourceId = backStackEntry.arguments?.getString("resourceId") ?: return@composable
-            ViewerScreen(resourceId = resourceId)
+            ViewerScreen(
+                resourceId = resourceId,
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
         composable(Screen.TagManager.route) {
             TagManagerScreen(
