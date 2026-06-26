@@ -1,6 +1,7 @@
 package dev.wucheng.resource_viewer.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 
@@ -70,4 +71,13 @@ object ViewerColors {
     val Background = Color.Black       // 查看器始终黑底，不受主题影响
     val ToolbarBackground = Color(0xCC000000)  // 半透明工具栏
     val ToolbarIcon = Color.White
+}
+
+// 缩略图卡片
+object ThumbnailTokens {
+    val ASPECT_RATIO = 2f / 3f        // 宽高比
+    val CORNER_RADIUS = 8.dp           // 卡片圆角
+    val GRID_SPACING = 8.dp            // 网格间距
+    val LABEL_MAX_LINES = 2            // 标题最大行数
+    val GRID_ITEM_MIN_WIDTH = 120.dp   // 网格项最小宽度
 }

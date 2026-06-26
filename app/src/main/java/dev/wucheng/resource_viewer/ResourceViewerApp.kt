@@ -2,6 +2,7 @@ package dev.wucheng.resource_viewer
 
 import android.app.Application
 import dev.wucheng.resource_viewer.data.local.AppDatabase
+import dev.wucheng.resource_viewer.di.coilModule
 import dev.wucheng.resource_viewer.di.databaseModule
 import dev.wucheng.resource_viewer.di.repositoryModule
 import dev.wucheng.resource_viewer.di.securePrefsModule
@@ -19,7 +20,7 @@ class ResourceViewerApp : Application() {
         startKoin {
             androidLogger()
             androidContext(this@ResourceViewerApp)
-            modules(databaseModule, securePrefsModule, repositoryModule, smbModule, viewModelModule)
+            modules(databaseModule, securePrefsModule, repositoryModule, smbModule, viewModelModule, coilModule)
         }
         warmUpDatabase()
     }

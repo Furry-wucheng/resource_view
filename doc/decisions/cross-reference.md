@@ -60,7 +60,9 @@
 | `ui/screens/viewer/VideoPlayerViewModelTest.kt` | M19 | — |
 | `ui/screens/viewer/components/VideoPlayer.kt` | M19 | D-004 |
 | `ui/screens/home/HomeScreen.kt` | M05 → M23 | D-003 |
-| `ui/screens/home/HomeViewModel.kt` | M23 | — |
+| `ui/screens/home/HomeViewModel.kt` | M23 | D-001 |
+| `ui/components/FilterBar.kt` | M23 | D-002 |
+| `ui/components/ResourceGridItem.kt` | M23 | — |
 | `ui/screens/sources/SourceListScreen.kt` | M05 → M17 | D-003 |
 | `ui/screens/sources/SourceListViewModel.kt` | M17 | — |
 | `ui/screens/sources/FileBrowserScreen.kt` | M13 | — |
@@ -165,6 +167,20 @@
 | 加密 PDF 处理方式 | M22 | D-004 |
 | PdfThumbnailGenerator 缩放策略 | M22 | D-005 |
 | ViewerViewModel Context 依赖 | M22 | D-006 |
+
+### M23 — 首页网格完整实现
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| HomeViewModel | M23 | D-001 |
+| FilterBar | M23 | D-002 |
+| CoilModule | M23 | D-003 |
+| ImageThumbnailGenerator | M23 | D-004 |
+| ResourceGridItem | M23 | — |
+| HomeViewModel 状态管理 (flatMapLatest) | M23 | D-001 |
+| FilterBar "全部"按钮传 null | M23 | D-002 |
+| Coil 缓存策略 (内存25%/磁盘2%) | M23 | D-003 |
+| ImageThumbnailGenerator 取第一张图片 | M23 | D-004 |
 
 ---
 

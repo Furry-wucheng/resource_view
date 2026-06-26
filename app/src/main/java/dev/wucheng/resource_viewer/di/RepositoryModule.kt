@@ -5,6 +5,7 @@ import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.SourceRepository
 import dev.wucheng.resource_viewer.data.repository.TagRepository
 import dev.wucheng.resource_viewer.data.repository.ThumbnailRepository
+import dev.wucheng.resource_viewer.shared.thumbnail.ImageThumbnailGenerator
 import dev.wucheng.resource_viewer.shared.thumbnail.PdfThumbnailGenerator
 import dev.wucheng.resource_viewer.shared.thumbnail.VideoThumbnailGenerator
 import org.koin.dsl.module
@@ -25,7 +26,7 @@ val repositoryModule = module {
             setOf(
                 VideoThumbnailGenerator(),
                 PdfThumbnailGenerator(get()),
-                // ImageThumbnailGenerator (M23)
+                ImageThumbnailGenerator(get()),
                 // ArchiveThumbnailGenerator (P2)
             )
         )
