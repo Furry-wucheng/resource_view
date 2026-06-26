@@ -1,3 +1,5 @@
+@file:Suppress("UnsafeOptInUsageError")
+
 package dev.wucheng.resource_viewer.di
 
 import androidx.media3.exoplayer.ExoPlayer

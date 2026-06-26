@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
  *
  * 注意：此实现遵循 doc/mvp/M19-video-player.md 中的 M19.1 子任务。
  */
+@androidx.media3.common.util.UnstableApi
 class VideoPlayerViewModel(
     private val player: ExoPlayer,
 ) : ViewModel() {

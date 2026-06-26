@@ -41,6 +41,7 @@ sealed class ViewerUiState {
  *
  * 注意：此实现遵循 doc/mvp/M14-basic-viewer.md + doc/mvp/M19-video-player.md。
  */
+@androidx.media3.common.util.UnstableApi
 class ViewerViewModel(
     private val resourceId: String,
     private val resourceRepository: ResourceRepository,

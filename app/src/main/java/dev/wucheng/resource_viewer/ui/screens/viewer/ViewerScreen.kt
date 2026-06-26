@@ -1,3 +1,5 @@
+@file:Suppress("UnsafeOptInUsageError")
+
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
 import androidx.compose.foundation.background
