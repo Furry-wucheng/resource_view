@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.asStateFlow
 class VideoPlayerViewModel(
     private val player: ExoPlayer,
 ) {
+    /** ExoPlayer 实例，供 PlayerView 绑定 */
+    val exoPlayer: ExoPlayer get() = player
     /** 是否正在播放 */
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
