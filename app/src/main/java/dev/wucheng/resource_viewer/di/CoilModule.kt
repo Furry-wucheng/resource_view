@@ -1,3 +1,5 @@
+@file:Suppress("UnsafeOptInUsageError")
+
 package dev.wucheng.resource_viewer.di
 
 import android.content.Context
@@ -6,6 +8,9 @@ import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.request.CachePolicy
 import coil3.request.crossfade
+import dev.wucheng.resource_viewer.data.local.AppDatabase
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import okio.Path.Companion.toOkioPath
 import org.koin.dsl.module
 
@@ -18,6 +23,14 @@ import org.koin.dsl.module
 val coilModule = module {
     single {
         val context = get<Context>()
+        val database = get<AppDatabase>()
+
+        // 从数据库读取缓存配置
+        val cacheLimitMB = runBlocking {
+            val config = database.appConfigDao().getConfig().first()
+            config?.cacheLimitMB ?: 500
+        }
+
         ImageLoader.Builder(context)
             .memoryCache {
                 MemoryCache.Builder()
@@ -27,7 +40,7 @@ val coilModule = module {
             .diskCache {
                 DiskCache.Builder()
                     .directory(context.cacheDir.resolve("image_cache").toOkioPath())
-                    .maxSizePercent(0.02) // 磁盘缓存 2%
+                    .maxSizeBytes(cacheLimitMB.toLong() * 1024 * 1024) // 根据配置设置磁盘缓存大小
                     .build()
             }
             .crossfade(true)

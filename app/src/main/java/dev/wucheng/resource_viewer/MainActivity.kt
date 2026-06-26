@@ -21,7 +21,7 @@ import dev.wucheng.resource_viewer.ui.base.FatalErrorHolder
 import dev.wucheng.resource_viewer.ui.components.AppShell
 import dev.wucheng.resource_viewer.ui.components.ErrorView
 import dev.wucheng.resource_viewer.ui.components.ErrorViewLevel
-import dev.wucheng.resource_viewer.ui.theme.ResourceViewerTheme
+import dev.wucheng.resource_viewer.ui.theme.ResourceViewerThemeWithSettings
 
 class MainActivity : ComponentActivity() {
 
@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            ResourceViewerTheme {
+            ResourceViewerThemeWithSettings {
                 val colorScheme = MaterialTheme.colorScheme
                 SideEffect {
                     window.statusBarColor = colorScheme.surface.toArgb()

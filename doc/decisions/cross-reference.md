@@ -98,6 +98,19 @@
 | `di/SmbModule.kt` | M17 | — |
 | `di/CoilModule.kt` | M23 | — |
 
+### M25 — 设置页面
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| SettingsViewModel | M25 | — |
+| SettingsScreen | M25 | — |
+| ResourceViewerThemeWithSettings | M25 | — |
+| SettingsViewModel 状态管理 | M25 | D-001 |
+| 缓存管理策略 (Coil DiskCache) | M25 | D-002 |
+| 主题切换实时生效 | M25 | D-003 |
+| 设置项输入验证 | M25 | D-004 |
+| CoilModule 动态缓存配置 | M25 | D-005 |
+
 ---
 
 ## 按决策主题
