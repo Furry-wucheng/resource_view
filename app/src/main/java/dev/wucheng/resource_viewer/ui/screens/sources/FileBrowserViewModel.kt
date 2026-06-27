@@ -17,6 +17,9 @@ import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailTaskPool
 import dev.wucheng.resource_viewer.shared.thumbnail.FileBrowserThumbnailDiskCache
 import dev.wucheng.resource_viewer.data.local.dao.AppConfigDao
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
+import dev.wucheng.resource_viewer.data.local.datastore.FileBrowserPrefsStore
+import dev.wucheng.resource_viewer.data.local.datastore.FileSortMode
+import dev.wucheng.resource_viewer.data.local.datastore.FileViewMode
 import android.graphics.Bitmap
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -28,8 +31,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import java.util.UUID
 
-enum class FileViewMode { LIST, GRID }
-
 data class FileBrowserUiState(
     val source: Source? = null,
     val currentPath: String = "",
@@ -40,9 +41,9 @@ data class FileBrowserUiState(
     val isMultiSelectMode: Boolean = false,
     val isLoading: Boolean = false,
     val isAdding: Boolean = false,
-    val viewMode: FileViewMode = FileViewMode.LIST,
+    val viewMode: FileViewMode = FileViewMode.GRID,
+    val sortMode: FileSortMode = FileSortMode.NAME_ASC,
     val showBatchAddDialog: Boolean = false,
-    val showDirectoryTree: Boolean = false,
     val allTags: List<Tag> = emptyList(),
     val error: String? = null,
     val lastAddResult: ScanResult? = null,
@@ -50,7 +51,8 @@ data class FileBrowserUiState(
     val pathSegments: List<String> = emptyList(),
     /** 已入库的资源路径集合（用于标记"已入库"） */
     val importedPaths: Set<String> = emptySet(),
-    // 文件浏览状态已移至 ViewerScreen/ViewerViewModel 管理
+    /** 是否显示目录树导航 */
+    val showDirectoryTree: Boolean = true,
 )
 
 class FileBrowserViewModel(
@@ -60,6 +62,7 @@ class FileBrowserViewModel(
     private val tagRepository: dev.wucheng.resource_viewer.data.repository.TagRepository,
     private val appConfigDao: AppConfigDao? = null,
     private val thumbnailDiskCache: FileBrowserThumbnailDiskCache? = null,
+    private val prefsStore: FileBrowserPrefsStore,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(FileBrowserUiState())
     val uiState: StateFlow<FileBrowserUiState> = _uiState.asStateFlow()
@@ -99,7 +102,8 @@ class FileBrowserViewModel(
                             thumbnailPool = ThumbnailTaskPool(effectiveConcurrency)
                             fileSource = fsResult.value
                             thumbnailLoader = FileEntryThumbnailLoader(fsResult.value)
-                            _uiState.update { it.copy(source = source) }
+                            val showDirectoryTree = config?.showDirectoryTree ?: true
+                            _uiState.update { it.copy(source = source, showDirectoryTree = showDirectoryTree) }
                             loadDirectory("")
                         }
                         is Result.Err -> {
@@ -133,14 +137,6 @@ class FileBrowserViewModel(
         val segments = _uiState.value.currentPath.trim('/').split('/').filter { it.isNotEmpty() }
         val target = segments.take(index + 1).joinToString("/")
         loadDirectory(target)
-    }
-
-    fun toggleDirectoryTree() {
-        _uiState.update { it.copy(showDirectoryTree = !it.showDirectoryTree) }
-    }
-
-    fun hideDirectoryTree() {
-        _uiState.update { it.copy(showDirectoryTree = false) }
     }
 
     // ===== 多选模式 =====
@@ -240,10 +236,38 @@ class FileBrowserViewModel(
         _uiState.update { it.copy(error = null, lastAddResult = null) }
     }
 
-    fun toggleViewMode() {
-        _uiState.update { state ->
-            state.copy(viewMode = if (state.viewMode == FileViewMode.LIST) FileViewMode.GRID else FileViewMode.LIST)
+    // ===== 视图模式和排序 =====
+
+    fun setViewMode(mode: FileViewMode) {
+        _uiState.update { it.copy(viewMode = mode) }
+        saveCurrentPrefs()
+    }
+
+    fun setSortMode(mode: FileSortMode) {
+        _uiState.update { it.copy(sortMode = mode) }
+        saveCurrentPrefs()
+        reapplySorting()
+    }
+
+    private fun saveCurrentPrefs() {
+        val state = _uiState.value
+        val source = state.source ?: return
+        viewModelScope.launch {
+            prefsStore.savePrefs(
+                sourceId = source.id,
+                path = state.currentPath,
+                prefs = dev.wucheng.resource_viewer.data.local.datastore.FolderPrefs(
+                    viewMode = state.viewMode,
+                    sortMode = state.sortMode
+                )
+            )
         }
+    }
+
+    private fun reapplySorting() {
+        val state = _uiState.value
+        val sorted = sortEntries(state.entries, state.sortMode)
+        _uiState.update { it.copy(entries = sorted) }
     }
 
     suspend fun loadThumbnail(entry: FileEntry): Bitmap? {
@@ -292,6 +316,9 @@ class FileBrowserViewModel(
             synchronized(thumbnailCache) { thumbnailCache.clear() }
             synchronized(thumbnailMisses) { thumbnailMisses.clear() }
             val cleanPath = path.trim('/')
+
+            val prefs = prefsStore.loadPrefs(sourceId, cleanPath)
+
             _uiState.update {
                 it.copy(
                     isLoading = true,
@@ -302,6 +329,8 @@ class FileBrowserViewModel(
                     lastAddResult = null,
                     pathSegments = if (cleanPath.isEmpty()) emptyList()
                     else cleanPath.split('/').filter { s -> s.isNotEmpty() },
+                    viewMode = prefs.viewMode,
+                    sortMode = prefs.sortMode,
                 )
             }
             when (val result = filesystemRepository.listDirectory(source, cleanPath)) {
@@ -309,10 +338,7 @@ class FileBrowserViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            entries = result.value.sortedWith(
-                                compareBy<FileEntry> { !it.isDirectory }
-                                    .thenBy { entry -> entry.name.lowercase() },
-                            ),
+                            entries = sortEntries(result.value, prefs.sortMode),
                         )
                     }
                 }
@@ -323,5 +349,18 @@ class FileBrowserViewModel(
                 }
             }
         }
+    }
+
+    private fun sortEntries(entries: List<FileEntry>, sortMode: FileSortMode): List<FileEntry> {
+        return entries.sortedWith(
+            compareBy<FileEntry> { !it.isDirectory }.let { comparator ->
+                when (sortMode) {
+                    FileSortMode.NAME_ASC -> comparator.thenBy { it.name.lowercase() }
+                    FileSortMode.NAME_DESC -> comparator.thenByDescending { it.name.lowercase() }
+                    FileSortMode.MODIFIED_ASC -> comparator.thenBy { it.modifiedAt }
+                    FileSortMode.MODIFIED_DESC -> comparator.thenByDescending { it.modifiedAt }
+                }
+            }
+        )
     }
 }

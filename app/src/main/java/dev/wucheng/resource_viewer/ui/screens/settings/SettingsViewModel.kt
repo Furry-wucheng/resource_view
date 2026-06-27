@@ -62,6 +62,7 @@ class SettingsViewModel(
                         coverCacheLimitMB = config.coverCacheLimitMB,
                         pageCacheLimitMB = config.pageCacheLimitMB,
                         thumbnailCacheLimitMB = config.thumbnailCacheLimitMB,
+                        showDirectoryTree = config.showDirectoryTree,
                         isLoading = false,
                     )
                 } else {
@@ -393,6 +394,7 @@ class SettingsViewModel(
                     coverCacheLimitMB = defaultConfig.coverCacheLimitMB,
                     pageCacheLimitMB = defaultConfig.pageCacheLimitMB,
                     thumbnailCacheLimitMB = defaultConfig.thumbnailCacheLimitMB,
+                    showDirectoryTree = defaultConfig.showDirectoryTree,
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -407,6 +409,27 @@ class SettingsViewModel(
      */
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    /**
+     * 更新目录树显示设置
+     */
+    fun updateShowDirectoryTree(show: Boolean) {
+        viewModelScope.launch {
+            try {
+                val currentConfig = database.appConfigDao().getConfig().first()
+                val updatedConfig = (currentConfig ?: AppConfigEntity()).copy(
+                    showDirectoryTree = show,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                database.appConfigDao().save(updatedConfig)
+                _uiState.value = _uiState.value.copy(showDirectoryTree = show)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "更新目录树设置失败: ${e.message}",
+                )
+            }
+        }
     }
 }
 
@@ -432,4 +455,6 @@ data class SettingsUiState(
     val cacheCleared: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
+    // 文件浏览器设置
+    val showDirectoryTree: Boolean = true,
 )

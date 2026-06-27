@@ -17,4 +17,6 @@ data class AppConfig(
     val coverCacheLimitMB: Int = 0,      // 封面缓存容量，默认无限制（永久）
     val pageCacheLimitMB: Int = 500,     // 页面缓存容量，默认 500MB
     val thumbnailCacheLimitMB: Int = 500, // 缩略图缓存容量，默认 500MB
+    // 文件浏览器设置
+    val showDirectoryTree: Boolean = true, // 是否显示目录树导航栏
 )

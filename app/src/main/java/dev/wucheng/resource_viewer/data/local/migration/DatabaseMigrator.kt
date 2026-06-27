@@ -24,6 +24,7 @@ class DatabaseMigrator(
         MIGRATION_1_2,
         MIGRATION_2_3,
         MIGRATION_3_4,
+        MIGRATION_4_5,
         // 后续迁移在此追加
     )
 
@@ -162,6 +163,16 @@ class DatabaseMigrator(
                 db.execSQL("ALTER TABLE app_config ADD COLUMN coverCacheLimitMB INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE app_config ADD COLUMN pageCacheLimitMB INTEGER NOT NULL DEFAULT 500")
                 db.execSQL("ALTER TABLE app_config ADD COLUMN thumbnailCacheLimitMB INTEGER NOT NULL DEFAULT 500")
+            }
+        }
+
+        /**
+         * Migration 4 -> 5
+         * 添加目录树显示设置到 app_config 表
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_config ADD COLUMN showDirectoryTree INTEGER NOT NULL DEFAULT 1")
             }
         }
     }

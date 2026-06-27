@@ -113,6 +113,9 @@ dependencies {
     // Zoomable
     implementation(libs.zoomable)
 
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

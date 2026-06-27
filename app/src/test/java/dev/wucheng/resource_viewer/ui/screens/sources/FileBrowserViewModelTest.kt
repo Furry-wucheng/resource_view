@@ -1,6 +1,8 @@
 package dev.wucheng.resource_viewer.ui.screens.sources
 
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
+import dev.wucheng.resource_viewer.data.local.datastore.FileBrowserPrefsStore
+import dev.wucheng.resource_viewer.data.local.datastore.FolderPrefs
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.data.repository.TagRepository
 import dev.wucheng.resource_viewer.domain.error.Result
@@ -32,6 +34,7 @@ class FileBrowserViewModelTest {
     private lateinit var batchAddResourcesUseCase: BatchAddResourcesUseCase
     private lateinit var tagRepository: TagRepository
     private lateinit var fileSource: FileSource
+    private lateinit var prefsStore: FileBrowserPrefsStore
     private lateinit var viewModel: FileBrowserViewModel
 
     private val source = Source(
@@ -50,7 +53,9 @@ class FileBrowserViewModelTest {
         batchAddResourcesUseCase = mockk()
         tagRepository = mockk(relaxed = true)
         fileSource = mockk()
-        viewModel = FileBrowserViewModel("source-1", filesystemRepository, batchAddResourcesUseCase, tagRepository)
+        prefsStore = mockk(relaxed = true)
+        coEvery { prefsStore.loadPrefs(any(), any()) } returns FolderPrefs()
+        viewModel = FileBrowserViewModel("source-1", filesystemRepository, batchAddResourcesUseCase, tagRepository, prefsStore = prefsStore)
     }
 
     @After

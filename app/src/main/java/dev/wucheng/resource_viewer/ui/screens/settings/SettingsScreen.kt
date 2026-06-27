@@ -217,6 +217,16 @@ fun SettingsScreen(
                 )
             }
 
+            // ========== 文件浏览器 ==========
+            SettingsGroup(title = "文件浏览器") {
+                SettingSwitch(
+                    label = "显示目录树导航",
+                    subtitle = "宽屏常驻显示，窄屏通过菜单按钮打开",
+                    checked = uiState.showDirectoryTree,
+                    onCheckedChange = { viewModel.updateShowDirectoryTree(it) },
+                )
+            }
+
             // ========== 关于 ==========
             SettingsGroup(title = "关于") {
                 Column(

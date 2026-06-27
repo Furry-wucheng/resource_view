@@ -299,6 +299,27 @@
 | 三个独立缓存容量设置 | cache-refactor | D-006 |
 | 自定义容量内嵌输入框 | cache-refactor | D-007 |
 
+### file-browser-ux — 文件浏览器体验优化
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `data/local/datastore/FileBrowserPrefsStore.kt` | file-browser-ux | D-001 |
+| `ui/screens/sources/DirectoryTree.kt` | file-browser-ux | D-002 |
+| `ui/screens/sources/FileBrowserScreen.kt` | file-browser-ux | D-003, D-004, D-005 |
+| `ui/screens/sources/FileBrowserViewModel.kt` | file-browser-ux | D-001 |
+| `di/DataStoreModule.kt` | file-browser-ux | — |
+| `data/local/entity/AppConfigEntity.kt` | file-browser-ux | — |
+| `domain/model/AppConfig.kt` | file-browser-ux | — |
+| `data/local/AppDatabase.kt` | file-browser-ux | — |
+| `data/local/migration/DatabaseMigrator.kt` | file-browser-ux | — |
+| `ui/screens/settings/SettingsViewModel.kt` | file-browser-ux | — |
+| `ui/screens/settings/SettingsScreen.kt` | file-browser-ux | — |
+| 文件夹偏好持久化方案 (DataStore + LRU) | file-browser-ux | D-001 |
+| 目录树组件实现 (扁平化列表) | file-browser-ux | D-002 |
+| 目录树布局位置 (content 内部) | file-browser-ux | D-003 |
+| 排序方式与 UI (DropdownMenu) | file-browser-ux | D-004 |
+| 文件夹角标显示逻辑 | file-browser-ux | D-005 |
+
 ---
 
 > ⚠️ 各 stage 完成后，Agent 需在此文件中新增自己 stage 涉及的组件行和决策主题行。
