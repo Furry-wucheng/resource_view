@@ -2,9 +2,11 @@ package dev.wucheng.resource_viewer.shared.content
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import dev.wucheng.resource_viewer.shared.media.MediaFormats
 import java.io.File
+import java.net.URI
 
 /**
  * 图片文件夹内容提供者。
@@ -87,6 +89,30 @@ class ImageFolderProvider(
      */
     override fun dispose() {
         // No-op for ImageFolderProvider
+    }
+
+    /**
+     * 获取指定页的文件扩展名。
+     * @param index 页码（0-based）
+     * @return 文件扩展名（小写），如 "gif", "jpg"
+     */
+    fun getPageExtension(index: Int): String {
+        val files = getImageFiles()
+        require(index in 0 until files.size) { "Page index $index out of range [0, ${files.size})" }
+        return files[index].substringAfterLast('.', "").lowercase()
+    }
+
+    /**
+     * 获取指定页的文件 URI。
+     * 用于 Coil 加载动画图片（GIF/animated WebP）。
+     * @param index 页码（0-based）
+     * @return 文件 URI
+     */
+    fun getPageUri(index: Int): Uri {
+        val files = getImageFiles()
+        require(index in 0 until files.size) { "Page index $index out of range [0, ${files.size})" }
+        val filePath = files[index]
+        return Uri.fromFile(File(filePath))
     }
 
     /**

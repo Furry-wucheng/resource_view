@@ -5,6 +5,7 @@ package dev.wucheng.resource_viewer.di
 import android.content.Context
 import coil3.ImageLoader
 import coil3.disk.DiskCache
+import coil3.gif.AnimatedImageDecoder
 import coil3.memory.MemoryCache
 import coil3.request.CachePolicy
 import coil3.request.crossfade
@@ -34,6 +35,9 @@ val coilModule = module {
         }
 
         ImageLoader.Builder(context)
+            .components {
+                add(AnimatedImageDecoder.Factory())
+            }
             .memoryCache {
                 MemoryCache.Builder()
                     .maxSizePercent(context, 0.25) // 内存缓存 25%

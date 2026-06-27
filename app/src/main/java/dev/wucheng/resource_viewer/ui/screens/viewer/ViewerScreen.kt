@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
@@ -31,6 +32,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
 import dev.wucheng.resource_viewer.data.local.converter.PageDirection
 import dev.wucheng.resource_viewer.data.local.converter.DoublePageMode
@@ -309,7 +312,13 @@ private fun ViewerPagerPage(
     onToggleToolbar: () -> Unit,
 ) {
     when (item) {
-        is ViewerItem.ImagePage -> PageContent(viewModel, item.pageIndex, onToggleToolbar, Modifier.fillMaxSize())
+        is ViewerItem.ImagePage -> PageContent(
+            viewModel = viewModel,
+            pageIndex = item.pageIndex,
+            extension = item.extension,
+            onToggleToolbar = onToggleToolbar,
+            modifier = Modifier.fillMaxSize(),
+        )
         is ViewerItem.Video -> VideoPageContent(item, toolbarVisible, onToggleToolbar, Modifier.fillMaxSize())
     }
 }
@@ -371,9 +380,31 @@ private fun VideoPageContent(
 /**
  * 单页内容（图片）。
  * 使用 zoomable 库支持捏合缩放、双击缩放、边缘滑动翻页。
+ * 对于 GIF 文件，使用 Coil AsyncImage 渲染动画。
  */
 @Composable
 private fun PageContent(
+    viewModel: ViewerViewModel,
+    pageIndex: Int,
+    extension: String = "",
+    onToggleToolbar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isAnimated = extension.lowercase() in setOf("gif", "webp")
+
+    if (isAnimated) {
+        AnimatedImagePageContent(viewModel, pageIndex, onToggleToolbar, modifier)
+    } else {
+        StaticImagePageContent(viewModel, pageIndex, onToggleToolbar, modifier)
+    }
+}
+
+/**
+ * 静态图片页面内容。
+ * 使用 BitmapFactory 解码 Bitmap，支持缩放手势。
+ */
+@Composable
+private fun StaticImagePageContent(
     viewModel: ViewerViewModel,
     pageIndex: Int,
     onToggleToolbar: () -> Unit,
@@ -443,6 +474,51 @@ private fun PageContent(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * 动画图片页面内容（GIF/animated WebP）。
+ * 使用 Coil AsyncImage 渲染动画，支持缩放手势。
+ */
+@Composable
+private fun AnimatedImagePageContent(
+    viewModel: ViewerViewModel,
+    pageIndex: Int,
+    onToggleToolbar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val imageUri by produceState<android.net.Uri?>(initialValue = null, pageIndex) {
+        value = try {
+            viewModel.getPageUri(pageIndex)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    Box(modifier = modifier.background(Color.Black)) {
+        if (imageUri == null) {
+            CircularProgressIndicator(
+                color = Color.White,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        } else {
+            val zoomState = rememberZoomState()
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(imageUri)
+                    .build(),
+                contentDescription = "Page ${pageIndex + 1}",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zoomable(
+                        zoomState = zoomState,
+                        scrollGesturePropagation = ScrollGesturePropagation.ContentEdge,
+                        onTap = { onToggleToolbar() },
+                    ),
+            )
         }
     }
 }

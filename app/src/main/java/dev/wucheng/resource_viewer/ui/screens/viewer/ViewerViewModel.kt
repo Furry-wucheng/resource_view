@@ -251,10 +251,15 @@ class ViewerViewModel(
         _currentPage.value = initialPage.coerceIn(0, (provider.pageCount - 1).coerceAtLeast(0))
 
         val items = (0 until provider.pageCount).map { index ->
+            val extension = when (provider) {
+                is ImageFolderProvider -> provider.getPageExtension(index)
+                else -> ""
+            }
             ViewerItem.ImagePage(
                 title = resourceName,
                 pageIndex = index,
                 providerKey = providerKey,
+                extension = extension,
             )
         }
 
@@ -463,10 +468,15 @@ class ViewerViewModel(
 
                     // 创建 ViewerItem 列表
                     val items = (0 until provider.pageCount).map { index ->
+                        val extension = when (provider) {
+                            is ImageFolderProvider -> provider.getPageExtension(index)
+                            else -> ""
+                        }
                         ViewerItem.ImagePage(
                             title = resource.name,
                             pageIndex = index,
                             providerKey = resourceId,
+                            extension = extension,
                         )
                     }
 
@@ -586,6 +596,20 @@ class ViewerViewModel(
             }
         }
         return bitmap
+    }
+
+    /**
+     * 获取指定页面的 URI。
+     * 用于 Coil 加载动画图片（GIF/animated WebP）。
+     */
+    suspend fun getPageUri(pageIndex: Int): android.net.Uri {
+        val provider = contentProvider ?: throw IllegalStateException("Content provider is not ready")
+        return withContext(ioDispatcher) {
+            when (provider) {
+                is ImageFolderProvider -> provider.getPageUri(pageIndex)
+                else -> throw UnsupportedOperationException("URI not available for this provider type")
+            }
+        }
     }
 
     private suspend fun preloadAround(

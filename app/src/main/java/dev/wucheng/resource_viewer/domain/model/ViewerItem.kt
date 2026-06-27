@@ -17,7 +17,17 @@ sealed class ViewerItem {
         val providerKey: String = "",
         val pixelWidth: Int? = null,
         val pixelHeight: Int? = null,
-    ) : ViewerItem()
+        /** 文件扩展名（如 "gif", "jpg"），用于区分动画图片和静态图片 */
+        val extension: String = "",
+    ) : ViewerItem() {
+        /** 是否为动画图片（GIF/animated WebP） */
+        val isAnimated: Boolean
+            get() = extension.lowercase() in ANIMATED_EXTENSIONS
+
+        companion object {
+            private val ANIMATED_EXTENSIONS = setOf("gif", "webp")
+        }
+    }
 
     data class Video(
         override val title: String,
