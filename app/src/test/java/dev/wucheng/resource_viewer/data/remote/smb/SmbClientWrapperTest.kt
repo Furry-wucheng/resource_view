@@ -223,8 +223,9 @@ class SmbClientWrapperTest {
 
         // Then
         assertNotNull(stream)
-        val readContent = stream.readBytes()
+        val readContent = stream.use { it.readBytes() }
         assertArrayEquals(content, readContent)
+        verify { mockFile.close() }
     }
 
     @Test

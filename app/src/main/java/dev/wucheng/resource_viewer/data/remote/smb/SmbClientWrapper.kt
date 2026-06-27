@@ -13,6 +13,7 @@ import com.hierynomus.smbj.share.DiskShare
 import com.hierynomus.smbj.share.File
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import java.io.InputStream
+import java.io.FilterInputStream
 import java.util.EnumSet
 
 /**
@@ -119,7 +120,7 @@ class SmbClientWrapper(private val client: SMBClient) {
                 .find { it.fileName == fileName }
                 ?.toFileEntry(parentPath)
         } catch (e: Exception) {
-            null
+            throw SmbConnectionException("Failed to stat file: ${e.message}", e)
         }
     }
 
@@ -172,7 +173,15 @@ class SmbClientWrapper(private val client: SMBClient) {
         val currentShare = share ?: throw SmbConnectionException("Not connected")
         return try {
             val file = openFile(currentShare, path)
-            file.inputStream
+            object : FilterInputStream(file.inputStream) {
+                override fun close() {
+                    try {
+                        super.close()
+                    } finally {
+                        file.close()
+                    }
+                }
+            }
         } catch (e: Exception) {
             throw SmbConnectionException("Failed to open file stream: ${e.message}", e)
         }

@@ -15,6 +15,8 @@ sealed class ViewerItem {
         val pageIndex: Int,
         /** ContentProvider 实例标识，ViewModel 用于查找对应 Provider 加载 */
         val providerKey: String = "",
+        val pixelWidth: Int? = null,
+        val pixelHeight: Int? = null,
     ) : ViewerItem()
 
     data class Video(

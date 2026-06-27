@@ -12,6 +12,7 @@ import dev.wucheng.resource_viewer.shared.organization.GalleryStrategy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 
 enum class ContentGridMode { FLAT_GRID, GALLERY }
 
@@ -117,6 +118,6 @@ class ContentGridViewModel(
     }
 
     companion object {
-        val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif")
+        val IMAGE_EXTENSIONS = MediaFormats.imageExtensions
     }
 }

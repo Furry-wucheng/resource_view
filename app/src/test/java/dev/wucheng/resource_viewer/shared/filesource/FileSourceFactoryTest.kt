@@ -2,6 +2,7 @@ package dev.wucheng.resource_viewer.shared.filesource
 
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.domain.model.Source
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -12,6 +13,11 @@ import java.nio.file.Files
  * 测试工厂类根据 SourceType 创建正确的 FileSource 实现。
  */
 class FileSourceFactoryTest {
+
+    @After
+    fun tearDown() {
+        FileSourceFactory.clearAll()
+    }
 
     private fun createTestSource(
         type: SourceType,
@@ -52,15 +58,15 @@ class FileSourceFactoryTest {
         assertEquals("test-source-id", fileSource.sourceId)
     }
 
-    @Test(expected = IllegalArgumentException::class)
-    fun `should throw exception when creating SMB source without password`() {
+    @Test
+    fun `should create guest SMB source without stored password`() {
         val source = createTestSource(
             type = SourceType.SMB,
             rootPath = "/share",
             host = "192.168.1.100",
         )
 
-        FileSourceFactory.create(source, null)
+        assertTrue(FileSourceFactory.create(source, null) is SmbFileSource)
     }
 
     @Test

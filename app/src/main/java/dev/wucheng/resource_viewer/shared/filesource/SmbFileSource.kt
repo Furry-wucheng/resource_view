@@ -21,6 +21,7 @@ class SmbFileSource(
     private val password: String,
     private val wrapper: SmbClientWrapper,
 ) : FileSource {
+    private val reconnectLock = Any()
 
     override val sourceId: String = source.id
 
@@ -61,6 +62,21 @@ class SmbFileSource(
         }
     }
 
+    private fun <T> executeWithReconnect(operation: () -> T): T {
+        ensureConnected()
+        return try {
+            operation()
+        } catch (auth: SmbAuthException) {
+            throw auth
+        } catch (first: SmbConnectionException) {
+            synchronized(reconnectLock) {
+                wrapper.disconnect()
+                ensureConnected()
+            }
+            operation()
+        }
+    }
+
     /**
      * 构建完整路径。
      * @param relativePath 相对路径
@@ -74,47 +90,19 @@ class SmbFileSource(
     }
 
     override suspend fun listDirectory(relativePath: String): List<FileEntry> = withContext(Dispatchers.IO) {
-        try {
-            ensureConnected()
-            wrapper.listDirectory(buildFullPath(relativePath))
-        } catch (e: SmbConnectionException) {
-            throw e
-        } catch (e: SmbAuthException) {
-            throw e
-        }
+        executeWithReconnect { wrapper.listDirectory(buildFullPath(relativePath)) }
     }
 
     override suspend fun stat(relativePath: String): FileEntry? = withContext(Dispatchers.IO) {
-        try {
-            ensureConnected()
-            wrapper.stat(buildFullPath(relativePath))
-        } catch (e: SmbConnectionException) {
-            throw e
-        } catch (e: SmbAuthException) {
-            throw e
-        }
+        executeWithReconnect { wrapper.stat(buildFullPath(relativePath)) }
     }
 
     override suspend fun readFile(relativePath: String): ByteArray = withContext(Dispatchers.IO) {
-        try {
-            ensureConnected()
-            wrapper.readFile(buildFullPath(relativePath))
-        } catch (e: SmbConnectionException) {
-            throw e
-        } catch (e: SmbAuthException) {
-            throw e
-        }
+        executeWithReconnect { wrapper.readFile(buildFullPath(relativePath)) }
     }
 
     override suspend fun readRange(relativePath: String, offset: Long, length: Long): ByteArray = withContext(Dispatchers.IO) {
-        try {
-            ensureConnected()
-            wrapper.readRange(buildFullPath(relativePath), offset, length)
-        } catch (e: SmbConnectionException) {
-            throw e
-        } catch (e: SmbAuthException) {
-            throw e
-        }
+        executeWithReconnect { wrapper.readRange(buildFullPath(relativePath), offset, length) }
     }
 
     override suspend fun testConnection(): Boolean = withContext(Dispatchers.IO) {
@@ -134,14 +122,7 @@ class SmbFileSource(
     }
 
     override fun openInputStream(relativePath: String): InputStream {
-        return try {
-            ensureConnected()
-            wrapper.openInputStream(buildFullPath(relativePath))
-        } catch (e: SmbConnectionException) {
-            throw e
-        } catch (e: SmbAuthException) {
-            throw e
-        }
+        return executeWithReconnect { wrapper.openInputStream(buildFullPath(relativePath)) }
     }
 
     override fun disconnect() {

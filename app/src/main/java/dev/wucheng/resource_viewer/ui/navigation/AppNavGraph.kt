@@ -14,7 +14,6 @@ import dev.wucheng.resource_viewer.ui.screens.viewer.ChapterListScreen
 import dev.wucheng.resource_viewer.ui.screens.viewer.ContentGridMode
 import dev.wucheng.resource_viewer.ui.screens.viewer.ContentGridScreen
 import dev.wucheng.resource_viewer.ui.screens.viewer.ViewerScreen
-import dev.wucheng.resource_viewer.ui.screens.viewer.ViewerViewModel
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 

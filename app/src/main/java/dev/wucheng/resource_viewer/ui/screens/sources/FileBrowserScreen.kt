@@ -2,6 +2,7 @@
 
 package dev.wucheng.resource_viewer.ui.screens.sources
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,10 +46,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,11 +58,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.Image
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.wucheng.resource_viewer.domain.model.FileEntry
@@ -82,83 +88,56 @@ fun FileBrowserScreen(
 
     LaunchedEffect(sourceId) { viewModel.load() }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(uiState.source?.name ?: "文件浏览")
+    fun navigateBack() {
+        when {
+            uiState.isMultiSelectMode -> viewModel.exitMultiSelect()
+            uiState.showDirectoryTree -> viewModel.hideDirectoryTree()
+            !viewModel.goUp() -> onNavigateBack()
+        }
+    }
+    BackHandler { navigateBack() }
+
+    // 不使用 Scaffold，避免和外层 AppShell Scaffold 嵌套产生双重 padding
+    Column(modifier = modifier.fillMaxSize()) {
+        // 顶部栏
+        TopAppBar(
+            title = {
+                Column {
+                    Text(uiState.source?.name ?: "文件浏览")
+                }
+            },
+            navigationIcon = {
+                IconButton(onClick = ::navigateBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                }
+            },
+            actions = {
+                if (uiState.isMultiSelectMode) {
+                    IconButton(onClick = { viewModel.selectAll() }) {
+                        Icon(Icons.Default.SelectAll, contentDescription = "全选")
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (!viewModel.goUp()) onNavigateBack()
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    TextButton(onClick = { viewModel.exitMultiSelect() }) {
+                        Text("退出")
                     }
-                },
-                actions = {
-                    if (uiState.isMultiSelectMode) {
-                        IconButton(onClick = { viewModel.selectAll() }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = "全选")
-                        }
-                        TextButton(onClick = { viewModel.exitMultiSelect() }) {
-                            Text("退出")
-                        }
-                    } else {
-                        IconButton(onClick = { viewModel.toggleViewMode() }) {
-                            Icon(
-                                imageVector = if (uiState.viewMode == FileViewMode.LIST) Icons.Default.GridView else Icons.Default.List,
-                                contentDescription = if (uiState.viewMode == FileViewMode.LIST) "网格" else "列表",
-                            )
-                        }
-                        IconButton(onClick = { viewModel.enterMultiSelect() }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = "多选")
-                        }
-                        IconButton(onClick = { viewModel.toggleDirectoryTree() }) {
-                            Icon(Icons.Default.Menu, contentDescription = "目录树")
-                        }
+                } else {
+                    IconButton(onClick = { viewModel.toggleViewMode() }) {
+                        Icon(
+                            imageVector = if (uiState.viewMode == FileViewMode.LIST) Icons.Default.GridView else Icons.Default.List,
+                            contentDescription = if (uiState.viewMode == FileViewMode.LIST) "网格" else "列表",
+                        )
                     }
-                },
-            )
-        },
-        bottomBar = {
-            if (uiState.isMultiSelectMode) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "已选 ${uiState.selectedPaths.size} 项",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Button(
-                        onClick = { viewModel.showBatchAddDialog() },
-                        enabled = uiState.selectedPaths.isNotEmpty() && !uiState.isAdding,
-                    ) {
-                        if (uiState.isAdding) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                            )
-                            Spacer(modifier = Modifier.size(8.dp))
-                        }
-                        Text("批量添加资源")
+                    IconButton(onClick = { viewModel.enterMultiSelect() }) {
+                        Icon(Icons.Default.SelectAll, contentDescription = "多选")
+                    }
+                    IconButton(onClick = { viewModel.toggleDirectoryTree() }) {
+                        Icon(Icons.Default.Menu, contentDescription = "目录树")
                     }
                 }
-            }
-        },
-        modifier = modifier,
-    ) { innerPadding ->
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
+            },
+        )
+
+        // 内容区
+        BoxWithConstraints(modifier = Modifier.weight(1f)) {
             val isWideScreen = maxWidth >= 900.dp
             val showTreePanel = uiState.showDirectoryTree
 
@@ -236,8 +215,39 @@ fun FileBrowserScreen(
                     selectedCount = uiState.selectedPaths.size,
                     allTags = uiState.allTags,
                     onConfirm = { orgMode, tagIds -> viewModel.confirmBatchAdd(orgMode, tagIds) },
+                    onCreateTag = viewModel::createTag,
                     onDismiss = { viewModel.hideBatchAddDialog() },
                 )
+            }
+        }
+
+        // 底部栏（多选模式）
+        if (uiState.isMultiSelectMode) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "已选 ${uiState.selectedPaths.size} 项",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Button(
+                    onClick = { viewModel.showBatchAddDialog() },
+                    enabled = uiState.selectedPaths.isNotEmpty() && !uiState.isAdding,
+                ) {
+                    if (uiState.isAdding) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                    }
+                    Text("批量添加资源")
+                }
             }
         }
     }
@@ -330,6 +340,7 @@ private fun FileContentArea(
                                 }
                             },
                             onToggleSelect = { viewModel.toggleSelection(entry.relativePath) },
+                            thumbnail = { FileThumbnail(entry, viewModel) },
                         )
                     }
                 }
@@ -363,6 +374,7 @@ private fun FileContentArea(
                                 }
                             },
                             onToggleSelect = { viewModel.toggleSelection(entry.relativePath) },
+                            thumbnail = { FileThumbnail(entry, viewModel, Modifier.fillMaxSize()) },
                         )
                     }
                 }
@@ -410,6 +422,7 @@ private fun FileEntryRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onToggleSelect: () -> Unit,
+    thumbnail: @Composable () -> Unit,
 ) {
     ListItem(
         headlineContent = {
@@ -431,7 +444,9 @@ private fun FileEntryRow(
                     modifier = Modifier.clickable { onToggleSelect() },
                 )
             } else {
-                FileIcon(entry)
+                Box(Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                    thumbnail()
+                }
             }
         },
         trailingContent = {
@@ -461,11 +476,12 @@ private fun FileEntryGridItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onToggleSelect: () -> Unit,
+    thumbnail: @Composable () -> Unit,
 ) {
     Card(
-        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
+            .aspectRatio(3f / 4f)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         colors = CardDefaults.cardColors(
             containerColor = if (selected && isMultiSelect) {
@@ -475,45 +491,61 @@ private fun FileEntryGridItem(
             },
         ),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
         ) {
+            thumbnail()
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(3f / 4f)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(fileTypeColor(entry)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = fileIcon(entry),
-                    contentDescription = null,
-                    modifier = Modifier.size(36.dp),
-                    tint = Color.White.copy(alpha = 0.6f),
-                )
-                if (isMultiSelect && selected) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "已选择",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .size(20.dp),
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.88f)),
+                        ),
                     )
-                }
+                    .padding(start = 6.dp, end = 6.dp, top = 40.dp, bottom = 8.dp),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                Text(
+                    text = entry.name,
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-            Text(
-                text = entry.name,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            if (entry.isDirectory) {
+                Icon(
+                    Icons.Default.Folder,
+                    contentDescription = "文件夹",
+                    tint = Color(0xFFFFC107),
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).size(18.dp),
+                )
+            }
+            if (isMultiSelect && selected) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "已选择",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(22.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FileThumbnail(entry: FileEntry, viewModel: FileBrowserViewModel, modifier: Modifier = Modifier.fillMaxSize()) {
+    val bitmap by produceState<android.graphics.Bitmap?>(null, entry.relativePath) {
+        value = viewModel.loadThumbnail(entry)
+    }
+    if (bitmap != null) {
+        Image(bitmap!!.asImageBitmap(), entry.name, modifier, contentScale = ContentScale.Crop)
+    } else {
+        Box(modifier.background(fileTypeColor(entry)), contentAlignment = Alignment.Center) {
+            Icon(fileIcon(entry), null, Modifier.size(32.dp), tint = Color.White.copy(alpha = 0.72f))
         }
     }
 }

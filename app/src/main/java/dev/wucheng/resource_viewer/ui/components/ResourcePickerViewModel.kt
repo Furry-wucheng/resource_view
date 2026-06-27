@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 
 /**
  * ResourcePicker 弹窗的 UI 状态。
@@ -193,7 +194,7 @@ class ResourcePickerViewModel(
 
     private fun isRecognizedFile(extension: String): Boolean {
         val ext = extension.lowercase()
-        return ext in setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "pdf", "mp4", "mkv", "avi", "zip", "rar", "7z")
+        return MediaFormats.isPreviewable(ext) || ext in setOf("pdf", "zip", "rar", "7z")
     }
 
     /**

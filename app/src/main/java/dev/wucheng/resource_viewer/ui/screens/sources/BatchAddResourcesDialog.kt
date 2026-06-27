@@ -25,12 +25,14 @@ fun BatchAddResourcesDialog(
     selectedCount: Int,
     allTags: List<Tag>,
     onConfirm: (OrganizationMode?, List<String>) -> Unit,
+    onCreateTag: (String, (String) -> Unit) -> Unit = { _, _ -> },
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedOrgMode by remember { mutableStateOf<OrganizationMode?>(null) }
     var selectedTagIds by remember { mutableStateOf(setOf<String>()) }
     var autoDetect by remember { mutableStateOf(true) }
+    var newTagName by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -116,6 +118,27 @@ fun BatchAddResourcesDialog(
                             }
                         }
                     }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        value = newTagName,
+                        onValueChange = { newTagName = it.take(20) },
+                        label = { Text("新建标签") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        enabled = newTagName.isNotBlank(),
+                        onClick = {
+                            onCreateTag(newTagName) { id -> selectedTagIds = selectedTagIds + id }
+                            newTagName = ""
+                        },
+                    ) { Text("创建") }
                 }
             }
         },

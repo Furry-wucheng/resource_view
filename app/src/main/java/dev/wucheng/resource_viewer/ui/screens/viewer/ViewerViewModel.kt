@@ -22,7 +22,9 @@ import dev.wucheng.resource_viewer.domain.model.VideoMediaSource
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
 import dev.wucheng.resource_viewer.shared.content.ContentProvider
 import dev.wucheng.resource_viewer.shared.content.ImageFolderProvider
+import dev.wucheng.resource_viewer.shared.content.MixedFolderProvider
 import dev.wucheng.resource_viewer.shared.content.PdfContentProvider
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 import dev.wucheng.resource_viewer.shared.filesource.DocumentTreeFileSource
 import dev.wucheng.resource_viewer.shared.organization.ChapterGalleryStrategy
 import dev.wucheng.resource_viewer.shared.organization.ChapterStrategy
@@ -152,12 +154,8 @@ class ViewerViewModel(
                             val fileName = filePath.substringAfterLast('/')
 
                             when {
-                                ext in setOf("mp4", "mkv", "avi", "mov", "webm") -> {
-                                    // 视频文件
-                                    loadVideoFromSource(source, fileSource, filePath, fileName)
-                                }
                                 ext == "pdf" -> {
-                                    // PDF 文件
+                                    // PDF 文件：独立加载
                                     _resourceName.value = fileName
                                     try {
                                         val provider = withContext(ioDispatcher) {
@@ -170,24 +168,49 @@ class ViewerViewModel(
                                         _uiState.value = ViewerUiState.Error("加载 PDF 失败")
                                     }
                                 }
-                                ext in setOf("jpg", "jpeg", "png", "gif", "webp", "bmp") -> {
-                                    // 单张图片：用 ImageFolderProvider 加载所在目录
-                                    _resourceName.value = fileName
+                                MediaFormats.isPreviewable(ext) -> {
+                                    // 图片或视频：用 MixedFolderProvider 加载所在目录，支持图片/视频无缝浏览
                                     val dirPath = filePath.substringBeforeLast('/', "")
                                     try {
-                                        val provider = withContext(ioDispatcher) {
-                                            ImageFolderProvider(fileSource, dirPath, recursive = false)
+                                        // 为 SMB 源创建视频 DataSource.Factory
+                                        val videoFactory = if (source.type == SourceType.SMB) {
+                                            val password = filesystemRepository.getPassword(source.id) ?: ""
+                                            SmbDataSourceFactory(source, password)
+                                        } else null
+
+                                        val (provider, viewerItems) = withContext(ioDispatcher) {
+                                            val mixedProvider = MixedFolderProvider(
+                                                fileSource = fileSource,
+                                                relativePath = dirPath,
+                                                sourceId = sourceId,
+                                                videoDataSourceFactory = videoFactory,
+                                                pageCacheDirectory = context.cacheDir,
+                                                pageCacheLimitBytes = 500L * 1024 * 1024,
+                                            )
+                                            mixedProvider to mixedProvider.buildViewerItems()
                                         }
-                                        // 通过目录列表找到当前文件索引
-                                        val dirEntries = fileSource.listDirectory(dirPath)
-                                        val imageFiles = dirEntries
-                                            .filter { !it.isDirectory && it.extension.lowercase() in setOf("jpg","jpeg","png","gif","webp","bmp") }
-                                            .sortedBy { it.relativePath }
-                                            .map { it.relativePath }
-                                        val currentIndex = imageFiles.indexOf(filePath).coerceAtLeast(0)
-                                        setupContentProvider(provider, "file:$sourceId:$dirPath", fileName, currentIndex)
+                                        if (viewerItems.isEmpty()) {
+                                            _uiState.value = ViewerUiState.Error("目录中没有可浏览的文件")
+                                            return@launch
+                                        }
+                                        val currentIndex = provider.findIndex(filePath)
+                                        _resourceName.value = fileName
+                                        contentProvider = provider
+                                        pageLoader = PageLoader(
+                                            maxCacheSize = PAGE_CACHE_BYTES,
+                                            sizeOf = { bitmap -> bitmap.allocationByteCount.toLong() },
+                                            load = { request ->
+                                                provider.loadPage(request.pageIndex, request.targetWidth, request.targetHeight)
+                                            },
+                                        )
+                                        _totalPages.value = viewerItems.size
+                                        _currentPage.value = currentIndex.coerceIn(0, viewerItems.size - 1)
+                                        _uiState.value = ViewerUiState.Success(
+                                            items = viewerItems,
+                                            resourceName = fileName,
+                                        )
                                     } catch (e: Exception) {
-                                        _uiState.value = ViewerUiState.Error("加载图片失败")
+                                        _uiState.value = ViewerUiState.Error("加载失败: ${e.message}")
                                     }
                                 }
                                 else -> {
@@ -418,6 +441,8 @@ class ViewerViewModel(
                                         dev.wucheng.resource_viewer.data.local.converter.OrganizationMode.GALLERY,
                                         dev.wucheng.resource_viewer.data.local.converter.OrganizationMode.CHAPTER_GALLERY,
                                     ),
+                                    pageCacheDirectory = context.cacheDir,
+                                    pageCacheLimitBytes = 500L * 1024 * 1024,
                                 )
                             }
                         }

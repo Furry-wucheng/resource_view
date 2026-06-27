@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okio.Path.Companion.toOkioPath
 import org.koin.dsl.module
+import dev.wucheng.resource_viewer.shared.thumbnail.FileBrowserThumbnailDiskCache
 
 /**
  * Coil Koin Module。
@@ -21,6 +22,7 @@ import org.koin.dsl.module
  * 注意：此实现遵循 doc/share/03-di-contracts.md 中的 CoilModule 契约。
  */
 val coilModule = module {
+    single { FileBrowserThumbnailDiskCache(get()) }
     single {
         val context = get<Context>()
         val database = get<AppDatabase>()

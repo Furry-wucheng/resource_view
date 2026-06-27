@@ -2,6 +2,7 @@ package dev.wucheng.resource_viewer.domain.usecase
 
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 
 /**
  * 自动检测文件夹组织模式用例。
@@ -16,7 +17,7 @@ import dev.wucheng.resource_viewer.shared.filesource.FileSource
  */
 class DetectOrganizationModeUseCase {
     /** 支持的图片扩展名 */
-    private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif")
+    private val imageExtensions = MediaFormats.imageExtensions
 
     /** 支持的非图片媒体扩展名 */
     private val nonImageMediaExtensions = setOf("pdf", "mp4", "avi", "mkv", "mov", "wmv")

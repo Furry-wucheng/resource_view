@@ -9,12 +9,24 @@ import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.domain.model.Tag
 import dev.wucheng.resource_viewer.domain.usecase.BatchAddResourcesUseCase
+import dev.wucheng.resource_viewer.data.local.entity.TagEntity
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
+import dev.wucheng.resource_viewer.shared.thumbnail.FileEntryThumbnailLoader
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailSearchPolicy
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailTaskPool
+import dev.wucheng.resource_viewer.shared.thumbnail.FileBrowserThumbnailDiskCache
+import dev.wucheng.resource_viewer.data.local.dao.AppConfigDao
+import dev.wucheng.resource_viewer.data.local.converter.SourceType
+import android.graphics.Bitmap
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import java.util.UUID
 
 enum class FileViewMode { LIST, GRID }
 
@@ -46,11 +58,20 @@ class FileBrowserViewModel(
     private val filesystemRepository: FilesystemRepository,
     private val batchAddResourcesUseCase: BatchAddResourcesUseCase,
     private val tagRepository: dev.wucheng.resource_viewer.data.repository.TagRepository,
+    private val appConfigDao: AppConfigDao? = null,
+    private val thumbnailDiskCache: FileBrowserThumbnailDiskCache? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(FileBrowserUiState())
     val uiState: StateFlow<FileBrowserUiState> = _uiState.asStateFlow()
 
     private var fileSource: FileSource? = null
+    private var thumbnailLoader: FileEntryThumbnailLoader? = null
+    private var thumbnailPool = ThumbnailTaskPool(DEFAULT_THUMBNAIL_CONCURRENCY)
+    private val inFlightThumbnails = mutableMapOf<String, Deferred<Bitmap?>>()
+    private val thumbnailMisses = mutableSetOf<String>()
+    private val thumbnailCache = object : LinkedHashMap<String, Bitmap>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?): Boolean = size > 64
+    }
 
     fun load() {
         if (_uiState.value.source != null) {
@@ -69,7 +90,15 @@ class FileBrowserViewModel(
                     }
                     when (val fsResult = filesystemRepository.getFileSource(sourceId)) {
                         is Result.Ok -> {
+                            val config = appConfigDao?.getConfig()?.first()
+                            val configured = config?.thumbnailConcurrency ?: DEFAULT_THUMBNAIL_CONCURRENCY
+                            thumbnailDiskCache?.configureCapacity(config?.cacheLimitMB ?: 500)
+                            val effectiveConcurrency = if (source.type == SourceType.SMB) {
+                                ((configured + 1) / 2).coerceAtLeast(1)
+                            } else configured
+                            thumbnailPool = ThumbnailTaskPool(effectiveConcurrency)
                             fileSource = fsResult.value
+                            thumbnailLoader = FileEntryThumbnailLoader(fsResult.value)
                             _uiState.update { it.copy(source = source) }
                             loadDirectory("")
                         }
@@ -162,6 +191,21 @@ class FileBrowserViewModel(
         _uiState.update { it.copy(showBatchAddDialog = false, allTags = emptyList()) }
     }
 
+    fun createTag(name: String, onCreated: (String) -> Unit = {}) {
+        val cleanName = name.trim()
+        if (cleanName.isEmpty() || cleanName.length > 20) return
+        viewModelScope.launch {
+            val entity = TagEntity(UUID.randomUUID().toString(), cleanName, "#6750A4")
+            when (val result = tagRepository.insert(entity)) {
+                is Result.Ok -> {
+                    _uiState.update { it.copy(allTags = tagRepository.getAllTagsOnce()) }
+                    onCreated(entity.id)
+                }
+                is Result.Err -> _uiState.update { it.copy(error = result.error.message) }
+            }
+        }
+    }
+
     fun confirmBatchAdd(
         organizationMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode?,
         tagIds: List<String>,
@@ -202,13 +246,51 @@ class FileBrowserViewModel(
         }
     }
 
+    suspend fun loadThumbnail(entry: FileEntry): Bitmap? {
+        synchronized(thumbnailCache) { thumbnailCache[entry.relativePath] }?.let { return it }
+        if (synchronized(thumbnailMisses) { entry.relativePath in thumbnailMisses }) return null
+        val loader = thumbnailLoader ?: return null
+        val candidate = viewModelScope.async {
+            thumbnailPool.run {
+                val policy = ThumbnailSearchPolicy.DIRECT_CHILD
+                val cached = thumbnailDiskCache?.get(sourceId, entry, policy)
+                if (cached?.isCached == true) return@run cached.bitmap
+                loader.load(entry, policy = policy).also { bitmap ->
+                    thumbnailDiskCache?.put(sourceId, entry, policy, bitmap)
+                }
+            }
+        }
+        val task = synchronized(inFlightThumbnails) {
+            inFlightThumbnails[entry.relativePath] ?: candidate.also {
+                inFlightThumbnails[entry.relativePath] = it
+            }
+        }
+        if (task !== candidate) candidate.cancel()
+        return try {
+            val bitmap = task.await()
+            if (bitmap == null) synchronized(thumbnailMisses) { thumbnailMisses += entry.relativePath }
+            else synchronized(thumbnailCache) { thumbnailCache[entry.relativePath] = bitmap }
+            bitmap
+        } finally {
+            if (task.isCompleted) synchronized(inFlightThumbnails) {
+                if (inFlightThumbnails[entry.relativePath] === task) inFlightThumbnails.remove(entry.relativePath)
+            }
+        }
+    }
+
     companion object {
-        // 常量已移至 ViewerViewModel 中统一管理
+        private const val DEFAULT_THUMBNAIL_CONCURRENCY = 4
     }
 
     private fun loadDirectory(path: String) {
         val source = _uiState.value.source ?: return
         viewModelScope.launch {
+            synchronized(inFlightThumbnails) {
+                inFlightThumbnails.values.forEach { it.cancel() }
+                inFlightThumbnails.clear()
+            }
+            synchronized(thumbnailCache) { thumbnailCache.clear() }
+            synchronized(thumbnailMisses) { thumbnailMisses.clear() }
             val cleanPath = path.trim('/')
             _uiState.update {
                 it.copy(

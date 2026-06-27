@@ -12,6 +12,7 @@ import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import java.util.UUID
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 
 /**
  * 批量添加资源用例。
@@ -101,7 +102,8 @@ class BatchAddResourcesUseCase(
         entities: List<ResourceEntity>,
         fileSource: FileSource,
     ) {
-        val cacheDir = context.cacheDir
+        val cacheDir = context.cacheDir.resolve("image_cache/resources")
+        cacheDir.mkdirs()
         for (entity in entities) {
             try {
                 val resource = entity.toDomain()
@@ -130,7 +132,7 @@ class BatchAddResourcesUseCase(
         val type = when {
             entry.isDirectory -> ResourceType.FOLDER
             entry.extension.lowercase() in setOf("pdf") -> ResourceType.PDF
-            entry.extension.lowercase() in setOf("mp4", "avi", "mkv", "mov", "wmv") -> ResourceType.VIDEO
+            MediaFormats.isVideo(entry.extension) -> ResourceType.VIDEO
             entry.extension.lowercase() in setOf("zip", "rar", "7z", "cbz", "cbr") -> ResourceType.ARCHIVE
             else -> return null
         }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -41,6 +42,16 @@ import androidx.navigation.compose.rememberNavController
 import dev.wucheng.resource_viewer.R
 import dev.wucheng.resource_viewer.ui.navigation.AppNavGraph
 import dev.wucheng.resource_viewer.ui.navigation.Screen
+
+/** 全屏路由：不渲染底栏，不应用底栏 padding */
+private val FULL_SCREEN_ROUTES = setOf(
+    Screen.Viewer.route,
+    Screen.ChapterViewer.route,
+    Screen.SequenceViewer.route,
+    Screen.FileViewer.route,
+    Screen.FlatGrid.route,
+    Screen.Gallery.route,
+)
 
 /**
  * 底部/侧边导航栏的 Tab 定义
@@ -86,14 +97,24 @@ fun AppShell(
     val useSideBar = widthSizeClass == WindowWidthSizeClass.Expanded
     val navTabs = rememberNavTabs()
 
-    if (useSideBar) {
+    val isFullScreen = currentRoute in FULL_SCREEN_ROUTES
+
+    if (isFullScreen) {
+        AppNavGraph(
+            navController = navController,
+            modifier = modifier.fillMaxSize(),
+        )
+    } else if (useSideBar) {
         Row(modifier = modifier.fillMaxSize()) {
             AppNavigationRail(
                 currentRoute = currentRoute,
                 navTabs = navTabs,
                 onNavigate = { navController.navigateWithState(it) },
             )
-            Scaffold(modifier = Modifier.weight(1f)) { innerPadding ->
+            Scaffold(
+                modifier = Modifier.weight(1f),
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            ) { innerPadding ->
                 Box(modifier = Modifier.padding(innerPadding)) {
                     AppNavGraph(
                         navController = navController,
@@ -105,6 +126,7 @@ fun AppShell(
     } else {
         Scaffold(
             modifier = modifier.fillMaxSize(),
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 AppNavigationBar(
                     currentRoute = currentRoute,

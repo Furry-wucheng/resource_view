@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.domain.model.Resource
+import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import java.io.File
 import java.io.FileOutputStream
@@ -41,19 +42,11 @@ class ImageThumbnailGenerator(
         cacheDir: File,
     ): File? {
         return try {
-            // 列出文件夹中的图片文件
-            val entries = fileSource.listDirectory(resource.relativePath)
-            val imageEntry = entries.firstOrNull { entry ->
-                val name = entry.name.lowercase()
-                !entry.isDirectory && (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp"))
-            } ?: return null
-
-            // 读取图片文件
-            val imageBytes = fileSource.readFile(imageEntry.relativePath)
-            if (imageBytes.isEmpty()) return null
-
-            // 解码并缩放
-            val bitmap = decodeAndScale(imageBytes) ?: return null
+            val bitmap = FileEntryThumbnailLoader(fileSource).load(
+                FileEntry(resource.name, resource.relativePath, true, 0, resource.updatedAt),
+                maxThumbnailSize,
+                ThumbnailSearchPolicy.RESOURCE_COVER,
+            ) ?: return null
 
             // 保存到缓存
             val outputFile = getOutputFile(cacheDir, resource.id)

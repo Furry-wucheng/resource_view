@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 
 enum class ChapterViewMode { LIST, GRID }
 
@@ -126,8 +127,8 @@ class ChapterListViewModel(
      * 获取散落文件（不属于任何子目录的独立文件）。
      */
     private suspend fun getLooseFiles(resource: Resource, fileSource: FileSource): List<FileEntry> {
-        val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif")
-        val videoExtensions = setOf("mp4", "mkv", "avi", "mov", "webm")
+        val imageExtensions = MediaFormats.imageExtensions
+        val videoExtensions = MediaFormats.videoExtensions
         val pdfExtensions = setOf("pdf")
         val supportedExtensions = imageExtensions + videoExtensions + pdfExtensions
 

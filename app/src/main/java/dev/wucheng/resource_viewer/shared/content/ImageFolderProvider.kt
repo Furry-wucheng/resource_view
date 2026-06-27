@@ -3,6 +3,8 @@ package dev.wucheng.resource_viewer.shared.content
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
+import java.io.File
 
 /**
  * 图片文件夹内容提供者。
@@ -14,12 +16,15 @@ class ImageFolderProvider(
     private val fileSource: FileSource,
     private val relativePath: String,
     private val recursive: Boolean = false,
+    pageCacheDirectory: File? = null,
+    pageCacheLimitBytes: Long = 500L * 1024 * 1024,
 ) : ContentProvider {
     /** 支持的图片扩展名 */
-    private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif")
+    private val imageExtensions = MediaFormats.imageExtensions
 
     /** 图片文件列表（按名称排序） - 惰性加载 */
     private var imageFiles: List<String>? = null
+    private val bitmapLoader = PageBitmapLoader(fileSource, pageCacheDirectory, pageCacheLimitBytes)
 
     /** 总页数 */
     override val pageCount: Int
@@ -71,13 +76,9 @@ class ImageFolderProvider(
         require(index in 0 until files.size) { "Page index $index out of range [0, ${files.size})" }
 
         val filePath = files[index]
-        val inputStream = fileSource.openInputStream(filePath)
-
-        // 先将流读入 ByteArray，确保支持 mark/reset（SMB 流不支持 mark/reset）
-        val imageBytes = inputStream.use { it.readBytes() }
-
-        return decodeBitmap(imageBytes, targetWidth, targetHeight)
-            ?: throw IllegalStateException("Failed to decode bitmap from $filePath")
+        val entry = fileSource.stat(filePath)
+            ?: throw IllegalStateException("Image no longer exists: $filePath")
+        return bitmapLoader.load(entry, targetWidth, targetHeight)
     }
 
     /**

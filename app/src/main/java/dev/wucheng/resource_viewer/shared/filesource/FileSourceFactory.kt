@@ -11,11 +11,17 @@ import dev.wucheng.resource_viewer.domain.model.Source
  * FileSource 工厂对象。
  * 根据 SourceType 返回对应的 FileSource 实现。
  *
- * 注意：此定义来自 doc/share/02-interfaces.md 共享契约。
+ * SMB 连接会按 sourceId 缓存，避免重复创建连接导致认证丢失。
  */
 object FileSourceFactory {
+    /** 缓存的 FileSource 实例（按 sourceId） */
+    private val cache = mutableMapOf<String, FileSource>()
+
     fun create(source: Source, password: String? = null, context: Context? = null): FileSource {
-        return when (source.type) {
+        // 检查缓存
+        cache[source.id]?.let { return it }
+
+        val fileSource = when (source.type) {
             SourceType.LOCAL -> {
                 if (source.rootPath.startsWith("content://")) {
                     DocumentTreeFileSource(
@@ -31,12 +37,31 @@ object FileSourceFactory {
                 val wrapper = SmbClientWrapper(SMBClient())
                 SmbFileSource(
                     source = source,
-                    password = password ?: throw IllegalArgumentException("SMB source requires password"),
+                    // SMB guest/anonymous accounts intentionally use an empty password.
+                    password = password.orEmpty(),
                     wrapper = wrapper
                 )
             }
             SourceType.FTP -> throw UnsupportedOperationException("FTP not yet supported")
             SourceType.WEBDAV -> throw UnsupportedOperationException("WebDAV not yet supported")
         }
+
+        cache[source.id] = fileSource
+        return fileSource
+    }
+
+    /** 移除指定源的缓存（断开连接） */
+    fun evict(sourceId: String) {
+        cache.remove(sourceId)?.let {
+            try { it.disconnect() } catch (_: Exception) {}
+        }
+    }
+
+    /** 清除所有缓存 */
+    fun clearAll() {
+        cache.values.forEach {
+            try { it.disconnect() } catch (_: Exception) {}
+        }
+        cache.clear()
     }
 }

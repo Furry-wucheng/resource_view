@@ -159,19 +159,22 @@ fun ViewerScreenContent(
                         DoublePageMode.SINGLE -> false
                         DoublePageMode.AUTO -> configuration.screenWidthDp > configuration.screenHeightDp
                     }
-                    val visualPageCount = if (useDoublePage) (totalPages + 1) / 2 else totalPages
+                    val spreads = remember(items, useDoublePage, doublePageMode) {
+                        buildViewerSpreads(items, if (useDoublePage) doublePageMode else DoublePageMode.SINGLE)
+                    }
+                    val visualPageCount = spreads.size
                     // 图片/PDF 模式：HorizontalPager 翻页
                     val pagerState = rememberPagerState(
-                        initialPage = if (useDoublePage) currentPage / 2 else currentPage,
+                        initialPage = spreads.spreadIndexForItem(currentPage),
                         pageCount = { visualPageCount },
                     )
 
                     // 同步 ViewModel 的 currentPage
                     LaunchedEffect(pagerState.currentPage) {
-                        viewModel.goToPage(if (useDoublePage) pagerState.currentPage * 2 else pagerState.currentPage)
+                        spreads.getOrNull(pagerState.currentPage)?.itemIndices?.firstOrNull()?.let(viewModel::goToPage)
                     }
-                    LaunchedEffect(currentPage, useDoublePage) {
-                        val visualPage = if (useDoublePage) currentPage / 2 else currentPage
+                    LaunchedEffect(currentPage, spreads) {
+                        val visualPage = spreads.spreadIndexForItem(currentPage)
                         if (pagerState.currentPage != visualPage) {
                             pagerState.animateScrollToPage(visualPage)
                         }
@@ -180,7 +183,6 @@ fun ViewerScreenContent(
                     // 跨章节导航：检测是否到达最后一页
                     LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
                         if (!pagerState.isScrollInProgress && viewModel.canNavigateChapter()) {
-                            val visualPageCount = if (useDoublePage) (totalPages + 1) / 2 else totalPages
                             if (pagerState.currentPage >= visualPageCount - 1) {
                                 // 到达最后一页，尝试导航到下一章
                                 viewModel.navigateToNextChapter()
@@ -196,8 +198,8 @@ fun ViewerScreenContent(
                         .pointerInput(pageDirection, totalPages) {
                             detectTapGestures { offset ->
                                 when (resolveTapAction(offset.x, offset.y, size.width.toFloat(), size.height.toFloat(), pageDirection)) {
-                                    ViewerTapAction.PREVIOUS -> viewModel.goToPage(currentPage - if (useDoublePage) 2 else 1)
-                                    ViewerTapAction.NEXT -> viewModel.goToPage(currentPage + if (useDoublePage) 2 else 1)
+                                    ViewerTapAction.PREVIOUS -> spreads.getOrNull((pagerState.currentPage - 1).coerceAtLeast(0))?.itemIndices?.firstOrNull()?.let(viewModel::goToPage)
+                                    ViewerTapAction.NEXT -> spreads.getOrNull((pagerState.currentPage + 1).coerceAtMost(spreads.lastIndex))?.itemIndices?.firstOrNull()?.let(viewModel::goToPage)
                                     ViewerTapAction.TOGGLE_TOOLBAR -> toolbarVisible = !toolbarVisible
                                 }
                             }
@@ -209,7 +211,7 @@ fun ViewerScreenContent(
                             beyondViewportPageCount = 0,
                             modifier = pagerModifier,
                         ) { page ->
-                            ViewerPagerContent(items, page, useDoublePage, pageDirection, viewModel) {
+                            ViewerPagerContent(items, spreads[page], pageDirection, viewModel) {
                                 toolbarVisible = !toolbarVisible
                             }
                         }
@@ -220,7 +222,7 @@ fun ViewerScreenContent(
                             beyondViewportPageCount = 0,
                             modifier = pagerModifier,
                         ) { page ->
-                            ViewerPagerContent(items, page, useDoublePage, pageDirection, viewModel) {
+                            ViewerPagerContent(items, spreads[page], pageDirection, viewModel) {
                                 toolbarVisible = !toolbarVisible
                             }
                         }
@@ -323,18 +325,16 @@ private fun ViewerPagerPage(
 @Composable
 private fun ViewerPagerContent(
     items: List<ViewerItem>,
-    visualPage: Int,
-    useDoublePage: Boolean,
+    spread: ViewerSpread,
     pageDirection: PageDirection,
     viewModel: ViewerViewModel,
     onToggleToolbar: () -> Unit,
 ) {
-    if (!useDoublePage) {
-        ViewerPagerPage(items[visualPage], viewModel, onToggleToolbar)
+    if (spread.itemIndices.size == 1) {
+        ViewerPagerPage(items[spread.itemIndices.first()], viewModel, onToggleToolbar)
         return
     }
-    val firstIndex = visualPage * 2
-    val pair = listOfNotNull(items.getOrNull(firstIndex), items.getOrNull(firstIndex + 1))
+    val pair = spread.itemIndices.map(items::get)
     val orderedPair = if (pageDirection == PageDirection.RIGHT_TO_LEFT) pair.reversed() else pair
     Row(Modifier.fillMaxSize()) {
         orderedPair.forEach { item ->
@@ -355,11 +355,16 @@ private fun VideoPageContent(
     onToggleToolbar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val videoPlayerViewModel: VideoPlayerViewModel = koinViewModel<VideoPlayerViewModel>()
+    val playerKey = remember(videoItem.videoSource) { "video:${videoItem.videoSource.hashCode()}" }
+    val videoPlayerViewModel: VideoPlayerViewModel = koinViewModel(key = playerKey)
 
     // 加载视频
     LaunchedEffect(videoItem) {
         videoPlayerViewModel.loadMedia(videoItem.videoSource)
+    }
+
+    DisposableEffect(videoPlayerViewModel) {
+        onDispose { videoPlayerViewModel.pause() }
     }
 
     VideoPlayer(

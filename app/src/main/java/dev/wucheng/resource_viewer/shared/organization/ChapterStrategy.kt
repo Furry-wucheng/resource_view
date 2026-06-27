@@ -7,6 +7,7 @@ import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.shared.content.ContentProvider
 import dev.wucheng.resource_viewer.shared.content.ImageFolderProvider
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 
 /**
  * 章节组织策略。
@@ -16,7 +17,7 @@ import dev.wucheng.resource_viewer.shared.filesource.FileSource
  */
 class ChapterStrategy : OrganizationStrategy {
     /** 支持的图片扩展名 */
-    private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif")
+    private val imageExtensions = MediaFormats.imageExtensions
 
     override val mode: OrganizationMode = OrganizationMode.CHAPTER
 

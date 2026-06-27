@@ -52,7 +52,6 @@ fun SourceListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("数据源") },
-                windowInsets = WindowInsets(0.dp),
             )
         },
         floatingActionButton = {

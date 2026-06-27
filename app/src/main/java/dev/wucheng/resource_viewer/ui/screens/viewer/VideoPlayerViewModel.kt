@@ -76,6 +76,11 @@ class VideoPlayerViewModel(
         _isPlaying.value = player.isPlaying
     }
 
+    fun pause() {
+        player.pause()
+        _isPlaying.value = false
+    }
+
     /**
      * 设置播放速度。
      * @param speed 播放速度倍率 (0.5 ~ 3.0)

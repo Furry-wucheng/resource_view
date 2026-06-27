@@ -78,6 +78,20 @@ class SmbFileSourceTest {
         verify { mockWrapper.listDirectory("folder") }
     }
 
+    @Test
+    fun `listDirectory reconnects once after connection reset`() = runTest {
+        val entries = listOf(FileEntry("image.jpg", "image.jpg", false, 10, 1, "jpg"))
+        every { mockWrapper.listDirectory("") } throws SmbConnectionException("Connection reset") andThen entries
+
+        val result = smbFileSource.listDirectory("")
+
+        assertEquals(entries, result)
+        verify(exactly = 1) { mockWrapper.disconnect() }
+        verify(exactly = 2) {
+            mockWrapper.connect("192.168.1.100", 445, "testuser", "testpass", "WORKGROUP", "share")
+        }
+    }
+
     @Test(expected = SmbConnectionException::class)
     fun `listDirectory should throw SmbConnectionException when connection fails`() = runTest {
         // Given
