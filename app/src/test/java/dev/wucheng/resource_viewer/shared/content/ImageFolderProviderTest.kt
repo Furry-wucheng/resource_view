@@ -131,6 +131,28 @@ class ImageFolderProviderTest {
         assertEquals(6, provider.pageCount) // 6个图片文件
     }
 
+    @Test
+    fun `recursive provider should include images in nested folders`() = runTest {
+        coEvery { mockFileSource.listDirectory(testRelativePath) } returns listOf(
+            createFileEntry("cover.jpg", false),
+            createFileEntry("nested", true),
+        )
+        coEvery { mockFileSource.listDirectory("$testRelativePath/nested") } returns listOf(
+            FileEntry(
+                name = "page2.png",
+                relativePath = "$testRelativePath/nested/page2.png",
+                isDirectory = false,
+                size = 1024,
+                modifiedAt = 0,
+                extension = "png",
+            )
+        )
+
+        val recursiveProvider = ImageFolderProvider(mockFileSource, testRelativePath, recursive = true)
+
+        assertEquals(2, recursiveProvider.pageCount)
+    }
+
     // ===== RED: 测试 dispose =====
 
     @Test

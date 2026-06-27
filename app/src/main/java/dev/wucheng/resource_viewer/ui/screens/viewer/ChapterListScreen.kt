@@ -33,7 +33,7 @@ import org.koin.core.parameter.parametersOf
 fun ChapterListScreen(
     resourceId: String,
     onNavigateBack: () -> Unit,
-    onNavigateToViewer: (String) -> Unit,
+    onNavigateToViewer: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ChapterListViewModel = koinViewModel { parametersOf(resourceId) },
 ) {
@@ -136,8 +136,7 @@ fun ChapterListScreen(
                                 ChapterItem(
                                     chapter = chapter,
                                     onClick = {
-                                        // 导航到查看器，传递 resourceId
-                                        onNavigateToViewer(resourceId)
+                                        onNavigateToViewer(resourceId, chapter.relativePath)
                                     },
                                 )
                             }

@@ -29,11 +29,13 @@ fun SlideBar(
     currentPage: Int,
     totalPages: Int,
     onPageChange: (Int) -> Unit,
+    reverseDirection: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
     var sliderWidth by remember { mutableIntStateOf(0) }
-    val progress = if (totalPages > 0) currentPage.toFloat() / (totalPages - 1).coerceAtLeast(1) else 0f
+    val logicalProgress = if (totalPages > 0) currentPage.toFloat() / (totalPages - 1).coerceAtLeast(1) else 0f
+    val progress = if (reverseDirection) 1f - logicalProgress else logicalProgress
 
     Row(
         modifier = modifier
@@ -65,7 +67,8 @@ fun SlideBar(
                         if (sliderWidth > 0) {
                             val x = change.position.x.coerceIn(0f, sliderWidth.toFloat())
                             val fraction = x / sliderWidth
-                            val newPage = (fraction * (totalPages - 1)).toInt().coerceIn(0, totalPages - 1)
+                            val logicalFraction = if (reverseDirection) 1f - fraction else fraction
+                            val newPage = (logicalFraction * (totalPages - 1)).toInt().coerceIn(0, totalPages - 1)
                             onPageChange(newPage)
                         }
                     }

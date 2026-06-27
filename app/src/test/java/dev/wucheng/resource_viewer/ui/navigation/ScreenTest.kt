@@ -61,4 +61,18 @@ class ScreenTest {
         // Then
         assertEquals("tags/manager", screen.route)
     }
+
+    @Test
+    fun `should create chapter viewer route with encoded path`() {
+        val route = Screen.ChapterViewer.createRoute("resource-1", "book/第 1 章")
+
+        assertEquals("viewer/resource-1/chapter?path=book%2F%E7%AC%AC+1+%E7%AB%A0", route)
+    }
+
+    @Test
+    fun `should create sequence viewer route with initial page`() {
+        val route = Screen.SequenceViewer.createRoute("resource-1", "book/pages", 7)
+
+        assertEquals("viewer/resource-1/sequence?path=book%2Fpages&page=7", route)
+    }
 }

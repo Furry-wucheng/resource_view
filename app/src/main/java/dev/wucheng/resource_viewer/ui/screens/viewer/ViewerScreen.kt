@@ -4,10 +4,12 @@ package dev.wucheng.resource_viewer.ui.screens.viewer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.CircularProgressIndicator
@@ -18,9 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
+import dev.wucheng.resource_viewer.data.local.converter.PageDirection
+import dev.wucheng.resource_viewer.data.local.converter.DoublePageMode
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.SlideBar
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.VideoPlayer
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.ViewerToolbar
@@ -38,14 +44,18 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun ViewerScreen(
     resourceId: String,
+    contentPath: String = "",
+    initialPage: Int = 0,
     modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit = {},
-    viewModel: ViewerViewModel = koinViewModel { parametersOf(resourceId) },
+    viewModel: ViewerViewModel = koinViewModel { parametersOf(resourceId, contentPath, initialPage) },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
     val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
     val resourceName by viewModel.resourceName.collectAsStateWithLifecycle()
+    val pageDirection by viewModel.pageDirection.collectAsStateWithLifecycle()
+    val doublePageMode by viewModel.doublePageMode.collectAsStateWithLifecycle()
 
     // 工具栏可见性
     var toolbarVisible by remember { mutableStateOf(true) }
@@ -105,46 +115,61 @@ fun ViewerScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
+                    val configuration = LocalConfiguration.current
+                    val useDoublePage = pageDirection != PageDirection.VERTICAL && when (doublePageMode) {
+                        DoublePageMode.DOUBLE -> true
+                        DoublePageMode.SINGLE -> false
+                        DoublePageMode.AUTO -> configuration.screenWidthDp > configuration.screenHeightDp
+                    }
+                    val visualPageCount = if (useDoublePage) (totalPages + 1) / 2 else totalPages
                     // 图片/PDF 模式：HorizontalPager 翻页
                     val pagerState = rememberPagerState(
-                        initialPage = currentPage,
-                        pageCount = { totalPages },
+                        initialPage = if (useDoublePage) currentPage / 2 else currentPage,
+                        pageCount = { visualPageCount },
                     )
 
                     // 同步 ViewModel 的 currentPage
                     LaunchedEffect(pagerState.currentPage) {
-                        viewModel.goToPage(pagerState.currentPage)
+                        viewModel.goToPage(if (useDoublePage) pagerState.currentPage * 2 else pagerState.currentPage)
+                    }
+                    LaunchedEffect(currentPage, useDoublePage) {
+                        val visualPage = if (useDoublePage) currentPage / 2 else currentPage
+                        if (pagerState.currentPage != visualPage) {
+                            pagerState.animateScrollToPage(visualPage)
+                        }
                     }
 
-                    // HorizontalPager
-                    HorizontalPager(
-                        state = pagerState,
-                        beyondViewportPageCount = 2,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) {
-                                toolbarVisible = !toolbarVisible
-                            },
-                    ) { page ->
-                        val item = items[page]
-                        when (item) {
-                            is ViewerItem.ImagePage -> {
-                                PageContent(
-                                    viewModel = viewModel,
-                                    pageIndex = item.pageIndex,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
+                    val pagerModifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(pageDirection, totalPages) {
+                            detectTapGestures { offset ->
+                                when (resolveTapAction(offset.x, offset.y, size.width.toFloat(), size.height.toFloat(), pageDirection)) {
+                                    ViewerTapAction.PREVIOUS -> viewModel.goToPage(currentPage - if (useDoublePage) 2 else 1)
+                                    ViewerTapAction.NEXT -> viewModel.goToPage(currentPage + if (useDoublePage) 2 else 1)
+                                    ViewerTapAction.TOGGLE_TOOLBAR -> toolbarVisible = !toolbarVisible
+                                }
                             }
-                            is ViewerItem.Video -> {
-                                // 混合模式中的视频页（少见，但支持）
-                                VideoPageContent(
-                                    videoItem = item,
-                                    onToggleToolbar = { toolbarVisible = !toolbarVisible },
-                                    modifier = Modifier.fillMaxSize(),
-                                )
+                        }
+
+                    if (pageDirection == PageDirection.VERTICAL) {
+                        VerticalPager(
+                            state = pagerState,
+                            beyondViewportPageCount = 0,
+                            modifier = pagerModifier,
+                        ) { page ->
+                            ViewerPagerContent(items, page, useDoublePage, pageDirection, viewModel) {
+                                toolbarVisible = !toolbarVisible
+                            }
+                        }
+                    } else {
+                        HorizontalPager(
+                            state = pagerState,
+                            reverseLayout = pageDirection == PageDirection.RIGHT_TO_LEFT,
+                            beyondViewportPageCount = 0,
+                            modifier = pagerModifier,
+                        ) { page ->
+                            ViewerPagerContent(items, page, useDoublePage, pageDirection, viewModel) {
+                                toolbarVisible = !toolbarVisible
                             }
                         }
                     }
@@ -156,6 +181,7 @@ fun ViewerScreen(
                         onPageChange = { page ->
                             viewModel.goToPage(page)
                         },
+                        reverseDirection = pageDirection == PageDirection.RIGHT_TO_LEFT,
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }
@@ -166,9 +192,49 @@ fun ViewerScreen(
                     resourceName = resourceName,
                     pageInfo = if (isVideoOnly) "" else "${currentPage + 1} / $totalPages",
                     onBackClick = onNavigateBack,
-                    onSettingsClick = { /* TODO: M14.5 设置入口 */ },
+                    pageDirection = pageDirection,
+                    doublePageMode = doublePageMode,
+                    onPageDirectionClick = viewModel::cyclePageDirection,
+                    onDoublePageModeClick = viewModel::cycleDoublePageMode,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ViewerPagerPage(
+    item: ViewerItem,
+    viewModel: ViewerViewModel,
+    onToggleToolbar: () -> Unit,
+) {
+    when (item) {
+        is ViewerItem.ImagePage -> PageContent(viewModel, item.pageIndex, Modifier.fillMaxSize())
+        is ViewerItem.Video -> VideoPageContent(item, onToggleToolbar, Modifier.fillMaxSize())
+    }
+}
+
+@Composable
+private fun ViewerPagerContent(
+    items: List<ViewerItem>,
+    visualPage: Int,
+    useDoublePage: Boolean,
+    pageDirection: PageDirection,
+    viewModel: ViewerViewModel,
+    onToggleToolbar: () -> Unit,
+) {
+    if (!useDoublePage) {
+        ViewerPagerPage(items[visualPage], viewModel, onToggleToolbar)
+        return
+    }
+    val firstIndex = visualPage * 2
+    val pair = listOfNotNull(items.getOrNull(firstIndex), items.getOrNull(firstIndex + 1))
+    val orderedPair = if (pageDirection == PageDirection.RIGHT_TO_LEFT) pair.reversed() else pair
+    Row(Modifier.fillMaxSize()) {
+        orderedPair.forEach { item ->
+            Box(Modifier.weight(1f).fillMaxHeight()) {
+                ViewerPagerPage(item, viewModel, onToggleToolbar)
             }
         }
     }
@@ -211,11 +277,13 @@ private fun PageContent(
         val density = LocalDensity.current
         val targetWidth = with(density) { maxWidth.roundToPx() }.coerceAtLeast(1)
         val targetHeight = with(density) { maxHeight.roundToPx() }.coerceAtLeast(1)
+        var retryCount by remember(pageIndex, targetWidth, targetHeight) { mutableIntStateOf(0) }
         val pageState by produceState<PageBitmapState>(
             initialValue = PageBitmapState.Loading,
             pageIndex,
             targetWidth,
             targetHeight,
+            retryCount,
         ) {
             value = try {
                 PageBitmapState.Success(
@@ -242,11 +310,21 @@ private fun PageContent(
                 )
             }
             is PageBitmapState.Error -> {
-                Text(
-                    text = state.message,
-                    color = Color.White.copy(alpha = 0.7f),
+                Column(
                     modifier = Modifier.align(Alignment.Center),
-                )
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = state.message,
+                        color = Color.White.copy(alpha = 0.7f),
+                    )
+                    Text(
+                        text = "重试",
+                        color = Color.White,
+                        modifier = Modifier.clickable { retryCount += 1 },
+                    )
+                }
             }
         }
     }

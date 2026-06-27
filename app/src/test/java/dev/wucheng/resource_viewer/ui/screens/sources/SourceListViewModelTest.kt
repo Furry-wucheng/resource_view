@@ -37,7 +37,8 @@ class SourceListViewModelTest {
         viewModel = SourceListViewModel(
             sourceRepository = mockSourceRepository,
             filesystemRepository = mockFilesystemRepository,
-            smbClientWrapper = mockSmbClientWrapper
+            smbClientWrapper = mockSmbClientWrapper,
+            ioDispatcher = testDispatcher,
         )
     }
 

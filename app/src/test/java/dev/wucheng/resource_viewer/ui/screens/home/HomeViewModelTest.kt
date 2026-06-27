@@ -209,6 +209,26 @@ class HomeViewModelTest {
         assertTrue(viewModel.resources.value.isEmpty())
     }
 
+    @Test
+    fun `search query filters resources by name`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
+        every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        viewModel.setSearchQuery("A")
+        advanceUntilIdle()
+        assertEquals(listOf("漫画A"), viewModel.resources.value.map { it.name })
+    }
+
+    @Test
+    fun `name descending sort reorders visible resources`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
+        every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        viewModel.setSort(HomeViewModel.ResourceSort.NAME_DESC)
+        advanceUntilIdle()
+        assertEquals(listOf("漫画B", "漫画A"), viewModel.resources.value.map { it.name })
+    }
+
     // === 资源详情弹窗测试 ===
 
     @Test

@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +48,7 @@ fun ResourceGridItem(
     resource: Resource,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
+    selected: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -71,6 +75,14 @@ fun ResourceGridItem(
                     contentDescription = resource.name,
                     modifier = Modifier.matchParentSize(),
                     contentScale = ContentScale.Crop,
+                )
+            }
+            if (selected) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = "已选择",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).padding(6.dp),
                 )
             }
         }

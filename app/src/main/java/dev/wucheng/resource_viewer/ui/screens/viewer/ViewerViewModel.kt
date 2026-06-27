@@ -6,6 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
+import dev.wucheng.resource_viewer.data.local.converter.DoublePageMode
+import dev.wucheng.resource_viewer.data.local.converter.PageDirection
+import dev.wucheng.resource_viewer.data.local.dao.AppConfigDao
+import dev.wucheng.resource_viewer.data.local.entity.AppConfigEntity
 import dev.wucheng.resource_viewer.data.remote.smb.SmbDataSourceFactory
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
@@ -21,8 +25,11 @@ import dev.wucheng.resource_viewer.shared.filesource.DocumentTreeFileSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -55,9 +62,12 @@ sealed class ViewerUiState {
 @androidx.media3.common.util.UnstableApi
 class ViewerViewModel(
     private val resourceId: String,
+    private val contentPath: String = "",
+    private val initialPage: Int = 0,
     private val resourceRepository: ResourceRepository,
     private val filesystemRepository: FilesystemRepository,
     private val context: Context,
+    private val appConfigDao: AppConfigDao? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     /** UI 状态 */
@@ -65,7 +75,7 @@ class ViewerViewModel(
     val uiState: StateFlow<ViewerUiState> = _uiState.asStateFlow()
 
     /** 当前页码（0-based） */
-    private val _currentPage = MutableStateFlow(0)
+    private val _currentPage = MutableStateFlow(initialPage.coerceAtLeast(0))
     val currentPage: StateFlow<Int> = _currentPage.asStateFlow()
 
     /** 总页数 */
@@ -76,16 +86,33 @@ class ViewerViewModel(
     private val _resourceName = MutableStateFlow("")
     val resourceName: StateFlow<String> = _resourceName.asStateFlow()
 
+    private val _pageDirection = MutableStateFlow(PageDirection.RIGHT_TO_LEFT)
+    val pageDirection: StateFlow<PageDirection> = _pageDirection.asStateFlow()
+
+    private val _doublePageMode = MutableStateFlow(DoublePageMode.AUTO)
+    val doublePageMode: StateFlow<DoublePageMode> = _doublePageMode.asStateFlow()
+
     /** ContentProvider 实例（图片/PDF 模式） */
     private var contentProvider: ContentProvider? = null
+
+    /** 解码后的页面缓存；200MB 与 Flutter 参考实现保持一致。 */
+    private var pageLoader: PageLoader<PageRequest, Bitmap>? = null
+
+    /** 旧页面的预取必须可取消，避免与用户当前页争抢 SMB 带宽。 */
+    private var prefetchJob: Job? = null
 
     /**
      * 加载资源。
      * 根据资源类型（VIDEO / PDF / FOLDER 等）创建不同的 ViewerItem 列表。
      */
     fun loadResource() {
+        prefetchJob?.cancel()
+        contentProvider?.dispose()
+        contentProvider = null
+        pageLoader = null
         viewModelScope.launch {
             _uiState.value = ViewerUiState.Loading
+            loadViewerConfig()
 
             when (val result = resourceRepository.getById(resourceId)) {
                 is Result.Ok -> {
@@ -206,13 +233,25 @@ class ViewerViewModel(
                             else -> {
                                 ImageFolderProvider(
                                     fileSource = fileSource,
-                                    relativePath = resource.relativePath,
+                                    relativePath = contentPath.ifBlank { resource.relativePath },
+                                    recursive = resource.organizationMode in setOf(
+                                        dev.wucheng.resource_viewer.data.local.converter.OrganizationMode.GALLERY,
+                                        dev.wucheng.resource_viewer.data.local.converter.OrganizationMode.CHAPTER_GALLERY,
+                                    ),
                                 )
                             }
                         }
                     }
                     contentProvider = provider
+                    pageLoader = PageLoader(
+                        maxCacheSize = PAGE_CACHE_BYTES,
+                        sizeOf = { bitmap -> bitmap.allocationByteCount.toLong() },
+                        load = { request ->
+                            provider.loadPage(request.pageIndex, request.targetWidth, request.targetHeight)
+                        },
+                    )
                     _totalPages.value = provider.pageCount
+                    _currentPage.value = initialPage.coerceIn(0, (provider.pageCount - 1).coerceAtLeast(0))
 
                     // 创建 ViewerItem 列表
                     val items = (0 until provider.pageCount).map { index ->
@@ -277,21 +316,107 @@ class ViewerViewModel(
         }
     }
 
+    private suspend fun loadViewerConfig() {
+        val config = appConfigDao?.getConfig()?.first() ?: AppConfigEntity()
+        _pageDirection.value = config.pageDirection
+        _doublePageMode.value = config.doublePageMode
+    }
+
+    fun cyclePageDirection() {
+        val next = when (_pageDirection.value) {
+            PageDirection.RIGHT_TO_LEFT -> PageDirection.LEFT_TO_RIGHT
+            PageDirection.LEFT_TO_RIGHT -> PageDirection.VERTICAL
+            PageDirection.VERTICAL -> PageDirection.RIGHT_TO_LEFT
+        }
+        _pageDirection.value = next
+        persistViewerConfig(pageDirection = next)
+    }
+
+    fun cycleDoublePageMode() {
+        val next = when (_doublePageMode.value) {
+            DoublePageMode.AUTO -> DoublePageMode.SINGLE
+            DoublePageMode.SINGLE -> DoublePageMode.DOUBLE
+            DoublePageMode.DOUBLE -> DoublePageMode.AUTO
+        }
+        _doublePageMode.value = next
+        persistViewerConfig(doublePageMode = next)
+    }
+
+    private fun persistViewerConfig(
+        pageDirection: PageDirection? = null,
+        doublePageMode: DoublePageMode? = null,
+    ) {
+        val dao = appConfigDao ?: return
+        viewModelScope.launch {
+            val current = dao.getConfig().first() ?: AppConfigEntity()
+            dao.save(
+                current.copy(
+                    pageDirection = pageDirection ?: current.pageDirection,
+                    doublePageMode = doublePageMode ?: current.doublePageMode,
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+        }
+    }
+
     /**
      * 加载当前 ContentProvider 中的页面 Bitmap。
      */
     suspend fun loadPageBitmap(pageIndex: Int, targetWidth: Int, targetHeight: Int): Bitmap {
-        val provider = contentProvider ?: throw IllegalStateException("Content provider is not ready")
-        return withContext(ioDispatcher) {
-            provider.loadPage(pageIndex, targetWidth, targetHeight)
+        val loader = pageLoader ?: throw IllegalStateException("Content provider is not ready")
+        val request = PageRequest(pageIndex, targetWidth, targetHeight)
+        val isCurrentPage = pageIndex == _currentPage.value
+
+        if (isCurrentPage) prefetchJob?.cancel()
+        val bitmap = withContext(ioDispatcher) { loader.get(request) }
+
+        if (isCurrentPage) {
+            prefetchJob = viewModelScope.launch(ioDispatcher) {
+                preloadAround(request, loader)
+            }
         }
+        return bitmap
+    }
+
+    private suspend fun preloadAround(
+        current: PageRequest,
+        loader: PageLoader<PageRequest, Bitmap>,
+    ) {
+        val pageOrder = listOf(
+            current.pageIndex + 1,
+            current.pageIndex - 1,
+            current.pageIndex + 2,
+            current.pageIndex - 2,
+        )
+        pageOrder
+            .filter { it in 0 until _totalPages.value }
+            .forEach { pageIndex ->
+                try {
+                    loader.get(current.copy(pageIndex = pageIndex))
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    // 单个预取失败不影响当前页；用户翻到该页时仍可主动重试。
+                }
+            }
     }
 
     /**
      * 释放资源。
      */
     override fun onCleared() {
+        prefetchJob?.cancel()
         super.onCleared()
         contentProvider?.dispose()
+    }
+
+    private data class PageRequest(
+        val pageIndex: Int,
+        val targetWidth: Int,
+        val targetHeight: Int,
+    )
+
+    private companion object {
+        const val PAGE_CACHE_BYTES: Long = 200L * 1024L * 1024L
     }
 }

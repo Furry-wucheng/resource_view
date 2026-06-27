@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.wucheng.resource_viewer.data.local.converter.DoublePageMode
+import dev.wucheng.resource_viewer.data.local.converter.PageDirection
 
 /**
  * 顶部工具栏组件。
@@ -33,7 +35,10 @@ fun ViewerToolbar(
     resourceName: String,
     pageInfo: String,
     onBackClick: () -> Unit,
-    onSettingsClick: () -> Unit,
+    pageDirection: PageDirection,
+    doublePageMode: DoublePageMode,
+    onPageDirectionClick: () -> Unit,
+    onDoublePageModeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -92,14 +97,25 @@ fun ViewerToolbar(
                     fontSize = 12.sp,
                 )
 
-                // 设置按钮
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "设置",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable(onClick = onSettingsClick),
+                Text(
+                    text = when (pageDirection) {
+                        PageDirection.LEFT_TO_RIGHT -> "LTR"
+                        PageDirection.RIGHT_TO_LEFT -> "RTL"
+                        PageDirection.VERTICAL -> "纵向"
+                    },
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    modifier = Modifier.clickable(onClick = onPageDirectionClick),
+                )
+                Text(
+                    text = when (doublePageMode) {
+                        DoublePageMode.AUTO -> "自动"
+                        DoublePageMode.SINGLE -> "单页"
+                        DoublePageMode.DOUBLE -> "双页"
+                    },
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    modifier = Modifier.clickable(onClick = onDoublePageModeClick),
                 )
             }
         }

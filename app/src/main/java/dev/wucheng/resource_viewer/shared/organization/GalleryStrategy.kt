@@ -32,9 +32,17 @@ class GalleryStrategy : OrganizationStrategy {
      * 获取内容列表 - 返回文件夹内所有图片文件。
      */
     override suspend fun getContents(resource: Resource, fileSource: FileSource): List<FileEntry> {
-        val entries = fileSource.listDirectory(resource.relativePath)
-        return entries.filter { entry ->
-            !entry.isDirectory && entry.extension.lowercase() in imageExtensions
+        return collectImages(fileSource, resource.relativePath)
+    }
+
+    private suspend fun collectImages(fileSource: FileSource, path: String): List<FileEntry> {
+        val entries = fileSource.listDirectory(path)
+        return entries.flatMap { entry ->
+            when {
+                entry.isDirectory -> collectImages(fileSource, entry.relativePath)
+                entry.extension.lowercase() in imageExtensions -> listOf(entry)
+                else -> emptyList()
+            }
         }
     }
 
@@ -46,6 +54,6 @@ class GalleryStrategy : OrganizationStrategy {
         fileSource: FileSource,
         chapter: Chapter?,
     ): ContentProvider {
-        return ImageFolderProvider(fileSource, resource.relativePath)
+        return ImageFolderProvider(fileSource, resource.relativePath, recursive = true)
     }
 }

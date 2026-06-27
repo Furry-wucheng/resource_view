@@ -57,7 +57,7 @@ class ChapterGalleryStrategy : OrganizationStrategy {
         chapter: Chapter?,
     ): ContentProvider {
         requireNotNull(chapter) { "Chapter is required for ChapterGalleryStrategy" }
-        return ImageFolderProvider(fileSource, chapter.relativePath)
+        return ImageFolderProvider(fileSource, chapter.relativePath, recursive = true)
     }
 
     /**

@@ -47,7 +47,8 @@ class GalleryStrategyTest {
                     FileEntry("document.pdf", "document.pdf", false, 4096, System.currentTimeMillis(), "pdf"),
                     FileEntry("subfolder", "subfolder", true, 0, System.currentTimeMillis(), ""),
                 )
-            coEvery { mockFileSource.listDirectory(any()) } returns entries
+            coEvery { mockFileSource.listDirectory("") } returns entries
+            coEvery { mockFileSource.listDirectory("subfolder") } returns emptyList()
 
             val contents = strategy.getContents(mockResource, mockFileSource)
 
@@ -69,6 +70,21 @@ class GalleryStrategyTest {
 
             assertTrue(contents.isEmpty())
         }
+
+    @Test
+    fun `getContents should recursively flatten nested images`() = runTest {
+        coEvery { mockFileSource.listDirectory("") } returns listOf(
+            FileEntry("root.jpg", "root.jpg", false, 1, 0, "jpg"),
+            FileEntry("nested", "nested", true, 0, 0, ""),
+        )
+        coEvery { mockFileSource.listDirectory("nested") } returns listOf(
+            FileEntry("page.png", "nested/page.png", false, 1, 0, "png"),
+        )
+
+        val contents = strategy.getContents(mockResource, mockFileSource)
+
+        assertEquals(listOf("root.jpg", "nested/page.png"), contents.map { it.relativePath })
+    }
 
     @Test
     fun `createProvider should return ImageFolderProvider`() {

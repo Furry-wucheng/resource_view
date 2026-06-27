@@ -13,6 +13,7 @@ import dev.wucheng.resource_viewer.shared.filesource.FileSource
 class ImageFolderProvider(
     private val fileSource: FileSource,
     private val relativePath: String,
+    private val recursive: Boolean = false,
 ) : ContentProvider {
     /** 支持的图片扩展名 */
     private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif")
@@ -37,15 +38,25 @@ class ImageFolderProvider(
     private fun loadFileList(): List<String> {
         return try {
             val entries = kotlinx.coroutines.runBlocking {
-                fileSource.listDirectory(relativePath)
+                collectImageEntries(relativePath)
             }
             entries
-                .filter { !it.isDirectory && it.extension.lowercase() in imageExtensions }
-                .sortedBy { it.name }
+                .sortedBy { it.relativePath }
                 .map { it.relativePath }
         } catch (e: Exception) {
             emptyList()
         }
+    }
+
+    private suspend fun collectImageEntries(path: String): List<dev.wucheng.resource_viewer.domain.model.FileEntry> {
+        val entries = fileSource.listDirectory(path)
+        val images = entries.filter { !it.isDirectory && it.extension.lowercase() in imageExtensions }
+        if (!recursive) return images
+
+        val nestedImages = entries
+            .filter { it.isDirectory }
+            .flatMap { collectImageEntries(it.relativePath) }
+        return images + nestedImages
     }
 
     /**

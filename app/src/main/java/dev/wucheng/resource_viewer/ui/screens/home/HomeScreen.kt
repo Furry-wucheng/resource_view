@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -16,8 +17,19 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -44,7 +56,7 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNavigateToViewer: (String) -> Unit,
+    onNavigateToViewer: (Resource) -> Unit,
     onNavigateToAddSource: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = koinViewModel(),
@@ -56,6 +68,10 @@ fun HomeScreen(
     val detailResource by viewModel.detailResource.collectAsStateWithLifecycle()
     val detailTagIds by viewModel.detailTagIds.collectAsStateWithLifecycle()
     val detailOrgMode by viewModel.detailOrgMode.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val sort by viewModel.sort.collectAsStateWithLifecycle()
+    val isMultiSelect by viewModel.isMultiSelect.collectAsStateWithLifecycle()
+    val selectedResourceIds by viewModel.selectedResourceIds.collectAsStateWithLifecycle()
 
     HomeScreenContent(
         resources = resources,
@@ -66,6 +82,10 @@ fun HomeScreen(
         allTags = tags,
         detailTagIds = detailTagIds,
         detailOrgMode = detailOrgMode,
+        searchQuery = searchQuery,
+        sort = sort,
+        isMultiSelect = isMultiSelect,
+        selectedResourceIds = selectedResourceIds,
         onTagClick = { tagId ->
             if (tagId == null) {
                 viewModel.clearFilter()
@@ -73,7 +93,9 @@ fun HomeScreen(
                 viewModel.selectTag(tagId)
             }
         },
-        onResourceClick = onNavigateToViewer,
+        onResourceClick = { resource ->
+            if (isMultiSelect) viewModel.toggleResourceSelection(resource.id) else onNavigateToViewer(resource)
+        },
         onResourceLongClick = { viewModel.openResourceDetail(it) },
         onAddSource = onNavigateToAddSource,
         onClearFilter = { viewModel.clearFilter() },
@@ -81,6 +103,12 @@ fun HomeScreen(
         onDetailOrgModeChange = { viewModel.setDetailOrgMode(it) },
         onDetailSave = { viewModel.saveResourceDetail() },
         onDetailDismiss = { viewModel.closeResourceDetail() },
+        onSearchQueryChange = viewModel::setSearchQuery,
+        onSortChange = viewModel::setSort,
+        onEnterMultiSelect = viewModel::enterMultiSelectMode,
+        onExitMultiSelect = viewModel::exitMultiSelectMode,
+        onSelectAll = viewModel::toggleSelectAllVisible,
+        onBatchDelete = viewModel::batchDeleteSelectedResources,
         modifier = modifier,
     )
 }
@@ -99,8 +127,12 @@ private fun HomeScreenContent(
     allTags: List<Tag>,
     detailTagIds: Set<String>,
     detailOrgMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode,
+    searchQuery: String,
+    sort: HomeViewModel.ResourceSort,
+    isMultiSelect: Boolean,
+    selectedResourceIds: Set<String>,
     onTagClick: (String?) -> Unit,
-    onResourceClick: (String) -> Unit,
+    onResourceClick: (Resource) -> Unit,
     onResourceLongClick: (Resource) -> Unit,
     onAddSource: () -> Unit,
     onClearFilter: () -> Unit,
@@ -108,14 +140,60 @@ private fun HomeScreenContent(
     onDetailOrgModeChange: (dev.wucheng.resource_viewer.data.local.converter.OrganizationMode) -> Unit,
     onDetailSave: () -> Unit,
     onDetailDismiss: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onSortChange: (HomeViewModel.ResourceSort) -> Unit,
+    onEnterMultiSelect: () -> Unit,
+    onExitMultiSelect: () -> Unit,
+    onSelectAll: () -> Unit,
+    onBatchDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var searchVisible by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("资源库") },
+                title = {
+                    if (searchVisible) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = onSearchQueryChange,
+                            placeholder = { Text("搜索资源") },
+                            singleLine = true,
+                        )
+                    } else Text(if (isMultiSelect) "已选 ${selectedResourceIds.size} 项" else "资源库")
+                },
+                navigationIcon = {
+                    if (isMultiSelect) IconButton(onClick = onExitMultiSelect) {
+                        Icon(Icons.Default.Close, contentDescription = "退出多选")
+                    }
+                },
+                actions = {
+                    if (isMultiSelect) {
+                        IconButton(onClick = onSelectAll) { Icon(Icons.Default.Checklist, contentDescription = "全选") }
+                    } else {
+                        IconButton(onClick = {
+                            searchVisible = !searchVisible
+                            if (!searchVisible) onSearchQueryChange("")
+                        }) { Icon(Icons.Default.Search, contentDescription = "搜索") }
+                        IconButton(onClick = {
+                            val values = HomeViewModel.ResourceSort.entries
+                            onSortChange(values[(sort.ordinal + 1) % values.size])
+                        }) { Icon(Icons.Default.Sort, contentDescription = "排序") }
+                        IconButton(onClick = onEnterMultiSelect) { Icon(Icons.Default.Checklist, contentDescription = "多选") }
+                    }
+                },
                 windowInsets = WindowInsets(0.dp),
             )
+        },
+        bottomBar = {
+            if (isMultiSelect) Button(
+                onClick = onBatchDelete,
+                enabled = selectedResourceIds.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = null)
+                Text("批量删除")
+            }
         },
         modifier = modifier,
     ) { innerPadding ->
@@ -159,6 +237,7 @@ private fun HomeScreenContent(
                         resources = resources,
                         onResourceClick = onResourceClick,
                         onResourceLongClick = onResourceLongClick,
+                        selectedResourceIds = selectedResourceIds,
                     )
                 }
             }
@@ -188,8 +267,9 @@ private fun HomeScreenContent(
 @Composable
 private fun ResourceGrid(
     resources: List<Resource>,
-    onResourceClick: (String) -> Unit,
+    onResourceClick: (Resource) -> Unit,
     onResourceLongClick: (Resource) -> Unit,
+    selectedResourceIds: Set<String>,
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
@@ -205,8 +285,9 @@ private fun ResourceGrid(
         ) { resource ->
             ResourceGridItem(
                 resource = resource,
-                onClick = { onResourceClick(resource.id) },
+                onClick = { onResourceClick(resource) },
                 onLongClick = { onResourceLongClick(resource) },
+                selected = resource.id in selectedResourceIds,
             )
         }
     }

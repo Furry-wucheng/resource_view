@@ -12,6 +12,7 @@ import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.model.Source
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -65,6 +66,7 @@ class SourceListViewModel(
     private val sourceRepository: SourceRepository,
     private val filesystemRepository: FilesystemRepository,
     private val smbClientWrapper: SmbClientWrapper,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SourceListUiState())
@@ -196,7 +198,7 @@ class SourceListViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isTestingConnection = true, testConnectionSuccess = null, testConnectionError = null) }
             try {
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     smbClientWrapper.testConnection(
                         host = form.host,
                         port = form.port,

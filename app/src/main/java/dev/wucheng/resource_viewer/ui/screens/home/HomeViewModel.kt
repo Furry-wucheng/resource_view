@@ -30,6 +30,7 @@ class HomeViewModel(
     private val tagRepository: TagRepository,
     private val resourceTagDao: ResourceTagDao,
 ) : ViewModel() {
+    enum class ResourceSort { ADDED_DESC, ADDED_ASC, NAME_ASC, NAME_DESC }
 
     /**
      * 标签列表（Flow 自动更新）
@@ -50,7 +51,7 @@ class HomeViewModel(
     /**
      * 资源列表：根据选中标签自动切换数据源
      */
-    val resources: StateFlow<List<Resource>> = _selectedTagIds
+    private val baseResources = _selectedTagIds
         .flatMapLatest { tagIds ->
             if (tagIds.isEmpty()) {
                 resourceRepository.getVisibleResources()
@@ -58,11 +59,50 @@ class HomeViewModel(
                 resourceRepository.filterByTags(tagIds.toList())
             }
         }
-        .stateIn(
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+    private val _sort = MutableStateFlow(ResourceSort.ADDED_ASC)
+    val sort = _sort.asStateFlow()
+    private val _isMultiSelect = MutableStateFlow(false)
+    val isMultiSelect = _isMultiSelect.asStateFlow()
+    private val _selectedResourceIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedResourceIds = _selectedResourceIds.asStateFlow()
+
+    val resources: StateFlow<List<Resource>> = combine(baseResources, _searchQuery, _sort) { resources, query, sort ->
+        val filtered = if (query.isBlank()) resources else resources.filter { it.name.contains(query, ignoreCase = true) }
+        when (sort) {
+            ResourceSort.ADDED_DESC -> filtered.sortedByDescending { it.createdAt }
+            ResourceSort.ADDED_ASC -> filtered.sortedBy { it.createdAt }
+            ResourceSort.NAME_ASC -> filtered.sortedBy { it.name.lowercase() }
+            ResourceSort.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase() }
+        }
+    }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = emptyList(),
         )
+
+    fun setSearchQuery(query: String) { _searchQuery.value = query }
+    fun setSort(sort: ResourceSort) { _sort.value = sort }
+    fun enterMultiSelectMode() { _isMultiSelect.value = true }
+    fun exitMultiSelectMode() { _isMultiSelect.value = false; _selectedResourceIds.value = emptySet() }
+    fun toggleResourceSelection(id: String) {
+        _selectedResourceIds.value = _selectedResourceIds.value.toMutableSet().apply {
+            if (!add(id)) remove(id)
+        }
+    }
+    fun toggleSelectAllVisible() {
+        val visibleIds = resources.value.map { it.id }.toSet()
+        _selectedResourceIds.value = if (_selectedResourceIds.value.containsAll(visibleIds)) emptySet() else visibleIds
+    }
+    fun batchDeleteSelectedResources() {
+        val ids = _selectedResourceIds.value
+        viewModelScope.launch {
+            ids.forEach { resourceRepository.deleteById(it) }
+            exitMultiSelectMode()
+        }
+    }
 
     /**
      * UI 状态
