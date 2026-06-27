@@ -85,6 +85,7 @@ class MixedFolderProvider(
                     title = entry.name,
                     pageIndex = currentImageIndex,
                     providerKey = providerKey,
+                    extension = entry.extension,
                 )
             }
         }

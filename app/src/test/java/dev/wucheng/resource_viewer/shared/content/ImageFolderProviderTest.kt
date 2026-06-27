@@ -161,6 +161,72 @@ class ImageFolderProviderTest {
         provider.dispose() // 应该不抛异常
     }
 
+    // ===== RED: 测试 getPageExtension =====
+
+    @Test
+    fun `should return correct extension for gif file`() = runTest {
+        // Arrange
+        val imageFiles = listOf(
+            createFileEntry("animation.gif", false),
+            createFileEntry("photo.jpg", false),
+        )
+        coEvery { mockFileSource.listDirectory(testRelativePath) } returns imageFiles
+
+        val provider = ImageFolderProvider(mockFileSource, testRelativePath)
+
+        // Act
+        val gifExtension = provider.getPageExtension(0)
+        val jpgExtension = provider.getPageExtension(1)
+
+        // Assert
+        assertEquals("gif", gifExtension)
+        assertEquals("jpg", jpgExtension)
+    }
+
+    @Test
+    fun `should return lowercase extension`() = runTest {
+        // Arrange
+        val imageFiles = listOf(
+            createFileEntry("image.GIF", false),
+            createFileEntry("image.JPEG", false),
+        )
+        coEvery { mockFileSource.listDirectory(testRelativePath) } returns imageFiles
+
+        val provider = ImageFolderProvider(mockFileSource, testRelativePath)
+
+        // Act
+        val gifExtension = provider.getPageExtension(0)
+        val jpegExtension = provider.getPageExtension(1)
+
+        // Assert
+        assertEquals("gif", gifExtension)
+        assertEquals("jpeg", jpegExtension)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `should throw when getPageExtension with invalid index`() = runTest {
+        // Arrange
+        coEvery { mockFileSource.listDirectory(testRelativePath) } returns emptyList()
+
+        val provider = ImageFolderProvider(mockFileSource, testRelativePath)
+
+        // Act & Assert
+        provider.getPageExtension(0)
+    }
+
+    // ===== RED: 测试 getPageUri =====
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `should throw when getPageUri with invalid index`() = runTest {
+        // Arrange
+        coEvery { mockFileSource.listDirectory(testRelativePath) } returns emptyList()
+
+        val provider = ImageFolderProvider(mockFileSource, testRelativePath)
+
+        // Act & Assert
+        provider.getPageUri(0)
+    }
+
     private fun createFileEntry(name: String, isDirectory: Boolean): FileEntry {
         return FileEntry(
             name = name,
