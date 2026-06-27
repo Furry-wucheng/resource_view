@@ -25,7 +25,7 @@ val viewModelModule = module {
     viewModel { TagViewModel(get()) }
     viewModel { HomeViewModel(get(), get(), get()) }
     viewModel { SourceListViewModel(get(), get(), get(), get()) }
-    viewModel { (sourceId: String) -> FileBrowserViewModel(sourceId, get(), get()) }
+    viewModel { (sourceId: String) -> FileBrowserViewModel(sourceId, get(), get(), get()) }
     viewModel { (resourceId: String, contentPath: String, initialPage: Int) ->
         ViewerViewModel(
             resourceId = resourceId,

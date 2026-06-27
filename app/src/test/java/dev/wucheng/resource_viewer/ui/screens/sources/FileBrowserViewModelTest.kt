@@ -2,6 +2,7 @@ package dev.wucheng.resource_viewer.ui.screens.sources
 
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
+import dev.wucheng.resource_viewer.data.repository.TagRepository
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.error.ScanResult
 import dev.wucheng.resource_viewer.domain.model.FileEntry
@@ -28,6 +29,7 @@ class FileBrowserViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
     private lateinit var filesystemRepository: FilesystemRepository
     private lateinit var batchAddResourcesUseCase: BatchAddResourcesUseCase
+    private lateinit var tagRepository: TagRepository
     private lateinit var fileSource: FileSource
     private lateinit var viewModel: FileBrowserViewModel
 
@@ -45,8 +47,9 @@ class FileBrowserViewModelTest {
         Dispatchers.setMain(dispatcher)
         filesystemRepository = mockk()
         batchAddResourcesUseCase = mockk()
+        tagRepository = mockk(relaxed = true)
         fileSource = mockk()
-        viewModel = FileBrowserViewModel("source-1", filesystemRepository, batchAddResourcesUseCase)
+        viewModel = FileBrowserViewModel("source-1", filesystemRepository, batchAddResourcesUseCase, tagRepository)
     }
 
     @After
@@ -71,19 +74,20 @@ class FileBrowserViewModelTest {
     }
 
     @Test
-    fun `addSelectedResources should call batch add use case`() = runTest {
+    fun `confirmBatchAdd should call batch add use case`() = runTest {
         val entries = listOf(FileEntry("book.pdf", "book.pdf", false, 100, 1L, "pdf"))
         coEvery { filesystemRepository.getSource("source-1") } returns Result.Ok(source)
         coEvery { filesystemRepository.getFileSource("source-1") } returns Result.Ok(fileSource)
         coEvery { filesystemRepository.listDirectory(source, "") } returns Result.Ok(entries)
-        coEvery { batchAddResourcesUseCase(fileSource, source, listOf("book.pdf")) } returns
+        coEvery { batchAddResourcesUseCase(fileSource, source, listOf("book.pdf"), any(), any()) } returns
             Result.Ok(ScanResult(successCount = 1, skipCount = 0, failures = emptyList()))
 
         viewModel.load()
         viewModel.toggleSelection("book.pdf")
-        viewModel.addSelectedResources()
+        viewModel.showBatchAddDialog()
+        viewModel.confirmBatchAdd(null, emptyList())
 
-        coVerify { batchAddResourcesUseCase(fileSource, source, listOf("book.pdf")) }
+        coVerify { batchAddResourcesUseCase(fileSource, source, listOf("book.pdf"), any(), any()) }
         assertEquals(1, viewModel.uiState.value.lastAddResult?.successCount)
         assertTrue(viewModel.uiState.value.selectedPaths.isEmpty())
     }

@@ -38,6 +38,18 @@ class TagRepository(
     }
 
     /**
+     * 获取所有标签（一次性查询）。
+     */
+    suspend fun getAllTagsOnce(): List<Tag> {
+        val tags = tagDao.getAllTagsSnapshot()
+        val counts = tagDao.getTagResourceCountsSnapshot()
+        return tags.map { entity ->
+            val count = counts.find { it.id == entity.id }?.count ?: 0
+            entity.toDomain(count)
+        }
+    }
+
+    /**
      * 根据 ID 获取标签。
      */
     suspend fun getById(id: String): Result<Tag?> {

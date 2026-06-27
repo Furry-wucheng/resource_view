@@ -25,6 +25,10 @@ data class FileBrowserUiState(
     val isLoading: Boolean = false,
     val isAdding: Boolean = false,
     val viewMode: FileViewMode = FileViewMode.LIST,
+    val previewFile: FileEntry? = null,
+    val showBatchAddDialog: Boolean = false,
+    val showDirectoryTree: Boolean = false,
+    val allTags: List<dev.wucheng.resource_viewer.domain.model.Tag> = emptyList(),
     val error: String? = null,
     val lastAddResult: ScanResult? = null,
 )
@@ -33,6 +37,7 @@ class FileBrowserViewModel(
     private val sourceId: String,
     private val filesystemRepository: FilesystemRepository,
     private val batchAddResourcesUseCase: BatchAddResourcesUseCase,
+    private val tagRepository: dev.wucheng.resource_viewer.data.repository.TagRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(FileBrowserUiState())
     val uiState: StateFlow<FileBrowserUiState> = _uiState.asStateFlow()
@@ -82,6 +87,21 @@ class FileBrowserViewModel(
         loadDirectory(parent)
     }
 
+    fun toggleDirectoryTree() {
+        _uiState.update { it.copy(showDirectoryTree = !it.showDirectoryTree) }
+    }
+
+    fun hideDirectoryTree() {
+        _uiState.update { it.copy(showDirectoryTree = false) }
+    }
+
+    /** Navigate to a specific path segment (e.g., clicking "folder" in "root/folder/sub") */
+    fun navigateToPathSegment(segmentIndex: Int) {
+        val segments = _uiState.value.currentPath.trim('/').split('/').filter { it.isNotEmpty() }
+        val targetPath = segments.take(segmentIndex + 1).joinToString("/")
+        loadDirectory(targetPath)
+    }
+
     fun toggleSelection(path: String) {
         _uiState.update { state ->
             val next = state.selectedPaths.toMutableSet()
@@ -92,15 +112,38 @@ class FileBrowserViewModel(
         }
     }
 
-    fun addSelectedResources() {
+    /**
+     * 显示批量添加弹窗。
+     */
+    fun showBatchAddDialog() {
+        val selected = _uiState.value.selectedPaths
+        if (selected.isEmpty()) return
+        viewModelScope.launch {
+            val tags = tagRepository.getAllTagsOnce()
+            _uiState.update { it.copy(showBatchAddDialog = true, allTags = tags) }
+        }
+    }
+
+    /**
+     * 隐藏批量添加弹窗。
+     */
+    fun hideBatchAddDialog() {
+        _uiState.update { it.copy(showBatchAddDialog = false, allTags = emptyList()) }
+    }
+
+    /**
+     * 确认批量添加。
+     */
+    fun confirmBatchAdd(organizationMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode?, tagIds: List<String>) {
         val source = _uiState.value.source ?: return
         val selected = _uiState.value.selectedPaths.toList()
         val fs = fileSource ?: return
         if (selected.isEmpty()) return
 
+        hideBatchAddDialog()
         viewModelScope.launch {
             _uiState.update { it.copy(isAdding = true, error = null, lastAddResult = null) }
-            when (val result = batchAddResourcesUseCase(fs, source, selected)) {
+            when (val result = batchAddResourcesUseCase(fs, source, selected, organizationMode, tagIds)) {
                 is Result.Ok -> {
                     _uiState.update {
                         it.copy(
@@ -139,6 +182,30 @@ class FileBrowserViewModel(
         if (entry.isDirectory) return false
         val ext = entry.extension.lowercase()
         return ext in IMAGE_EXTENSIONS || ext in VIDEO_EXTENSIONS || ext == "pdf"
+    }
+
+    /**
+     * 打开文件预览。
+     */
+    fun openFilePreview(entry: FileEntry) {
+        _uiState.update { it.copy(previewFile = entry) }
+    }
+
+    /**
+     * 关闭文件预览。
+     */
+    fun closeFilePreview() {
+        _uiState.update { it.copy(previewFile = null) }
+    }
+
+    /**
+     * 加载预览图片的 Bitmap。
+     */
+    suspend fun loadPreviewBitmap(entry: FileEntry): android.graphics.Bitmap {
+        val fs = fileSource ?: throw IllegalStateException("FileSource not initialized")
+        val bytes = fs.readFile(entry.relativePath)
+        return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            ?: throw IllegalStateException("Failed to decode image")
     }
 
     companion object {

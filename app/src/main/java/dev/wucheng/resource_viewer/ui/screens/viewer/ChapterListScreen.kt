@@ -127,121 +127,267 @@ fun ChapterListScreen(
                 }
 
                 is ChapterListUiState.Success -> {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // 组织模式切换器
-                        OrgModeSwitcher(
-                            currentMode = state.organizationMode,
-                            onModeChanged = { mode -> viewModel.changeOrganizationMode(mode) },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        )
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val isWide = maxWidth >= 900.dp
 
-                        if (state.chapters.isEmpty() && state.looseFiles.isEmpty()) {
-                            // 空状态
-                            Column(
-                                modifier = Modifier.align(Alignment.CenterHorizontally),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Folder,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    text = "暂无章节",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                        if (isWide) {
+                            // 宽屏布局：左侧封面面板 + 右侧章节列表
+                            WideChapterLayout(
+                                state = state,
+                                resourceId = resourceId,
+                                onNavigateToViewer = onNavigateToViewer,
+                                onChangeOrgMode = { viewModel.changeOrganizationMode(it) },
+                                onToggleViewMode = { viewModel.toggleViewMode() },
+                            )
                         } else {
-                            when (state.viewMode) {
-                                ChapterViewMode.LIST -> {
-                                    // 列表视图
-                                    LazyColumn(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentPadding = PaddingValues(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    ) {
-                                        items(
-                                            items = state.chapters,
-                                            key = { "chapter_${it.relativePath}" },
-                                        ) { chapter ->
-                                            ChapterItem(
-                                                chapter = chapter,
-                                                onClick = {
-                                                    onNavigateToViewer(resourceId, chapter.relativePath)
-                                                },
-                                            )
-                                        }
-
-                                        if (state.looseFiles.isNotEmpty()) {
-                                            item(key = "loose_header") {
-                                                Text(
-                                                    text = "散落文件",
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    modifier = Modifier.padding(top = 8.dp),
-                                                )
-                                            }
-                                            items(
-                                                items = state.looseFiles,
-                                                key = { "loose_${it.relativePath}" },
-                                            ) { file ->
-                                                LooseFileItem(
-                                                    file = file,
-                                                    onClick = {
-                                                        onNavigateToViewer(resourceId, file.relativePath)
-                                                    },
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                ChapterViewMode.GRID -> {
-                                    // 网格视图
-                                    LazyVerticalGrid(
-                                        columns = GridCells.Adaptive(minSize = 150.dp),
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentPadding = PaddingValues(16.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    ) {
-                                        items(
-                                            items = state.chapters,
-                                            key = { "chapter_${it.relativePath}" },
-                                        ) { chapter ->
-                                            ChapterGridItem(
-                                                chapter = chapter,
-                                                onClick = {
-                                                    onNavigateToViewer(resourceId, chapter.relativePath)
-                                                },
-                                            )
-                                        }
-
-                                        if (state.looseFiles.isNotEmpty()) {
-                                            item(key = "loose_header") {
-                                                Text(
-                                                    text = "散落文件",
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    modifier = Modifier.padding(vertical = 8.dp),
-                                                )
-                                            }
-                                            items(
-                                                items = state.looseFiles,
-                                                key = { "loose_${it.relativePath}" },
-                                            ) { file ->
-                                                LooseFileGridItem(
-                                                    file = file,
-                                                    onClick = {
-                                                        onNavigateToViewer(resourceId, file.relativePath)
-                                                    },
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            // 窄屏布局：标准纵向
+                            NarrowChapterLayout(
+                                state = state,
+                                resourceId = resourceId,
+                                onNavigateToViewer = onNavigateToViewer,
+                                onChangeOrgMode = { viewModel.changeOrganizationMode(it) },
+                            )
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 窄屏布局（标准纵向）。
+ */
+@Composable
+private fun NarrowChapterLayout(
+    state: ChapterListUiState.Success,
+    resourceId: String,
+    onNavigateToViewer: (String, String) -> Unit,
+    onChangeOrgMode: (dev.wucheng.resource_viewer.data.local.converter.OrganizationMode) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // 组织模式切换器
+        OrgModeSwitcher(
+            currentMode = state.organizationMode,
+            onModeChanged = onChangeOrgMode,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+
+        if (state.chapters.isEmpty() && state.looseFiles.isEmpty()) {
+            EmptyChapterState()
+        } else {
+            ChapterContent(
+                state = state,
+                resourceId = resourceId,
+                onNavigateToViewer = onNavigateToViewer,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+/**
+ * 宽屏布局（≥900dp）：左侧封面面板 + 右侧章节列表。
+ */
+@Composable
+private fun WideChapterLayout(
+    state: ChapterListUiState.Success,
+    resourceId: String,
+    onNavigateToViewer: (String, String) -> Unit,
+    onChangeOrgMode: (dev.wucheng.resource_viewer.data.local.converter.OrganizationMode) -> Unit,
+    onToggleViewMode: () -> Unit,
+) {
+    Row(modifier = Modifier.fillMaxSize()) {
+        // 左侧封面面板
+        Column(
+            modifier = Modifier
+                .width(280.dp)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // 封面缩略图（取第一个章节的封面）
+            val coverPath = state.chapters.firstOrNull()?.coverPath
+            Box(
+                modifier = Modifier
+                    .size(200.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (coverPath != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(coverPath)
+                            .build(),
+                        contentDescription = state.resourceName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Folder,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // 资源名称
+            Text(
+                text = state.resourceName,
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            // 章节/文件统计
+            Text(
+                text = "${state.chapters.size} 章 · ${state.looseFiles.size} 散落文件",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            // 组织模式切换器
+            OrgModeSwitcher(
+                currentMode = state.organizationMode,
+                onModeChanged = onChangeOrgMode,
+            )
+
+            // 视图切换按钮
+            IconButton(onClick = onToggleViewMode) {
+                Icon(
+                    imageVector = if (state.viewMode == ChapterViewMode.LIST) Icons.Default.GridView else Icons.Default.List,
+                    contentDescription = if (state.viewMode == ChapterViewMode.LIST) "网格视图" else "列表视图",
+                )
+            }
+        }
+
+        // 右侧章节列表
+        if (state.chapters.isEmpty() && state.looseFiles.isEmpty()) {
+            Box(modifier = Modifier.weight(1f)) {
+                EmptyChapterState()
+            }
+        } else {
+            ChapterContent(
+                state = state,
+                resourceId = resourceId,
+                onNavigateToViewer = onNavigateToViewer,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+/**
+ * 空章节状态。
+ */
+@Composable
+private fun EmptyChapterState() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Folder,
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "暂无章节",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * 章节内容区域（列表/网格）。
+ */
+@Composable
+private fun ChapterContent(
+    state: ChapterListUiState.Success,
+    resourceId: String,
+    onNavigateToViewer: (String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (state.viewMode) {
+        ChapterViewMode.LIST -> {
+            LazyColumn(
+                modifier = modifier,
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(
+                    items = state.chapters,
+                    key = { "chapter_${it.relativePath}" },
+                ) { chapter ->
+                    ChapterItem(
+                        chapter = chapter,
+                        onClick = { onNavigateToViewer(resourceId, chapter.relativePath) },
+                    )
+                }
+
+                if (state.looseFiles.isNotEmpty()) {
+                    item(key = "loose_header") {
+                        Text(
+                            text = "散落文件",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                    items(
+                        items = state.looseFiles,
+                        key = { "loose_${it.relativePath}" },
+                    ) { file ->
+                        LooseFileItem(
+                            file = file,
+                            onClick = { onNavigateToViewer(resourceId, file.relativePath) },
+                        )
+                    }
+                }
+            }
+        }
+        ChapterViewMode.GRID -> {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 150.dp),
+                modifier = modifier,
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(
+                    items = state.chapters,
+                    key = { "chapter_${it.relativePath}" },
+                ) { chapter ->
+                    ChapterGridItem(
+                        chapter = chapter,
+                        onClick = { onNavigateToViewer(resourceId, chapter.relativePath) },
+                    )
+                }
+
+                if (state.looseFiles.isNotEmpty()) {
+                    item(key = "loose_header") {
+                        Text(
+                            text = "散落文件",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                        )
+                    }
+                    items(
+                        items = state.looseFiles,
+                        key = { "loose_${it.relativePath}" },
+                    ) { file ->
+                        LooseFileGridItem(
+                            file = file,
+                            onClick = { onNavigateToViewer(resourceId, file.relativePath) },
+                        )
                     }
                 }
             }

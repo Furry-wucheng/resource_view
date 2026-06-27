@@ -95,6 +95,28 @@ class ResourceRepository(
     }
 
     /**
+     * 设置资源的标签关联。
+     * 先删除旧关联，再插入新关联。
+     */
+    suspend fun setResourceTags(resourceId: String, tagIds: List<String>): Result<Unit> {
+        return try {
+            resourceTagDao.deleteByResourceId(resourceId)
+            if (tagIds.isNotEmpty()) {
+                val entities = tagIds.map { tagId ->
+                    dev.wucheng.resource_viewer.data.local.entity.ResourceTagEntity(
+                        resourceId = resourceId,
+                        tagId = tagId,
+                    )
+                }
+                resourceTagDao.insertAll(entities)
+            }
+            Unit.asOk()
+        } catch (e: Exception) {
+            DomainError.DatabaseError("Failed to set resource tags", e).asErr()
+        }
+    }
+
+    /**
      * 更新资源。
      */
     suspend fun update(resource: ResourceEntity): Result<Unit> {

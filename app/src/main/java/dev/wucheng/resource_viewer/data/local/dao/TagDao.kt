@@ -25,6 +25,9 @@ interface TagDao {
     @Query("SELECT * FROM tags ORDER BY isBuiltIn DESC, createdAt DESC")
     fun getAllTags(): Flow<List<TagEntity>>
 
+    @Query("SELECT * FROM tags ORDER BY isBuiltIn DESC, createdAt DESC")
+    suspend fun getAllTagsSnapshot(): List<TagEntity>
+
     @Query("SELECT * FROM tags WHERE id = :id")
     suspend fun getById(id: String): TagEntity?
 

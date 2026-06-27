@@ -27,12 +27,16 @@ class BatchAddResourcesUseCase(
      * @param fileSource 文件源
      * @param source 数据源配置
      * @param paths 要添加的相对路径列表
+     * @param organizationMode 可选的组织模式覆盖（null 表示自动检测）
+     * @param tagIds 可选的标签 ID 列表
      * @return ScanResult 包含成功/跳过/失败统计
      */
     suspend operator fun invoke(
         fileSource: FileSource,
         source: Source,
         paths: List<String>,
+        organizationMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode? = null,
+        tagIds: List<String> = emptyList(),
     ): Result<ScanResult> {
         var successCount = 0
         var skipCount = 0
@@ -47,7 +51,7 @@ class BatchAddResourcesUseCase(
                     continue
                 }
 
-                val entity = createResourceEntity(fileSource, source, entry)
+                val entity = createResourceEntity(fileSource, source, entry, organizationMode)
                 if (entity != null) {
                     batch.add(entity)
                     successCount++
@@ -62,7 +66,14 @@ class BatchAddResourcesUseCase(
         // Batch insert
         if (batch.isNotEmpty()) {
             when (val insertResult = resourceRepository.insertAll(batch)) {
-                is Result.Ok -> { /* success */ }
+                is Result.Ok -> {
+                    // 关联标签
+                    if (tagIds.isNotEmpty()) {
+                        for (entity in batch) {
+                            resourceRepository.setResourceTags(entity.id, tagIds)
+                        }
+                    }
+                }
                 is Result.Err -> {
                     batch.forEach { entity ->
                         failures.add(entity.name to insertResult.error)
@@ -82,6 +93,7 @@ class BatchAddResourcesUseCase(
         fileSource: FileSource,
         source: Source,
         entry: dev.wucheng.resource_viewer.domain.model.FileEntry,
+        overrideOrgMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode? = null,
     ): ResourceEntity? {
         val type = when {
             entry.isDirectory -> ResourceType.FOLDER
@@ -91,7 +103,7 @@ class BatchAddResourcesUseCase(
             else -> return null
         }
 
-        val organizationMode = if (type == ResourceType.FOLDER) {
+        val organizationMode = overrideOrgMode ?: if (type == ResourceType.FOLDER) {
             detectOrganizationModeUseCase(fileSource, entry.relativePath)
         } else {
             null

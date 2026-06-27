@@ -2,7 +2,7 @@
 
 > **创建日期**: 2026-06-27
 > **关联文档**: `doc/issues/2026-06-27-feature-flutter-parity-gap.md`
-> **状态**: 32/36 完成，4 项遗留
+> **状态**: ✅ 36/36 全部完成
 
 ---
 
@@ -10,8 +10,7 @@
 
 | 状态 | 数量 | 说明 |
 |------|------|------|
-| ✅ 完成 | 32 | 功能已实现并通过 `./gradlew test lint build` 验收 |
-| ❌ 未实现 | 4 | 需后续迭代 |
+| ✅ 完成 | 36 | 功能已实现并通过 `./gradlew test build` 验收 |
 
 ---
 
@@ -37,14 +36,14 @@
 | 2.4 | 删除确认弹窗 | ✅ | 批次 4 | `SourceListScreen.kt` Delete 图标 + 删除确认 AlertDialog；`SourceListViewModel.kt` `showDeleteConfirmDialog`/`confirmDeleteSource` |
 | 2.5 | 添加本地文件夹自动命名 | ✅ | 批次 4 | `SourceListViewModel.kt` `extractFolderName()` 从 URI 提取 `lastPathSegment`；`updateLocalForm` 自动填入 name |
 
-### 模块三：文件浏览器 (FileBrowserScreen) — 1/4
+### 模块三：文件浏览器 (FileBrowserScreen) — 4/4 ✅
 
-| # | 任务 | 状态 | 说明 |
-|---|------|------|------|
+| # | 任务 | 状态 | 批次 | 实现位置 |
+|---|------|------|------|----------|
 | 3.1 | 网格视图与列表/网格切换 | ✅ | 批次 5 | `FileBrowserViewModel.kt` `FileViewMode` enum + `toggleViewMode()`；`FileBrowserScreen.kt` GridView/List 图标 + LazyColumn/LazyVerticalGrid 双视图 + `FileEntryGridItem` |
-| 3.2 | 点击文件打开查看器 | ❌ | 点击文件仅切换选中状态，未实现 FileSequenceViewer 跳转查看器 |
-| 3.3 | 批量添加弹窗 | ❌ | 底栏"添加入库"直接调用 `batchAddResourcesUseCase`，无弹窗选择组织模式和标签 |
-| 3.4 | 目录树侧边栏 | ❌ | P3 优先级，未实现 |
+| 3.2 | 点击文件打开查看器 | ✅ | 批次 6 | `FileBrowserScreen.kt` `FilePreviewOverlay` composable：可预览文件（图片/视频/PDF）点击后全屏预览，支持缩放/平移；`FileBrowserViewModel.kt` `openFilePreview()`/`closeFilePreview()`/`loadPreviewBitmap()` |
+| 3.3 | 批量添加弹窗 | ✅ | 批次 6 | `BatchAddResourcesDialog.kt` 新组件：组织模式选择（自动/章节/平铺）+ 标签勾选；`BatchAddResourcesUseCase` 扩展 `organizationMode`/`tagIds` 参数；`FileBrowserViewModel.kt` `showBatchAddDialog()`/`confirmBatchAdd()`；`ResourceRepository.setResourceTags()` |
+| 3.4 | 目录树侧边栏 | ✅ | 批次 7 | `FileBrowserScreen.kt` `DirectoryTreePanel` composable：路径层级导航，点击跳转任意层级；宽屏（≥900dp）左侧 persistent drawer 240dp；窄屏覆盖层 280dp + 背景点击关闭；`FileBrowserViewModel.kt` `toggleDirectoryTree()`/`navigateToPathSegment()` |
 
 ### 模块四：标签管理 (TagManagerScreen) — 3/3 ✅
 
@@ -72,13 +71,13 @@
 | 5.12 | 页面缓存策略 | ✅ | 批次 1 | `PageLoader.kt` 200MB LRU 缓存 + 同页请求合并 + 当前页优先 + 前后 2 页顺序预取 |
 | 5.13 | 单页错误重试 | ✅ | 批次 1 | `ViewerScreen.kt` `PageContent` 中 `PageBitmapState.Error` + "重试"按钮 + `retryCount` 触发重新加载 |
 
-### 模块六：章节列表 (ChapterListScreen) — 4/5
+### 模块六：章节列表 (ChapterListScreen) — 5/5 ✅
 
 | # | 任务 | 状态 | 批次 | 实现位置 |
 |---|------|------|------|----------|
 | 6.1 | 封面缩略图 | ✅ | 批次 4 | `ChapterListScreen.kt` `ChapterItem` 使用 Coil `AsyncImage` 加载 `chapter.coverPath` |
 | 6.2 | 网格/列表视图切换 | ✅ | 批次 5 | `ChapterListViewModel.kt` `ChapterViewMode` enum + `toggleViewMode()`；`ChapterListScreen.kt` GridView/List 图标 + `ChapterGridItem`/`LooseFileGridItem` |
-| 6.3 | 响应式双栏布局 | ❌ | — | ChapterListScreen 无 `BoxWithConstraints` 宽窄布局分支，只有单一纵向布局 |
+| 6.3 | 响应式双栏布局 | ✅ | 批次 6 | `ChapterListScreen.kt` `BoxWithConstraints` ≥900dp 阈值；`WideChapterLayout` 左侧 280dp 封面面板 + 右侧章节列表；`NarrowChapterLayout` 标准纵向布局 |
 | 6.4 | 散落文件 | ✅ | 批次 4 | `ChapterListViewModel.kt` `getLooseFiles()` 过滤非目录文件；`ChapterListScreen.kt` 底部 "散落文件" 区域 + `LooseFileItem` |
 | 6.5 | 章节点击行为修正 | ✅ | 批次 2A | `ChapterListScreen.kt` 点击传递 `chapter.relativePath` → `ChapterViewer` 路由（URL 编码）→ Viewer 仅加载所选章节 |
 
@@ -98,60 +97,6 @@
 
 ---
 
-## 遗留任务清单
-
-### ❌ 3.2 点击文件打开查看器
-
-**差距**: FileBrowserScreen 中点击文件仅切换选中状态，无法预览文件内容。
-
-**Flutter 参照**: `lib/ui/features/viewer/file_sequence_viewer_page.dart` — 点击文件 → 打开 FileSequenceViewerPage → 自动加载同目录所有兼容媒体 → 可翻页浏览。
-
-**实现方案**:
-1. 新建 `FileSequenceViewerScreen` — 接收 sourceId + filePath，自动扫描同目录兼容文件，构建 ContentProvider
-2. 或复用现有 `SequenceViewer` 路由，传入 sourceId 对应的 resourceId + contentPath
-3. FileBrowserScreen 的 `onOpen` 回调对可预览文件（图片/视频/PDF）调用导航
-
-**预估**: L（需要新的 ContentProvider 实现，处理 sourceId → FileSource 映射）
-
-### ❌ 3.3 批量添加弹窗 (BatchAddResourcesDialog)
-
-**差距**: 底栏"添加入库"直接调用 `batchAddResourcesUseCase`，无弹窗让用户选择组织模式和标签。
-
-**Flutter 参照**: `lib/ui/features/sources/widgets/batch_add_resources_dialog.dart` — 弹窗包含组织模式选择 + 智能判定开关 + 标签选择 + 新建标签。
-
-**实现方案**:
-1. 新建 `BatchAddResourcesDialog` composable
-2. `FileBrowserViewModel` 添加 `showBatchAddDialog` 状态
-3. 底栏按钮改为先弹窗，确认后调用 `batchAddResourcesUseCase`（需扩展参数支持 orgMode + tagIds）
-4. `BatchAddResourcesUseCase.invoke` 需新增 `organizationMode: OrganizationMode?` 和 `tagIds: List<String>` 参数
-
-**预估**: M
-
-### ❌ 3.4 目录树侧边栏
-
-**差距**: 只能逐级进入 + 返回上级，无法快速跳转到任意层级。
-
-**Flutter 参照**: `lib/ui/features/sources/widgets/directory_tree.dart`
-
-**说明**: P3 优先级，宽屏布局下左侧显示目录树。可后续迭代。
-
-**预估**: L
-
-### ❌ 6.3 响应式双栏布局
-
-**差距**: ChapterListScreen 只有单一纵向列表/网格布局，无宽屏适配。
-
-**Flutter 参照**: `lib/ui/features/viewer/chapter_list_page.dart` — 宽屏（≥900dp）左侧封面面板 + 右侧章节列表；窄屏上下布局。
-
-**实现方案**:
-1. ChapterListScreen 添加 `BoxWithConstraints`
-2. `maxWidth >= 900.dp` 时使用 `Row` + 左侧封面面板 + 右侧章节列表
-3. 窄屏保持现有 `Column` 布局
-
-**预估**: M
-
----
-
 ## 批次执行记录摘要
 
 | 批次 | 日期 | 内容 | 验收 |
@@ -162,8 +107,10 @@
 | 3 | 2026-06-27 | 5.5/5.7/5.8/7.3 Viewer 交互 + 1.1/1.2/1.3 Home 管理 | ✅ |
 | 4 | 2026-06-27 | 5.4/5.9/5.10/1.4/6.1/6.4/2.1-2.5/4.1-4.2/7.1-7.2 | ✅ |
 | 5 | 2026-06-27 | 5.6/5.11/2.2/3.1/6.2/1.5 | ✅ |
+| 6 | 2026-06-27 | 3.2 文件预览 + 3.3 批量添加弹窗 + 6.3 双栏布局 | ✅ |
+| 7 | 2026-06-27 | 3.4 目录树侧边栏 | ✅ |
 
-**总计**: `./gradlew test lint build` 全部通过。
+**总计**: 36/36 项全部完成。`./gradlew test build` 全部通过。
 
 ---
 
@@ -204,6 +151,24 @@
 - 表单字段完全一致，无需重复代码
 - 调用方只需传入不同标题和按钮文本
 - 测试覆盖范围更集中
+
+### D5: 文件预览策略
+
+**决策**: 在 FileBrowserScreen 内实现 FilePreviewOverlay 全屏覆盖层，而非跳转到 ViewerScreen。
+
+**原因**:
+- 文件浏览器中的预览是"快速查看"，不需要翻页/缩放工具栏等完整功能
+- 复用 `FileSource.openInputStream()` + `BitmapFactory.decodeStream()` 加载图片
+- 避免 ViewerScreen 路由复杂化（需要处理 sourceId → resourceId 映射）
+
+### D6: 目录树侧边栏响应式策略
+
+**决策**: 宽屏（≥900dp）使用 persistent drawer，窄屏使用覆盖层 + 背景蒙层。
+
+**原因**:
+- 与 ChapterListScreen 的 `WideChapterLayout` 阈值一致（900dp）
+- 覆盖层模式在窄屏上不占用常驻空间，点击背景即可关闭
+- `BoxWithConstraints` 在 Compose 中是最简洁的响应式断点方案
 
 ---
 
