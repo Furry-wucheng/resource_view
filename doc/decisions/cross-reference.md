@@ -97,6 +97,13 @@
 | `di/SecurePrefsModule.kt` | M10 | — |
 | `di/SmbModule.kt` | M17 | — |
 | `di/CoilModule.kt` | M23 | — |
+| `ui/screens/viewer/ViewerSpread.kt` | fix | D-001 |
+| `shared/content/MixedFolderProvider.kt` | fix | D-001 |
+| `shared/media/MediaFormats.kt` | fix | D-001 |
+| `shared/content/PageBitmapLoader.kt` | fix | D-001 |
+| `shared/thumbnail/FileEntryThumbnailLoader.kt` | fix | D-002 |
+| `shared/thumbnail/FileBrowserThumbnailDiskCache.kt` | fix | D-002 |
+| `shared/thumbnail/ThumbnailTaskPool.kt` | fix | D-002 |
 
 ### M25 — 设置页面
 
@@ -237,6 +244,32 @@
 | SMB 线程调度 | M30 | D-003 |
 | 网络权限配置 | M30 | D-004 |
 | 错误信息分层 | M30 | D-005 |
+
+### fix — 文件浏览、混合查看器、缩略图、标签与 SMB 回归修复
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `ui/components/AppShell.kt` | fix | D-004 |
+| `ui/screens/sources/FileBrowserScreen.kt` | fix | D-004 |
+| `ui/screens/viewer/ViewerSpread.kt` | fix | D-001 |
+| `ui/screens/viewer/ViewerScreen.kt` | fix | D-001 |
+| `ui/screens/viewer/VideoPlayerViewModel.kt` | fix | D-001 |
+| `shared/content/MixedFolderProvider.kt` | fix | D-001 |
+| `shared/media/MediaFormats.kt` | fix | D-001 |
+| `shared/content/PageBitmapLoader.kt` | fix | D-001 |
+| `shared/thumbnail/FileEntryThumbnailLoader.kt` | fix | D-002 |
+| `shared/thumbnail/ImageThumbnailGenerator.kt` | fix | D-002 |
+| `shared/thumbnail/FileBrowserThumbnailDiskCache.kt` | fix | D-002 |
+| `shared/thumbnail/ThumbnailTaskPool.kt` | fix | D-002 |
+| `ui/screens/sources/FileBrowserViewModel.kt` | fix | D-002 |
+| `ui/screens/sources/BatchAddResourcesDialog.kt` | fix | D-003 |
+| `shared/filesource/FileSourceFactory.kt` | fix | D-003 |
+| `shared/filesource/SmbFileSource.kt` | fix | D-003 |
+| `data/remote/smb/SmbClientWrapper.kt` | fix | D-003 |
+| 混合查看器视觉页模型重构 | fix | D-001 |
+| 文件/文件夹缩略图解析与回退卡片 | fix | D-002 |
+| SMB 会话复用与批量添加标签选择 | fix | D-003 |
+| 系统返回键逐级返回 | fix | D-004 |
 
 ---
 
