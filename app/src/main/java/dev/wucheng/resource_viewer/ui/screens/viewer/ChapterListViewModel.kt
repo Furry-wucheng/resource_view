@@ -2,10 +2,12 @@ package dev.wucheng.resource_viewer.ui.screens.viewer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.model.Chapter
+import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import dev.wucheng.resource_viewer.shared.organization.ChapterGalleryStrategy
@@ -15,6 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+enum class ChapterViewMode { LIST, GRID }
 
 /**
  * 章节列表 UI 状态。
@@ -26,7 +30,10 @@ sealed class ChapterListUiState {
     /** 加载成功 */
     data class Success(
         val chapters: List<Chapter>,
+        val looseFiles: List<FileEntry>,
         val resourceName: String,
+        val organizationMode: OrganizationMode,
+        val viewMode: ChapterViewMode = ChapterViewMode.LIST,
     ) : ChapterListUiState()
 
     /** 加载失败 */
@@ -78,10 +85,13 @@ class ChapterListViewModel(
                             try {
                                 val strategy = getStrategy(res)
                                 val chapters = strategy.getChapters(res, fs)
+                                val looseFiles = getLooseFiles(res, fs)
 
                                 _uiState.value = ChapterListUiState.Success(
                                     chapters = chapters,
+                                    looseFiles = looseFiles,
                                     resourceName = res.name,
+                                    organizationMode = res.organizationMode ?: OrganizationMode.CHAPTER,
                                 )
                             } catch (e: Exception) {
                                 _uiState.value = ChapterListUiState.Error(
@@ -106,9 +116,47 @@ class ChapterListViewModel(
      */
     private fun getStrategy(resource: Resource): OrganizationStrategy {
         return when (resource.organizationMode) {
-            dev.wucheng.resource_viewer.data.local.converter.OrganizationMode.CHAPTER -> ChapterStrategy()
-            dev.wucheng.resource_viewer.data.local.converter.OrganizationMode.CHAPTER_GALLERY -> ChapterGalleryStrategy()
+            OrganizationMode.CHAPTER -> ChapterStrategy()
+            OrganizationMode.CHAPTER_GALLERY -> ChapterGalleryStrategy()
             else -> throw IllegalStateException("Unsupported organization mode: ${resource.organizationMode}")
+        }
+    }
+
+    /**
+     * 获取散落文件（不属于任何子目录的独立文件）。
+     */
+    private suspend fun getLooseFiles(resource: Resource, fileSource: FileSource): List<FileEntry> {
+        val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif")
+        val videoExtensions = setOf("mp4", "mkv", "avi", "mov", "webm")
+        val pdfExtensions = setOf("pdf")
+        val supportedExtensions = imageExtensions + videoExtensions + pdfExtensions
+
+        val entries = fileSource.listDirectory(resource.relativePath)
+        return entries.filter { entry ->
+            !entry.isDirectory && entry.extension.lowercase() in supportedExtensions
+        }
+    }
+
+    /**
+     * 更改组织模式。
+     * 更新资源的组织模式并重新加载章节列表。
+     */
+    fun changeOrganizationMode(mode: OrganizationMode) {
+        val res = resource ?: return
+        viewModelScope.launch {
+            resourceRepository.updateOrganizationMode(res.id, mode)
+            loadChapters()
+        }
+    }
+
+    /**
+     * 切换视图模式（列表/网格）。
+     */
+    fun toggleViewMode() {
+        val current = _uiState.value
+        if (current is ChapterListUiState.Success) {
+            val newMode = if (current.viewMode == ChapterViewMode.LIST) ChapterViewMode.GRID else ChapterViewMode.LIST
+            _uiState.value = current.copy(viewMode = newMode)
         }
     }
 }

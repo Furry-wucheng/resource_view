@@ -69,7 +69,14 @@ class HomeViewModel(
     private val _selectedResourceIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedResourceIds = _selectedResourceIds.asStateFlow()
 
-    val resources: StateFlow<List<Resource>> = combine(baseResources, _searchQuery, _sort) { resources, query, sort ->
+    private val _displayCount = MutableStateFlow(PAGE_SIZE)
+    val displayCount: StateFlow<Int> = _displayCount.asStateFlow()
+    private val _hasMore = MutableStateFlow(true)
+    val hasMore: StateFlow<Boolean> = _hasMore.asStateFlow()
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
+
+    private val sortedAndFiltered = combine(baseResources, _searchQuery, _sort) { resources, query, sort ->
         val filtered = if (query.isBlank()) resources else resources.filter { it.name.contains(query, ignoreCase = true) }
         when (sort) {
             ResourceSort.ADDED_DESC -> filtered.sortedByDescending { it.createdAt }
@@ -77,11 +84,31 @@ class HomeViewModel(
             ResourceSort.NAME_ASC -> filtered.sortedBy { it.name.lowercase() }
             ResourceSort.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase() }
         }
+    }
+
+    val resources: StateFlow<List<Resource>> = combine(sortedAndFiltered, _displayCount) { all, count ->
+        val displayed = all.take(count)
+        _hasMore.value = all.size > count
+        displayed
     }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = emptyList(),
         )
+
+    /**
+     * 加载更多资源（分页）。
+     */
+    fun loadMore() {
+        if (_isLoadingMore.value || !_hasMore.value) return
+        _isLoadingMore.value = true
+        _displayCount.value += PAGE_SIZE
+        _isLoadingMore.value = false
+    }
+
+    companion object {
+        private const val PAGE_SIZE = 20
+    }
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
     fun setSort(sort: ResourceSort) { _sort.value = sort }
@@ -101,6 +128,15 @@ class HomeViewModel(
         viewModelScope.launch {
             ids.forEach { resourceRepository.deleteById(it) }
             exitMultiSelectMode()
+        }
+    }
+
+    /**
+     * 切换资源收藏状态。
+     */
+    fun toggleFavorite(resourceId: String, favorited: Boolean) {
+        viewModelScope.launch {
+            resourceRepository.toggleFavorite(resourceId, favorited)
         }
     }
 

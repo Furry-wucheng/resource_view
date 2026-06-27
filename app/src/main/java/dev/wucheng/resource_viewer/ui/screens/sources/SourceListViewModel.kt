@@ -44,11 +44,19 @@ data class LocalFormData(
  */
 data class SourceListUiState(
     val sources: List<Source> = emptyList(),
+    val resourceCounts: Map<String, Int> = emptyMap(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val showSourceTypePicker: Boolean = false,
     val showAddLocalDialog: Boolean = false,
     val showAddSmbDialog: Boolean = false,
+    val showEditSmbDialog: Boolean = false,
+    val showRenameDialog: Boolean = false,
+    val showDeleteConfirmDialog: Boolean = false,
+    val sourceToRename: Source? = null,
+    val sourceToDelete: Source? = null,
+    val sourceToEdit: Source? = null,
+    val renameName: String = "",
     val localForm: LocalFormData = LocalFormData(),
     val smbForm: SmbFormData = SmbFormData(),
     val isTestingConnection: Boolean = false,
@@ -65,6 +73,7 @@ data class SourceListUiState(
 class SourceListViewModel(
     private val sourceRepository: SourceRepository,
     private val filesystemRepository: FilesystemRepository,
+    private val resourceRepository: dev.wucheng.resource_viewer.data.repository.ResourceRepository,
     private val smbClientWrapper: SmbClientWrapper,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
@@ -81,6 +90,7 @@ class SourceListViewModel(
             try {
                 sourceRepository.getAllSources().collect { sources ->
                     _uiState.update { it.copy(sources = sources, isLoading = false) }
+                    loadResourceCounts(sources)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "加载数据源失败", e)
@@ -91,6 +101,24 @@ class SourceListViewModel(
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * 加载每个数据源的资源数量。
+     */
+    private fun loadResourceCounts(sources: List<Source>) {
+        viewModelScope.launch {
+            val counts = mutableMapOf<String, Int>()
+            sources.forEach { source ->
+                try {
+                    val count = sourceRepository.getResourceCount(source.id)
+                    counts[source.id] = count
+                } catch (e: Exception) {
+                    Log.e(TAG, "加载资源数量失败: ${source.id}", e)
+                }
+            }
+            _uiState.update { it.copy(resourceCounts = counts) }
         }
     }
 
@@ -142,17 +170,138 @@ class SourceListViewModel(
         }
     }
 
+    /**
+     * 显示编辑 SMB 源对话框。
+     */
+    fun showEditSmbDialog(source: Source) {
+        viewModelScope.launch {
+            // 获取存储的密码
+            val password = sourceRepository.getPassword(source.id) ?: ""
+            _uiState.update {
+                it.copy(
+                    showEditSmbDialog = true,
+                    sourceToEdit = source,
+                    smbForm = SmbFormData(
+                        name = source.name,
+                        host = source.host ?: "",
+                        port = source.port ?: 445,
+                        username = source.username ?: "",
+                        password = password,
+                        domain = source.domain ?: "",
+                        shareName = source.rootPath.removePrefix("/"),
+                    ),
+                    testConnectionSuccess = null,
+                    testConnectionError = null,
+                )
+            }
+        }
+    }
+
+    /**
+     * 隐藏编辑 SMB 源对话框。
+     */
+    fun hideEditSmbDialog() {
+        _uiState.update {
+            it.copy(
+                showEditSmbDialog = false,
+                sourceToEdit = null,
+                smbForm = SmbFormData(),
+                testConnectionSuccess = null,
+                testConnectionError = null,
+            )
+        }
+    }
+
+    /**
+     * 更新 SMB 源。
+     */
+    fun updateSmbSource() {
+        val source = _uiState.value.sourceToEdit ?: return
+        val form = _uiState.value.smbForm
+
+        if (form.name.isBlank()) {
+            _uiState.update { it.copy(error = "源名称不能为空") }
+            return
+        }
+        if (form.host.isBlank()) {
+            _uiState.update { it.copy(error = "主机地址不能为空") }
+            return
+        }
+        if (form.shareName.isBlank()) {
+            _uiState.update { it.copy(error = "共享名称不能为空") }
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val entity = SourceEntity(
+                    id = source.id,
+                    name = form.name,
+                    type = SourceType.SMB,
+                    rootPath = "/${form.shareName}",
+                    host = form.host,
+                    port = form.port,
+                    username = form.username.ifBlank { null },
+                    passwordStored = form.password.isNotBlank(),
+                    domain = form.domain.ifBlank { null },
+                    enabled = source.enabled,
+                    isAvailable = source.isAvailable,
+                    lastCheckAt = source.lastCheckAt,
+                    createdAt = source.createdAt,
+                    updatedAt = System.currentTimeMillis(),
+                )
+
+                when (val result = sourceRepository.update(entity)) {
+                    is Result.Ok -> {
+                        // 更新密码
+                        if (form.password.isNotBlank()) {
+                            sourceRepository.putPassword(source.id, form.password)
+                        } else {
+                            sourceRepository.removePassword(source.id)
+                        }
+                        hideEditSmbDialog()
+                    }
+                    is Result.Err -> {
+                        _uiState.update { it.copy(error = "更新失败") }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "更新 SMB 源失败", e)
+                _uiState.update { it.copy(error = "更新失败") }
+            }
+        }
+    }
+
     fun updateLocalForm(
         name: String? = null,
         rootPath: String? = null,
     ) {
         _uiState.update { state ->
+            val newRootPath = rootPath ?: state.localForm.rootPath
+            val newName = name ?: if (rootPath != null && state.localForm.name.isBlank()) {
+                // 自动从 URI 提取文件夹名
+                extractFolderName(rootPath)
+            } else {
+                state.localForm.name
+            }
             state.copy(
                 localForm = state.localForm.copy(
-                    name = name ?: state.localForm.name,
-                    rootPath = rootPath ?: state.localForm.rootPath,
+                    name = newName,
+                    rootPath = newRootPath,
                 )
             )
+        }
+    }
+
+    /**
+     * 从 URI 或路径中提取文件夹名。
+     */
+    private fun extractFolderName(path: String): String {
+        return try {
+            val uri = android.net.Uri.parse(path)
+            uri.lastPathSegment ?: path.substringAfterLast("/").ifBlank { path }
+        } catch (e: Exception) {
+            path.substringAfterLast("/").ifBlank { path }
         }
     }
 
@@ -328,7 +477,122 @@ class SourceListViewModel(
     }
 
     /**
-     * 删除数据源。
+     * 显示重命名对话框。
+     */
+    fun showRenameDialog(source: Source) {
+        _uiState.update {
+            it.copy(
+                showRenameDialog = true,
+                sourceToRename = source,
+                renameName = source.name,
+            )
+        }
+    }
+
+    /**
+     * 隐藏重命名对话框。
+     */
+    fun hideRenameDialog() {
+        _uiState.update {
+            it.copy(
+                showRenameDialog = false,
+                sourceToRename = null,
+                renameName = "",
+            )
+        }
+    }
+
+    /**
+     * 更新重命名名称。
+     */
+    fun updateRenameName(name: String) {
+        _uiState.update { it.copy(renameName = name) }
+    }
+
+    /**
+     * 重命名数据源。
+     */
+    fun renameSource() {
+        val source = _uiState.value.sourceToRename ?: return
+        val newName = _uiState.value.renameName.trim()
+        if (newName.isBlank()) {
+            _uiState.update { it.copy(error = "名称不能为空") }
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val entity = SourceEntity(
+                    id = source.id,
+                    name = newName,
+                    type = source.type,
+                    rootPath = source.rootPath,
+                    host = source.host,
+                    port = source.port,
+                    username = source.username,
+                    passwordStored = source.passwordStored,
+                    domain = source.domain,
+                    enabled = source.enabled,
+                    isAvailable = source.isAvailable,
+                    lastCheckAt = source.lastCheckAt,
+                    createdAt = source.createdAt,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                when (val result = sourceRepository.update(entity)) {
+                    is Result.Ok -> hideRenameDialog()
+                    is Result.Err -> _uiState.update { it.copy(error = "重命名失败") }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "重命名数据源失败", e)
+                _uiState.update { it.copy(error = "重命名失败") }
+            }
+        }
+    }
+
+    /**
+     * 显示删除确认对话框。
+     */
+    fun showDeleteConfirmDialog(source: Source) {
+        _uiState.update {
+            it.copy(
+                showDeleteConfirmDialog = true,
+                sourceToDelete = source,
+            )
+        }
+    }
+
+    /**
+     * 隐藏删除确认对话框。
+     */
+    fun hideDeleteConfirmDialog() {
+        _uiState.update {
+            it.copy(
+                showDeleteConfirmDialog = false,
+                sourceToDelete = null,
+            )
+        }
+    }
+
+    /**
+     * 确认删除数据源。
+     */
+    fun confirmDeleteSource() {
+        val source = _uiState.value.sourceToDelete ?: return
+        viewModelScope.launch {
+            when (val result = sourceRepository.deleteById(source.id)) {
+                is Result.Ok -> {
+                    sourceRepository.removePassword(source.id)
+                    hideDeleteConfirmDialog()
+                }
+                is Result.Err -> {
+                    _uiState.update { it.copy(error = "删除失败") }
+                }
+            }
+        }
+    }
+
+    /**
+     * 删除数据源（直接删除，无确认）。
      */
     fun deleteSource(sourceId: String) {
         viewModelScope.launch {

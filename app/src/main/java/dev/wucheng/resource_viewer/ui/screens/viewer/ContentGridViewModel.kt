@@ -2,6 +2,7 @@ package dev.wucheng.resource_viewer.ui.screens.viewer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.domain.error.Result
@@ -21,6 +22,7 @@ data class ContentGridUiState(
     val entries: List<FileEntry> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
+    val organizationMode: OrganizationMode = OrganizationMode.FLATGRID,
 )
 
 class ContentGridViewModel(
@@ -60,6 +62,7 @@ class ContentGridViewModel(
                                 currentPath = resource.relativePath,
                                 entries = entries,
                                 isLoading = false,
+                                organizationMode = resource.organizationMode ?: OrganizationMode.FLATGRID,
                             )
                         }
                     }
@@ -99,6 +102,18 @@ class ContentGridViewModel(
 
     private fun fail(message: String) {
         _uiState.value = _uiState.value.copy(isLoading = false, error = message)
+    }
+
+    /**
+     * 更改组织模式。
+     * 更新资源的组织模式。
+     */
+    fun changeOrganizationMode(mode: OrganizationMode) {
+        val state = _uiState.value
+        _uiState.value = state.copy(organizationMode = mode)
+        viewModelScope.launch {
+            resourceRepository.updateOrganizationMode(resourceId, mode)
+        }
     }
 
     companion object {

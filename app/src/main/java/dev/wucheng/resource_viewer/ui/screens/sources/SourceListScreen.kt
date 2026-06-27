@@ -8,6 +8,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,8 +81,13 @@ fun SourceListScreen(
                     items(uiState.sources) { source ->
                         SourceCard(
                             source = source,
+                            resourceCount = uiState.resourceCounts[source.id] ?: 0,
                             onToggleEnabled = { viewModel.toggleSourceEnabled(source) },
-                            onDelete = { viewModel.deleteSource(source.id) },
+                            onRename = { viewModel.showRenameDialog(source) },
+                            onEditSmb = if (source.type == dev.wucheng.resource_viewer.data.local.converter.SourceType.SMB) {
+                                { viewModel.showEditSmbDialog(source) }
+                            } else null,
+                            onDelete = { viewModel.showDeleteConfirmDialog(source) },
                             onClick = { onNavigateToBrowser(source.id) },
                         )
                     }
@@ -164,6 +172,80 @@ fun SourceListScreen(
             onDismiss = { viewModel.hideAddSmbDialog() },
         )
     }
+
+    // 编辑 SMB 源对话框
+    if (uiState.showEditSmbDialog) {
+        AddSmbDialog(
+            formData = uiState.smbForm,
+            isTestingConnection = uiState.isTestingConnection,
+            testConnectionSuccess = uiState.testConnectionSuccess,
+            testConnectionError = uiState.testConnectionError,
+            onFormChange = { name, host, port, username, password, domain, shareName ->
+                viewModel.updateSmbForm(name, host, port, username, password, domain, shareName)
+            },
+            onTestConnection = { viewModel.testSmbConnection() },
+            onConfirm = { viewModel.updateSmbSource() },
+            onDismiss = { viewModel.hideEditSmbDialog() },
+            title = "编辑 SMB 凭据",
+            confirmText = "保存",
+        )
+    }
+
+    // 重命名对话框
+    if (uiState.showRenameDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.hideRenameDialog() },
+            title = { Text("重命名数据源") },
+            text = {
+                OutlinedTextField(
+                    value = uiState.renameName,
+                    onValueChange = { viewModel.updateRenameName(it) },
+                    label = { Text("名称") },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.renameSource() }) {
+                    Text("确认")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.hideRenameDialog() }) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+
+    // 删除确认对话框
+    if (uiState.showDeleteConfirmDialog) {
+        val sourceToDelete = uiState.sourceToDelete
+        AlertDialog(
+            onDismissRequest = { viewModel.hideDeleteConfirmDialog() },
+            title = { Text("删除数据源") },
+            text = {
+                Text(
+                    if (sourceToDelete != null) {
+                        "确定要删除数据源「${sourceToDelete.name}」吗？该源下的所有资源将被移除。"
+                    } else {
+                        "确定要删除该数据源吗？"
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.confirmDeleteSource() },
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.hideDeleteConfirmDialog() }) {
+                    Text("取消")
+                }
+            },
+        )
+    }
 }
 
 /**
@@ -172,7 +254,10 @@ fun SourceListScreen(
 @Composable
 private fun SourceCard(
     source: Source,
+    resourceCount: Int = 0,
     onToggleEnabled: () -> Unit,
+    onRename: () -> Unit,
+    onEditSmb: (() -> Unit)? = null,
     onDelete: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -227,13 +312,42 @@ private fun SourceCard(
                 )
                 Text(
                     text = when (source.type) {
-                        dev.wucheng.resource_viewer.data.local.converter.SourceType.LOCAL -> "本地"
-                        dev.wucheng.resource_viewer.data.local.converter.SourceType.SMB -> "SMB"
-                        else -> "未知"
+                        dev.wucheng.resource_viewer.data.local.converter.SourceType.LOCAL -> "本地 · $resourceCount 个资源"
+                        dev.wucheng.resource_viewer.data.local.converter.SourceType.SMB -> "SMB · $resourceCount 个资源"
+                        else -> "未知 · $resourceCount 个资源"
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            // 操作按钮
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (onEditSmb != null) {
+                    IconButton(onClick = onEditSmb) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "编辑凭据",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                IconButton(onClick = onRename) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "重命名",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "删除",
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
 
             // 开关

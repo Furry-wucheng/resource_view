@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -72,6 +73,8 @@ fun HomeScreen(
     val sort by viewModel.sort.collectAsStateWithLifecycle()
     val isMultiSelect by viewModel.isMultiSelect.collectAsStateWithLifecycle()
     val selectedResourceIds by viewModel.selectedResourceIds.collectAsStateWithLifecycle()
+    val hasMore by viewModel.hasMore.collectAsStateWithLifecycle()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsStateWithLifecycle()
 
     HomeScreenContent(
         resources = resources,
@@ -86,6 +89,8 @@ fun HomeScreen(
         sort = sort,
         isMultiSelect = isMultiSelect,
         selectedResourceIds = selectedResourceIds,
+        hasMore = hasMore,
+        isLoadingMore = isLoadingMore,
         onTagClick = { tagId ->
             if (tagId == null) {
                 viewModel.clearFilter()
@@ -109,6 +114,8 @@ fun HomeScreen(
         onExitMultiSelect = viewModel::exitMultiSelectMode,
         onSelectAll = viewModel::toggleSelectAllVisible,
         onBatchDelete = viewModel::batchDeleteSelectedResources,
+        onToggleFavorite = viewModel::toggleFavorite,
+        onLoadMore = viewModel::loadMore,
         modifier = modifier,
     )
 }
@@ -131,6 +138,8 @@ private fun HomeScreenContent(
     sort: HomeViewModel.ResourceSort,
     isMultiSelect: Boolean,
     selectedResourceIds: Set<String>,
+    hasMore: Boolean = false,
+    isLoadingMore: Boolean = false,
     onTagClick: (String?) -> Unit,
     onResourceClick: (Resource) -> Unit,
     onResourceLongClick: (Resource) -> Unit,
@@ -146,6 +155,8 @@ private fun HomeScreenContent(
     onExitMultiSelect: () -> Unit,
     onSelectAll: () -> Unit,
     onBatchDelete: () -> Unit,
+    onToggleFavorite: (String, Boolean) -> Unit = { _, _ -> },
+    onLoadMore: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var searchVisible by remember { mutableStateOf(false) }
@@ -238,6 +249,10 @@ private fun HomeScreenContent(
                         onResourceClick = onResourceClick,
                         onResourceLongClick = onResourceLongClick,
                         selectedResourceIds = selectedResourceIds,
+                        onToggleFavorite = onToggleFavorite,
+                        hasMore = hasMore,
+                        isLoadingMore = isLoadingMore,
+                        onLoadMore = onLoadMore,
                     )
                 }
             }
@@ -261,7 +276,7 @@ private fun HomeScreenContent(
 
 /**
  * 资源网格。
- * 使用 LazyVerticalGrid 显示缩略图卡片，支持长按。
+ * 使用 LazyVerticalGrid 显示缩略图卡片，支持长按和分页加载。
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -270,6 +285,10 @@ private fun ResourceGrid(
     onResourceClick: (Resource) -> Unit,
     onResourceLongClick: (Resource) -> Unit,
     selectedResourceIds: Set<String>,
+    onToggleFavorite: (String, Boolean) -> Unit = { _, _ -> },
+    hasMore: Boolean = false,
+    isLoadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
@@ -288,7 +307,30 @@ private fun ResourceGrid(
                 onClick = { onResourceClick(resource) },
                 onLongClick = { onResourceLongClick(resource) },
                 selected = resource.id in selectedResourceIds,
+                onToggleFavorite = { onToggleFavorite(resource.id, !resource.favorited) },
             )
+        }
+
+        // 加载更多指示器
+        if (hasMore) {
+            item(key = "load_more") {
+                LaunchedEffect(Unit) {
+                    onLoadMore()
+                }
+                if (isLoadingMore) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                }
+            }
         }
     }
 }

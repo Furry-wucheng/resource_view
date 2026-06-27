@@ -2,9 +2,15 @@
 
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Image
@@ -13,16 +19,19 @@ import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
 import dev.wucheng.resource_viewer.data.local.converter.PageDirection
@@ -56,6 +65,8 @@ fun ViewerScreen(
     val resourceName by viewModel.resourceName.collectAsStateWithLifecycle()
     val pageDirection by viewModel.pageDirection.collectAsStateWithLifecycle()
     val doublePageMode by viewModel.doublePageMode.collectAsStateWithLifecycle()
+    val chapterHint by viewModel.chapterHint.collectAsStateWithLifecycle()
+    val isFavorited by viewModel.isFavorited.collectAsStateWithLifecycle()
 
     // 工具栏可见性
     var toolbarVisible by remember { mutableStateOf(true) }
@@ -63,6 +74,7 @@ fun ViewerScreen(
     // 加载资源
     LaunchedEffect(resourceId) {
         viewModel.loadResource()
+        viewModel.loadChapters()
     }
 
     Box(
@@ -139,6 +151,20 @@ fun ViewerScreen(
                         }
                     }
 
+                    // 跨章节导航：检测是否到达最后一页
+                    LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
+                        if (!pagerState.isScrollInProgress && viewModel.canNavigateChapter()) {
+                            val visualPageCount = if (useDoublePage) (totalPages + 1) / 2 else totalPages
+                            if (pagerState.currentPage >= visualPageCount - 1) {
+                                // 到达最后一页，尝试导航到下一章
+                                viewModel.navigateToNextChapter()
+                            } else if (pagerState.currentPage == 0) {
+                                // 到达第一页，尝试导航到上一章
+                                viewModel.navigateToPrevChapter()
+                            }
+                        }
+                    }
+
                     val pagerModifier = Modifier
                         .fillMaxSize()
                         .pointerInput(pageDirection, totalPages) {
@@ -196,8 +222,36 @@ fun ViewerScreen(
                     doublePageMode = doublePageMode,
                     onPageDirectionClick = viewModel::cyclePageDirection,
                     onDoublePageModeClick = viewModel::cycleDoublePageMode,
+                    isFavorited = isFavorited,
+                    onFavoriteClick = { viewModel.toggleFavorite() },
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
+
+                // 章节过渡提示
+                AnimatedVisibility(
+                    visible = chapterHint != null,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.align(Alignment.TopCenter),
+                ) {
+                    chapterHint?.let { hint ->
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 80.dp)
+                                .background(
+                                    Color.Black.copy(alpha = 0.7f),
+                                    shape = MaterialTheme.shapes.medium,
+                                )
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        ) {
+                            Text(
+                                text = hint,
+                                color = Color.White,
+                                fontSize = 14.sp,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -265,7 +319,8 @@ private fun VideoPageContent(
 }
 
 /**
- * 单页内容（图片占位符）。
+ * 单页内容（图片）。
+ * 支持双击缩放（2x）和拖动查看细节。
  */
 @Composable
 private fun PageContent(
@@ -294,6 +349,14 @@ private fun PageContent(
             }
         }
 
+        // 双击缩放状态
+        var scale by remember(pageIndex) { mutableFloatStateOf(1f) }
+        var offsetX by remember(pageIndex) { mutableFloatStateOf(0f) }
+        var offsetY by remember(pageIndex) { mutableFloatStateOf(0f) }
+        val animatedScale by animateFloatAsState(targetValue = scale, animationSpec = tween(200), label = "scale")
+        val animatedOffsetX by animateFloatAsState(targetValue = offsetX, animationSpec = tween(200), label = "offsetX")
+        val animatedOffsetY by animateFloatAsState(targetValue = offsetY, animationSpec = tween(200), label = "offsetY")
+
         when (val state = pageState) {
             PageBitmapState.Loading -> {
                 CircularProgressIndicator(
@@ -306,7 +369,42 @@ private fun PageContent(
                     bitmap = state.bitmap.asImageBitmap(),
                     contentDescription = "Page ${pageIndex + 1}",
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = animatedScale
+                            scaleY = animatedScale
+                            translationX = animatedOffsetX
+                            translationY = animatedOffsetY
+                        }
+                        .pointerInput(pageIndex) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    if (scale > 1f) {
+                                        // 还原
+                                        scale = 1f
+                                        offsetX = 0f
+                                        offsetY = 0f
+                                    } else {
+                                        // 放大到 2x
+                                        scale = 2f
+                                        offsetX = 0f
+                                        offsetY = 0f
+                                    }
+                                },
+                            )
+                        }
+                        .pointerInput(pageIndex, scale) {
+                            if (scale > 1f) {
+                                detectTransformGestures { _, pan, _, _ ->
+                                    // 限制拖动范围
+                                    val maxX = (scale - 1f) * size.width / 2f
+                                    val maxY = (scale - 1f) * size.height / 2f
+                                    offsetX = (offsetX + pan.x).coerceIn(-maxX, maxX)
+                                    offsetY = (offsetY + pan.y).coerceIn(-maxY, maxY)
+                                }
+                            }
+                        },
                 )
             }
             is PageBitmapState.Error -> {

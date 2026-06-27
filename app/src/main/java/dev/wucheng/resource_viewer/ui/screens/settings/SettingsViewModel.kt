@@ -39,6 +39,7 @@ class SettingsViewModel(
     init {
         loadConfig()
         calculateCacheSize()
+        loadCachePath()
     }
 
     /**
@@ -254,6 +255,29 @@ class SettingsViewModel(
     }
 
     /**
+     * 加载缓存路径
+     */
+    private fun loadCachePath() {
+        val context = getApplication<Application>()
+        val cacheDir = context.cacheDir.resolve("image_cache")
+        _uiState.value = _uiState.value.copy(cachePath = cacheDir.absolutePath)
+    }
+
+    /**
+     * 显示自定义容量对话框
+     */
+    fun showCustomCapacityDialog() {
+        _uiState.value = _uiState.value.copy(showCustomCapacityDialog = true)
+    }
+
+    /**
+     * 隐藏自定义容量对话框
+     */
+    fun hideCustomCapacityDialog() {
+        _uiState.value = _uiState.value.copy(showCustomCapacityDialog = false)
+    }
+
+    /**
      * 清理缩略图缓存
      */
     fun clearThumbnailCache() {
@@ -351,7 +375,9 @@ data class SettingsUiState(
     val thumbnailConcurrency: Int = 4,
     val autoSyncInterval: AutoSyncInterval? = null,
     val cacheSizeBytes: Long = 0,
+    val cachePath: String = "",
     val cacheCleared: Boolean = false,
+    val showCustomCapacityDialog: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
 )

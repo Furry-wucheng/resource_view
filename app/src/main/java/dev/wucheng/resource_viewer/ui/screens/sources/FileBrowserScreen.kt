@@ -7,19 +7,28 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,6 +46,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import org.koin.androidx.compose.koinViewModel
@@ -75,6 +85,13 @@ fun FileBrowserScreen(
                     }
                 },
                 actions = {
+                    // 视图切换按钮
+                    IconButton(onClick = { viewModel.toggleViewMode() }) {
+                        Icon(
+                            imageVector = if (uiState.viewMode == FileViewMode.LIST) Icons.Default.GridView else Icons.Default.List,
+                            contentDescription = if (uiState.viewMode == FileViewMode.LIST) "网格视图" else "列表视图",
+                        )
+                    }
                     if (uiState.currentPath.isNotEmpty()) {
                         TextButton(onClick = { viewModel.goUp() }) {
                             Text("上级")
@@ -118,17 +135,39 @@ fun FileBrowserScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 8.dp),
-            ) {
-                items(uiState.entries, key = { it.relativePath }) { entry ->
-                    FileEntryRow(
-                        entry = entry,
-                        selected = entry.relativePath in uiState.selectedPaths,
-                        onOpen = { viewModel.openDirectory(entry.relativePath) },
-                        onToggleSelection = { viewModel.toggleSelection(entry.relativePath) },
-                    )
+            when (uiState.viewMode) {
+                FileViewMode.LIST -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                    ) {
+                        items(uiState.entries, key = { it.relativePath }) { entry ->
+                            FileEntryRow(
+                                entry = entry,
+                                selected = entry.relativePath in uiState.selectedPaths,
+                                onOpen = { viewModel.openDirectory(entry.relativePath) },
+                                onToggleSelection = { viewModel.toggleSelection(entry.relativePath) },
+                            )
+                        }
+                    }
+                }
+                FileViewMode.GRID -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 120.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(uiState.entries, key = { it.relativePath }) { entry ->
+                            FileEntryGridItem(
+                                entry = entry,
+                                selected = entry.relativePath in uiState.selectedPaths,
+                                onOpen = { viewModel.openDirectory(entry.relativePath) },
+                                onToggleSelection = { viewModel.toggleSelection(entry.relativePath) },
+                            )
+                        }
+                    }
                 }
             }
 
@@ -203,4 +242,78 @@ private fun FileEntryRow(
             if (entry.isDirectory) onOpen() else onToggleSelection()
         },
     )
+}
+
+/**
+ * 网格视图中的文件/文件夹卡片。
+ */
+@Composable
+private fun FileEntryGridItem(
+    entry: FileEntry,
+    selected: Boolean,
+    onOpen: () -> Unit,
+    onToggleSelection: () -> Unit,
+) {
+    Card(
+        onClick = {
+            if (entry.isDirectory) onOpen() else onToggleSelection()
+        },
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // 图标
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = when {
+                        entry.isDirectory -> Icons.Default.Folder
+                        entry.extension.lowercase() in setOf("mp4", "mkv", "avi", "mov", "webm") -> Icons.Default.PlayCircle
+                        else -> Icons.AutoMirrored.Filled.InsertDriveFile
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = if (entry.isDirectory) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+                // 选中指示器
+                if (selected) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "已选中",
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(24.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            // 文件名
+            Text(
+                text = entry.name,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }

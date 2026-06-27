@@ -27,4 +27,7 @@ interface SourceDao {
 
     @Query("UPDATE sources SET isAvailable = :available, lastCheckAt = :checkTime WHERE id = :id")
     suspend fun updateAvailability(id: String, available: Boolean, checkTime: Long)
+
+    @Query("SELECT COUNT(*) FROM resources WHERE sourceId = :sourceId")
+    suspend fun getResourceCount(sourceId: String): Int
 }

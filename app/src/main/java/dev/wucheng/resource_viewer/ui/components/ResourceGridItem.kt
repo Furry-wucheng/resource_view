@@ -2,6 +2,7 @@ package dev.wucheng.resource_viewer.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,12 +13,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -49,6 +53,7 @@ fun ResourceGridItem(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     selected: Boolean = false,
+    onToggleFavorite: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -77,12 +82,25 @@ fun ResourceGridItem(
                     contentScale = ContentScale.Crop,
                 )
             }
+            // 收藏星标
+            if (onToggleFavorite != null) {
+                Icon(
+                    imageVector = if (resource.favorited) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = if (resource.favorited) "取消收藏" else "收藏",
+                    tint = if (resource.favorited) Color(0xFFFFD700) else Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                        .size(20.dp)
+                        .clickable { onToggleFavorite() },
+                )
+            }
             if (selected) {
                 Icon(
                     Icons.Default.CheckCircle,
                     contentDescription = "已选择",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).padding(6.dp),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
                 )
             }
         }

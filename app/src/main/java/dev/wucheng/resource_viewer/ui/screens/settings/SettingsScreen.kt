@@ -27,6 +27,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -158,6 +159,12 @@ fun SettingsScreen(
                                 label = { Text("$limit MB") },
                             )
                         }
+                        // 自定义按钮
+                        FilterChip(
+                            selected = uiState.cacheLimitMB !in listOf(500, 1000, 1500, 2000),
+                            onClick = { viewModel.showCustomCapacityDialog() },
+                            label = { Text("自定义") },
+                        )
                     }
                 }
 
@@ -188,7 +195,7 @@ fun SettingsScreen(
 
                 // 缓存位置
                 Text(
-                    text = "缓存位置: ${getCachePath()}",
+                    text = "缓存位置: ${uiState.cachePath}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -374,6 +381,50 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showResetDefaultsDialog = false }) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+
+    // 自定义容量对话框
+    if (uiState.showCustomCapacityDialog) {
+        var customCapacityText by remember { mutableStateOf(uiState.cacheLimitMB.toString()) }
+        AlertDialog(
+            onDismissRequest = { viewModel.hideCustomCapacityDialog() },
+            title = {
+                Text(
+                    text = "自定义缓存容量",
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Column {
+                    Text("请输入缓存容量上限（MB），最小 500 MB")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = customCapacityText,
+                        onValueChange = { customCapacityText = it },
+                        label = { Text("容量 (MB)") },
+                        singleLine = true,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val capacity = customCapacityText.toIntOrNull()
+                        if (capacity != null && capacity >= 500) {
+                            viewModel.updateCacheLimit(capacity)
+                            viewModel.hideCustomCapacityDialog()
+                        }
+                    },
+                ) {
+                    Text("确认")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.hideCustomCapacityDialog() }) {
                     Text("取消")
                 }
             },
@@ -638,9 +689,3 @@ private fun getAutoSyncIntervalLabel(interval: AutoSyncInterval?): String {
     }
 }
 
-/**
- * 获取缓存路径
- */
-private fun getCachePath(): String {
-    return "/data/cache/thumbnails/"
-}

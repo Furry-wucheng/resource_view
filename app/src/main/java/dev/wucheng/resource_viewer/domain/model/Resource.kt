@@ -15,6 +15,7 @@ data class Resource(
     val fileCount: Int?,
     val fileSize: Long?,
     val isAvailable: Boolean,
+    val favorited: Boolean = false,
     val lastScannedAt: Long?,
     val tags: List<Tag> = emptyList(),
     val createdAt: Long,

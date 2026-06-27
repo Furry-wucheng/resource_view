@@ -66,6 +66,11 @@ fun AppNavGraph(
         composable(Screen.TagManager.route) {
             TagManagerScreen(
                 onNavigateBack = { navController.popBackStack() },
+                onTagClick = { tagId ->
+                    // 导航到首页并预设筛选
+                    navController.popBackStack()
+                    // TODO: 传递 tagId 给首页进行筛选
+                },
             )
         }
         composable(Screen.FileBrowser.route) { backStackEntry ->

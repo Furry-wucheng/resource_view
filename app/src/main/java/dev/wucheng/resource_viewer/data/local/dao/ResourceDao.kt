@@ -131,4 +131,7 @@ interface ResourceDao {
         ORDER BY r.name ASC
     """)
     fun searchResourceItemsByName(query: String): Flow<List<ResourceWithSourceName>>
+
+    @Query("UPDATE resources SET favorited = :favorited, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateFavorite(id: String, favorited: Boolean, updatedAt: Long)
 }

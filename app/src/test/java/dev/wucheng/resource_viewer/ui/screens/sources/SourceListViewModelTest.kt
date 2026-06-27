@@ -5,6 +5,7 @@ import dev.wucheng.resource_viewer.data.local.entity.SourceEntity
 import dev.wucheng.resource_viewer.data.remote.smb.SmbClientWrapper
 import dev.wucheng.resource_viewer.data.remote.smb.SmbConnectionException
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
+import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.SourceRepository
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.domain.error.Result
@@ -23,6 +24,7 @@ class SourceListViewModelTest {
 
     private lateinit var mockSourceRepository: SourceRepository
     private lateinit var mockFilesystemRepository: FilesystemRepository
+    private lateinit var mockResourceRepository: ResourceRepository
     private lateinit var mockSmbClientWrapper: SmbClientWrapper
     private lateinit var viewModel: SourceListViewModel
 
@@ -33,10 +35,12 @@ class SourceListViewModelTest {
         Dispatchers.setMain(testDispatcher)
         mockSourceRepository = mockk(relaxed = true)
         mockFilesystemRepository = mockk(relaxed = true)
+        mockResourceRepository = mockk(relaxed = true)
         mockSmbClientWrapper = mockk(relaxed = true)
         viewModel = SourceListViewModel(
             sourceRepository = mockSourceRepository,
             filesystemRepository = mockFilesystemRepository,
+            resourceRepository = mockResourceRepository,
             smbClientWrapper = mockSmbClientWrapper,
             ioDispatcher = testDispatcher,
         )

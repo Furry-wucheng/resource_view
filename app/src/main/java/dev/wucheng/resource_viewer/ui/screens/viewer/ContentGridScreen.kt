@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.domain.model.FileEntry
+import dev.wucheng.resource_viewer.ui.screens.viewer.components.OrgModeSwitcher
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -58,27 +59,36 @@ fun ContentGridScreen(
         },
         modifier = modifier,
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(128.dp),
-                contentPadding = PaddingValues(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(state.entries, key = { it.relativePath }) { entry ->
-                    GridEntryCard(entry = entry) {
-                        if (entry.isDirectory) {
-                            viewModel.openDirectory(entry.relativePath)
-                        } else {
-                            val images = state.entries.filter { !it.isDirectory }
-                            val index = images.indexOfFirst { it.relativePath == entry.relativePath }
-                            if (index >= 0) onOpenViewer(state.currentPath, index)
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            // 组织模式切换器
+            OrgModeSwitcher(
+                currentMode = state.organizationMode,
+                onModeChanged = { mode -> viewModel.changeOrganizationMode(mode) },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+
+            Box(Modifier.fillMaxSize()) {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(128.dp),
+                    contentPadding = PaddingValues(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(state.entries, key = { it.relativePath }) { entry ->
+                        GridEntryCard(entry = entry) {
+                            if (entry.isDirectory) {
+                                viewModel.openDirectory(entry.relativePath)
+                            } else {
+                                val images = state.entries.filter { !it.isDirectory }
+                                val index = images.indexOfFirst { it.relativePath == entry.relativePath }
+                                if (index >= 0) onOpenViewer(state.currentPath, index)
+                            }
                         }
                     }
                 }
+                if (state.isLoading) CircularProgressIndicator(Modifier.align(Alignment.Center))
+                state.error?.let { Text(it, modifier = Modifier.align(Alignment.Center)) }
             }
-            if (state.isLoading) CircularProgressIndicator(Modifier.align(Alignment.Center))
-            state.error?.let { Text(it, modifier = Modifier.align(Alignment.Center)) }
         }
     }
 }

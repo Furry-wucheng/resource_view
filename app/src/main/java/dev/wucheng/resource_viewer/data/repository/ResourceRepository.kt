@@ -139,6 +139,17 @@ class ResourceRepository(
     }
 
     /**
+     * 切换资源收藏状态。
+     */
+    suspend fun toggleFavorite(id: String, favorited: Boolean): Result<Unit> {
+        return try {
+            resourceDao.updateFavorite(id, favorited, System.currentTimeMillis()).asOk()
+        } catch (e: Exception) {
+            DomainError.DatabaseError("Failed to toggle favorite", e).asErr()
+        }
+    }
+
+    /**
      * 键集分页获取资源。
      */
     suspend fun pageAfter(beforeCreatedAt: Long, limit: Int): Result<List<Resource>> {

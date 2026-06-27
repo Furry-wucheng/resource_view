@@ -22,6 +22,7 @@ class DatabaseMigrator(
      */
     fun getMigrations(): Array<Migration> = arrayOf(
         MIGRATION_1_2,
+        MIGRATION_2_3,
         // 后续迁移在此追加
     )
 
@@ -135,6 +136,18 @@ class DatabaseMigrator(
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE app_config ADD COLUMN hasAcceptedPrivacy INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        /**
+         * Migration 2 -> 3
+         * 添加收藏字段到 resources 表
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE resources ADD COLUMN favorited INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }

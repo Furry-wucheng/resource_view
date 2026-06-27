@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.data.local.converter.DoublePageMode
+import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.data.local.converter.PageDirection
 import dev.wucheng.resource_viewer.data.local.dao.AppConfigDao
 import dev.wucheng.resource_viewer.data.local.entity.AppConfigEntity
@@ -16,12 +17,15 @@ import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.error.MediaType
 import dev.wucheng.resource_viewer.domain.error.Result
+import dev.wucheng.resource_viewer.domain.model.Chapter
 import dev.wucheng.resource_viewer.domain.model.VideoMediaSource
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
 import dev.wucheng.resource_viewer.shared.content.ContentProvider
 import dev.wucheng.resource_viewer.shared.content.ImageFolderProvider
 import dev.wucheng.resource_viewer.shared.content.PdfContentProvider
 import dev.wucheng.resource_viewer.shared.filesource.DocumentTreeFileSource
+import dev.wucheng.resource_viewer.shared.organization.ChapterGalleryStrategy
+import dev.wucheng.resource_viewer.shared.organization.ChapterStrategy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -92,6 +96,26 @@ class ViewerViewModel(
     private val _doublePageMode = MutableStateFlow(DoublePageMode.AUTO)
     val doublePageMode: StateFlow<DoublePageMode> = _doublePageMode.asStateFlow()
 
+    /** 章节列表（用于跨章节导航） */
+    private val _chapters = MutableStateFlow<List<Chapter>>(emptyList())
+    val chapters: StateFlow<List<Chapter>> = _chapters.asStateFlow()
+
+    /** 当前章节索引 */
+    private val _currentChapterIndex = MutableStateFlow(-1)
+    val currentChapterIndex: StateFlow<Int> = _currentChapterIndex.asStateFlow()
+
+    /** 跨章节连续阅读开关 */
+    private val _crossChapter = MutableStateFlow(true)
+    val crossChapter: StateFlow<Boolean> = _crossChapter.asStateFlow()
+
+    /** 章节过渡提示文本 */
+    private val _chapterHint = MutableStateFlow<String?>(null)
+    val chapterHint: StateFlow<String?> = _chapterHint.asStateFlow()
+
+    /** 收藏状态 */
+    private val _isFavorited = MutableStateFlow(false)
+    val isFavorited: StateFlow<Boolean> = _isFavorited.asStateFlow()
+
     /** ContentProvider 实例（图片/PDF 模式） */
     private var contentProvider: ContentProvider? = null
 
@@ -123,6 +147,7 @@ class ViewerViewModel(
                     }
 
                     _resourceName.value = resource.name
+                    _isFavorited.value = resource.favorited
 
                     if (resource.type == ResourceType.VIDEO) {
                         // 视频资源
@@ -320,6 +345,7 @@ class ViewerViewModel(
         val config = appConfigDao?.getConfig()?.first() ?: AppConfigEntity()
         _pageDirection.value = config.pageDirection
         _doublePageMode.value = config.doublePageMode
+        _crossChapter.value = config.crossChapter
     }
 
     fun cyclePageDirection() {
@@ -399,6 +425,100 @@ class ViewerViewModel(
                     // 单个预取失败不影响当前页；用户翻到该页时仍可主动重试。
                 }
             }
+    }
+
+    /**
+     * 加载章节列表（用于跨章节导航）。
+     */
+    fun loadChapters() {
+        viewModelScope.launch {
+            val result = resourceRepository.getById(resourceId)
+            if (result is Result.Ok) {
+                val resource = result.value ?: return@launch
+                if (resource.organizationMode == OrganizationMode.CHAPTER ||
+                    resource.organizationMode == OrganizationMode.CHAPTER_GALLERY) {
+                    when (val fsResult = filesystemRepository.getFileSource(resource.sourceId)) {
+                        is Result.Ok -> {
+                            try {
+                                val strategy = when (resource.organizationMode) {
+                                    OrganizationMode.CHAPTER -> ChapterStrategy()
+                                    OrganizationMode.CHAPTER_GALLERY -> ChapterGalleryStrategy()
+                                    else -> return@launch
+                                }
+                                val chapterList = strategy.getChapters(resource, fsResult.value)
+                                _chapters.value = chapterList
+                                // 查找当前章节索引
+                                val currentIndex = chapterList.indexOfFirst { it.relativePath == contentPath }
+                                _currentChapterIndex.value = if (currentIndex >= 0) currentIndex else 0
+                            } catch (_: Exception) {
+                                // 忽略章节加载失败
+                            }
+                        }
+                        is Result.Err -> { /* 忽略 */ }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 导航到下一章。
+     * @return 下一章名称，如果没有下一章返回 null
+     */
+    fun navigateToNextChapter(): String? {
+        val chapterList = _chapters.value
+        val currentIndex = _currentChapterIndex.value
+        if (chapterList.isEmpty() || currentIndex < 0 || currentIndex >= chapterList.size - 1) {
+            return null
+        }
+        val nextChapter = chapterList[currentIndex + 1]
+        _currentChapterIndex.value = currentIndex + 1
+        _chapterHint.value = "下一章: ${nextChapter.name}"
+        // 清除提示
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(2000)
+            _chapterHint.value = null
+        }
+        return nextChapter.name
+    }
+
+    /**
+     * 导航到上一章。
+     * @return 上一章名称，如果没有上一章返回 null
+     */
+    fun navigateToPrevChapter(): String? {
+        val chapterList = _chapters.value
+        val currentIndex = _currentChapterIndex.value
+        if (chapterList.isEmpty() || currentIndex <= 0) {
+            return null
+        }
+        val prevChapter = chapterList[currentIndex - 1]
+        _currentChapterIndex.value = currentIndex - 1
+        _chapterHint.value = "上一章: ${prevChapter.name}"
+        // 清除提示
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(2000)
+            _chapterHint.value = null
+        }
+        return prevChapter.name
+    }
+
+    /**
+     * 检查是否可以跨章节导航。
+     */
+    fun canNavigateChapter(): Boolean {
+        return _crossChapter.value && _chapters.value.isNotEmpty()
+    }
+
+    /**
+     * 切换收藏状态。
+     */
+    fun toggleFavorite() {
+        val newState = !_isFavorited.value
+        _isFavorited.value = newState
+        viewModelScope.launch {
+            resourceRepository.toggleFavorite(resourceId, newState)
+        }
     }
 
     /**

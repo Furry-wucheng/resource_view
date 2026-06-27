@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+enum class FileViewMode { LIST, GRID }
+
 data class FileBrowserUiState(
     val source: Source? = null,
     val currentPath: String = "",
@@ -22,6 +24,7 @@ data class FileBrowserUiState(
     val selectedPaths: Set<String> = emptySet(),
     val isLoading: Boolean = false,
     val isAdding: Boolean = false,
+    val viewMode: FileViewMode = FileViewMode.LIST,
     val error: String? = null,
     val lastAddResult: ScanResult? = null,
 )
@@ -116,6 +119,31 @@ class FileBrowserViewModel(
 
     fun clearMessage() {
         _uiState.update { it.copy(error = null, lastAddResult = null) }
+    }
+
+    /**
+     * 切换视图模式（列表/网格）。
+     */
+    fun toggleViewMode() {
+        _uiState.update { state ->
+            state.copy(
+                viewMode = if (state.viewMode == FileViewMode.LIST) FileViewMode.GRID else FileViewMode.LIST,
+            )
+        }
+    }
+
+    /**
+     * 判断文件是否为可预览类型（图片/视频/PDF）。
+     */
+    fun isPreviewable(entry: FileEntry): Boolean {
+        if (entry.isDirectory) return false
+        val ext = entry.extension.lowercase()
+        return ext in IMAGE_EXTENSIONS || ext in VIDEO_EXTENSIONS || ext == "pdf"
+    }
+
+    companion object {
+        private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp", "bmp")
+        private val VIDEO_EXTENSIONS = setOf("mp4", "mkv", "avi", "mov", "webm")
     }
 
     private fun loadDirectory(path: String) {

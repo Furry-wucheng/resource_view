@@ -74,6 +74,7 @@ private fun String.toColor(): Color {
 @Composable
 fun TagManagerScreen(
     onNavigateBack: () -> Unit = {},
+    onTagClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: TagViewModel = koinViewModel(),
 ) {
@@ -150,8 +151,10 @@ fun TagManagerScreen(
                 }
             }
         } else {
-            // 标签列表（按内置优先排序）
-            val sortedTags = tags.sortedByDescending { it.isBuiltIn }
+            // 标签列表（分组显示）
+            val builtInTags = tags.filter { it.isBuiltIn }
+            val customTags = tags.filter { !it.isBuiltIn }
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -159,15 +162,38 @@ fun TagManagerScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(16.dp),
             ) {
-                items(
-                    items = sortedTags,
-                    key = { it.id },
-                ) { tag ->
-                    TagListItem(
-                        tag = tag,
-                        onClick = { viewModel.showEditDialog(tag) },
-                        onDelete = { tagToDelete = tag },
-                    )
+                // 内置标签
+                if (builtInTags.isNotEmpty()) {
+                    item(key = "builtin_header") {
+                        SectionTitle(title = "内置标签")
+                    }
+                    items(
+                        items = builtInTags,
+                        key = { it.id },
+                    ) { tag ->
+                        TagListItem(
+                            tag = tag,
+                            onClick = { onTagClick?.invoke(tag.id) },
+                            onDelete = { tagToDelete = tag },
+                        )
+                    }
+                }
+
+                // 自定义标签
+                if (customTags.isNotEmpty()) {
+                    item(key = "custom_header") {
+                        SectionTitle(title = "自定义标签")
+                    }
+                    items(
+                        items = customTags,
+                        key = { it.id },
+                    ) { tag ->
+                        TagListItem(
+                            tag = tag,
+                            onClick = { viewModel.showEditDialog(tag) },
+                            onDelete = { tagToDelete = tag },
+                        )
+                    }
                 }
             }
         }
@@ -212,6 +238,22 @@ fun TagManagerScreen(
             },
         )
     }
+}
+
+/**
+ * 分区标题
+ */
+@Composable
+private fun SectionTitle(
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.padding(top = 8.dp, bottom = 4.dp),
+    )
 }
 
 /**

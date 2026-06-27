@@ -107,4 +107,15 @@ class SourceRepository(
     fun removePassword(sourceId: String) {
         securePrefs.removePassword(sourceId)
     }
+
+    /**
+     * 获取数据源下的资源数量。
+     */
+    suspend fun getResourceCount(sourceId: String): Int {
+        return try {
+            sourceDao.getResourceCount(sourceId)
+        } catch (e: Exception) {
+            0
+        }
+    }
 }

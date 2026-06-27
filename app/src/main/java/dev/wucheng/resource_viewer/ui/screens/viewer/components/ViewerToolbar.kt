@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +41,8 @@ fun ViewerToolbar(
     doublePageMode: DoublePageMode,
     onPageDirectionClick: () -> Unit,
     onDoublePageModeClick: () -> Unit,
+    isFavorited: Boolean = false,
+    onFavoriteClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -89,6 +93,18 @@ fun ViewerToolbar(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
+
+                // 收藏按钮
+                if (onFavoriteClick != null) {
+                    Icon(
+                        imageVector = if (isFavorited) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = if (isFavorited) "取消收藏" else "收藏",
+                        tint = if (isFavorited) Color(0xFFFFD700) else Color.White,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickable(onClick = onFavoriteClick),
+                    )
+                }
 
                 // 页码信息
                 Text(

@@ -13,7 +13,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
 /**
- * SMB 源添加弹窗。
+ * SMB 源添加/编辑弹窗。
  *
  * @param formData 表单数据
  * @param isTestingConnection 是否正在测试连接
@@ -21,8 +21,10 @@ import androidx.compose.ui.unit.dp
  * @param testConnectionError 测试连接错误信息
  * @param onFormChange 表单数据变化回调
  * @param onTestConnection 测试连接回调
- * @param onConfirm 确认添加回调
+ * @param onConfirm 确认回调
  * @param onDismiss 关闭弹窗回调
+ * @param title 弹窗标题
+ * @param confirmText 确认按钮文本
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,11 +38,13 @@ fun AddSmbDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    title: String = "添加 SMB 网络共享",
+    confirmText: String = "添加",
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("添加 SMB 网络共享")
+            Text(title)
         },
         text = {
             Column(
@@ -187,7 +191,7 @@ fun AddSmbDialog(
                     Text("测试连接")
                 }
 
-                // 添加按钮
+                // 确认按钮
                 Button(
                     onClick = onConfirm,
                     enabled = !isTestingConnection &&
@@ -195,7 +199,7 @@ fun AddSmbDialog(
                             formData.host.isNotBlank() &&
                             formData.shareName.isNotBlank(),
                 ) {
-                    Text("添加")
+                    Text(confirmText)
                 }
             }
         },
