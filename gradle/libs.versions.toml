@@ -23,6 +23,7 @@ securityCrypto = "1.1.0-alpha06"
 kotlinxCoroutines = "1.8.0"
 benasherUuid = "0.8.2"
 mockk = "1.13.16"
+zoomable = "2.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -62,6 +63,7 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 benasher-uuid = { group = "com.benasher44", name = "uuid", version.ref = "benasherUuid" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+zoomable = { group = "net.engawapg.lib", name = "zoomable", version.ref = "zoomable" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

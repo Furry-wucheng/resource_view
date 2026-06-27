@@ -110,6 +110,9 @@ dependencies {
     // UUID
     implementation(libs.benasher.uuid)
 
+    // Zoomable
+    implementation(libs.zoomable)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

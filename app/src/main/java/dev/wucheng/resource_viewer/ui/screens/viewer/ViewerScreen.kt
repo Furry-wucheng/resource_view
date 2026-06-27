@@ -5,13 +5,8 @@ package dev.wucheng.resource_viewer.ui.screens.viewer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.pager.HorizontalPager
@@ -44,6 +39,9 @@ import dev.wucheng.resource_viewer.ui.screens.viewer.components.VideoPlayer
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.ViewerToolbar
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import net.engawapg.lib.zoomable.ScrollGesturePropagation
+import net.engawapg.lib.zoomable.rememberZoomState
+import net.engawapg.lib.zoomable.zoomable
 
 /**
  * 基础查看器页面。
@@ -149,6 +147,7 @@ fun ViewerScreenContent(
                     val videoItem = items[0] as ViewerItem.Video
                     VideoPageContent(
                         videoItem = videoItem,
+                        toolbarVisible = toolbarVisible,
                         onToggleToolbar = { toolbarVisible = !toolbarVisible },
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -193,17 +192,7 @@ fun ViewerScreenContent(
                         }
                     }
 
-                    val pagerModifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(pageDirection, totalPages) {
-                            detectTapGestures { offset ->
-                                when (resolveTapAction(offset.x, offset.y, size.width.toFloat(), size.height.toFloat(), pageDirection)) {
-                                    ViewerTapAction.PREVIOUS -> spreads.getOrNull((pagerState.currentPage - 1).coerceAtLeast(0))?.itemIndices?.firstOrNull()?.let(viewModel::goToPage)
-                                    ViewerTapAction.NEXT -> spreads.getOrNull((pagerState.currentPage + 1).coerceAtMost(spreads.lastIndex))?.itemIndices?.firstOrNull()?.let(viewModel::goToPage)
-                                    ViewerTapAction.TOGGLE_TOOLBAR -> toolbarVisible = !toolbarVisible
-                                }
-                            }
-                        }
+                    val pagerModifier = Modifier.fillMaxSize()
 
                     if (pageDirection == PageDirection.VERTICAL) {
                         VerticalPager(
@@ -211,7 +200,7 @@ fun ViewerScreenContent(
                             beyondViewportPageCount = 0,
                             modifier = pagerModifier,
                         ) { page ->
-                            ViewerPagerContent(items, spreads[page], pageDirection, viewModel) {
+                            ViewerPagerContent(items, spreads[page], pageDirection, viewModel, toolbarVisible) {
                                 toolbarVisible = !toolbarVisible
                             }
                         }
@@ -222,22 +211,26 @@ fun ViewerScreenContent(
                             beyondViewportPageCount = 0,
                             modifier = pagerModifier,
                         ) { page ->
-                            ViewerPagerContent(items, spreads[page], pageDirection, viewModel) {
+                            ViewerPagerContent(items, spreads[page], pageDirection, viewModel, toolbarVisible) {
                                 toolbarVisible = !toolbarVisible
                             }
                         }
                     }
 
-                    // 底部 SlideBar
-                    SlideBar(
-                        currentPage = currentPage,
-                        totalPages = totalPages,
-                        onPageChange = { page ->
-                            viewModel.goToPage(page)
-                        },
-                        reverseDirection = pageDirection == PageDirection.RIGHT_TO_LEFT,
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
+                    // 底部 SlideBar（视频模式或工具栏隐藏时隐藏）
+                    val currentItem = items.getOrNull(currentPage)
+                    val isCurrentVideo = currentItem is ViewerItem.Video
+                    if (!isCurrentVideo && toolbarVisible) {
+                        SlideBar(
+                            currentPage = currentPage,
+                            totalPages = totalPages,
+                            onPageChange = { page ->
+                                viewModel.goToPage(page)
+                            },
+                            reverseDirection = pageDirection == PageDirection.RIGHT_TO_LEFT,
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                        )
+                    }
                 }
 
                 // 顶部工具栏（视频和图片模式都显示）
@@ -250,8 +243,6 @@ fun ViewerScreenContent(
                     doublePageMode = doublePageMode,
                     onPageDirectionClick = viewModel::cyclePageDirection,
                     onDoublePageModeClick = viewModel::cycleDoublePageMode,
-                    isFavorited = isFavorited,
-                    onFavoriteClick = { viewModel.toggleFavorite() },
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
 
@@ -314,11 +305,12 @@ fun ViewerScreen(
 private fun ViewerPagerPage(
     item: ViewerItem,
     viewModel: ViewerViewModel,
+    toolbarVisible: Boolean,
     onToggleToolbar: () -> Unit,
 ) {
     when (item) {
-        is ViewerItem.ImagePage -> PageContent(viewModel, item.pageIndex, Modifier.fillMaxSize())
-        is ViewerItem.Video -> VideoPageContent(item, onToggleToolbar, Modifier.fillMaxSize())
+        is ViewerItem.ImagePage -> PageContent(viewModel, item.pageIndex, onToggleToolbar, Modifier.fillMaxSize())
+        is ViewerItem.Video -> VideoPageContent(item, toolbarVisible, onToggleToolbar, Modifier.fillMaxSize())
     }
 }
 
@@ -328,10 +320,11 @@ private fun ViewerPagerContent(
     spread: ViewerSpread,
     pageDirection: PageDirection,
     viewModel: ViewerViewModel,
+    toolbarVisible: Boolean,
     onToggleToolbar: () -> Unit,
 ) {
     if (spread.itemIndices.size == 1) {
-        ViewerPagerPage(items[spread.itemIndices.first()], viewModel, onToggleToolbar)
+        ViewerPagerPage(items[spread.itemIndices.first()], viewModel, toolbarVisible, onToggleToolbar)
         return
     }
     val pair = spread.itemIndices.map(items::get)
@@ -339,7 +332,7 @@ private fun ViewerPagerContent(
     Row(Modifier.fillMaxSize()) {
         orderedPair.forEach { item ->
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                ViewerPagerPage(item, viewModel, onToggleToolbar)
+                ViewerPagerPage(item, viewModel, toolbarVisible, onToggleToolbar)
             }
         }
     }
@@ -352,13 +345,13 @@ private fun ViewerPagerContent(
 @Composable
 private fun VideoPageContent(
     videoItem: ViewerItem.Video,
+    toolbarVisible: Boolean,
     onToggleToolbar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val playerKey = remember(videoItem.videoSource) { "video:${videoItem.videoSource.hashCode()}" }
     val videoPlayerViewModel: VideoPlayerViewModel = koinViewModel(key = playerKey)
 
-    // 加载视频
     LaunchedEffect(videoItem) {
         videoPlayerViewModel.loadMedia(videoItem.videoSource)
     }
@@ -369,6 +362,7 @@ private fun VideoPageContent(
 
     VideoPlayer(
         viewModel = videoPlayerViewModel,
+        toolbarVisible = toolbarVisible,
         onToggleToolbar = onToggleToolbar,
         modifier = modifier,
     )
@@ -376,12 +370,13 @@ private fun VideoPageContent(
 
 /**
  * 单页内容（图片）。
- * 支持双击缩放（2x）和拖动查看细节。
+ * 使用 zoomable 库支持捏合缩放、双击缩放、边缘滑动翻页。
  */
 @Composable
 private fun PageContent(
     viewModel: ViewerViewModel,
     pageIndex: Int,
+    onToggleToolbar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier.background(Color.Black)) {
@@ -405,14 +400,6 @@ private fun PageContent(
             }
         }
 
-        // 双击缩放状态
-        var scale by remember(pageIndex) { mutableFloatStateOf(1f) }
-        var offsetX by remember(pageIndex) { mutableFloatStateOf(0f) }
-        var offsetY by remember(pageIndex) { mutableFloatStateOf(0f) }
-        val animatedScale by animateFloatAsState(targetValue = scale, animationSpec = tween(200), label = "scale")
-        val animatedOffsetX by animateFloatAsState(targetValue = offsetX, animationSpec = tween(200), label = "offsetX")
-        val animatedOffsetY by animateFloatAsState(targetValue = offsetY, animationSpec = tween(200), label = "offsetY")
-
         when (val state = pageState) {
             PageBitmapState.Loading -> {
                 CircularProgressIndicator(
@@ -421,46 +408,22 @@ private fun PageContent(
                 )
             }
             is PageBitmapState.Success -> {
+                val bitmap = remember(state.bitmap) { state.bitmap.asImageBitmap() }
+                val zoomState = rememberZoomState(contentSize = androidx.compose.ui.geometry.Size(
+                    state.bitmap.width.toFloat(), state.bitmap.height.toFloat()
+                ))
+
                 Image(
-                    bitmap = state.bitmap.asImageBitmap(),
+                    bitmap = bitmap,
                     contentDescription = "Page ${pageIndex + 1}",
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = animatedScale
-                            scaleY = animatedScale
-                            translationX = animatedOffsetX
-                            translationY = animatedOffsetY
-                        }
-                        .pointerInput(pageIndex) {
-                            detectTapGestures(
-                                onDoubleTap = {
-                                    if (scale > 1f) {
-                                        // 还原
-                                        scale = 1f
-                                        offsetX = 0f
-                                        offsetY = 0f
-                                    } else {
-                                        // 放大到 2x
-                                        scale = 2f
-                                        offsetX = 0f
-                                        offsetY = 0f
-                                    }
-                                },
-                            )
-                        }
-                        .pointerInput(pageIndex, scale) {
-                            if (scale > 1f) {
-                                detectTransformGestures { _, pan, _, _ ->
-                                    // 限制拖动范围
-                                    val maxX = (scale - 1f) * size.width / 2f
-                                    val maxY = (scale - 1f) * size.height / 2f
-                                    offsetX = (offsetX + pan.x).coerceIn(-maxX, maxX)
-                                    offsetY = (offsetY + pan.y).coerceIn(-maxY, maxY)
-                                }
-                            }
-                        },
+                        .zoomable(
+                            zoomState = zoomState,
+                            scrollGesturePropagation = ScrollGesturePropagation.ContentEdge,
+                            onTap = { onToggleToolbar() },
+                        ),
                 )
             }
             is PageBitmapState.Error -> {

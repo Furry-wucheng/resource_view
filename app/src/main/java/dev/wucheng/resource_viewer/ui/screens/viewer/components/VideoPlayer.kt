@@ -2,16 +2,24 @@ package dev.wucheng.resource_viewer.ui.screens.viewer.components
 
 import android.view.GestureDetector
 import android.view.MotionEvent
-import android.view.ViewGroup
-import android.widget.FrameLayout
 import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -21,46 +29,52 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
+import dev.wucheng.resource_viewer.R
 import dev.wucheng.resource_viewer.ui.screens.viewer.VideoPlayerViewModel
-import kotlin.math.absoluteValue
+import kotlin.math.round
 
-/**
- * 视频播放器 Composable。
- * 使用 [AndroidView] 包装 ExoPlayer [PlayerView]，处理手势交互。
- *
- * 手势：
- * - 单击：显隐工具栏（委托给 [onToggleToolbar]）
- * - 双击：暂停/播放
- * - 长按：倍速播放（松手恢复正常速度）
- * - 底部区域水平拖动：seek（快进/快退）
- *
- * 注意：此实现遵循 doc/mvp/M19-video-player.md 中的 M19.1 子任务。
- */
+private val PanelBg = Color.Black.copy(alpha = 0.65f)
+private val BottomBarShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+
 @OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayer(
     viewModel: VideoPlayerViewModel,
+    toolbarVisible: Boolean,
     onToggleToolbar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val currentPositionMs by viewModel.currentPositionMs.collectAsStateWithLifecycle()
     val durationMs by viewModel.durationMs.collectAsStateWithLifecycle()
 
+    var isLongPressing by remember { mutableStateOf(false) }
+    var currentSpeed by remember { mutableFloatStateOf(2f) }
+    var longPressStartY by remember { mutableFloatStateOf(0f) }
+
+    var isDragging by remember { mutableStateOf(false) }
+    var dragTargetMs by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(200)
+            viewModel.updatePlaybackState()
+        }
+    }
+
     Box(modifier = modifier) {
-        // 使用 AndroidView 包装 PlayerView，并通过 GestureDetector 处理手势
+        // PlayerView
         AndroidView(
             factory = { ctx ->
-                PlayerView(ctx).apply {
-                    player = viewModel.exoPlayer
-                    useController = true
-                    setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
-                    layoutParams = FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                    )
+                val view = android.view.LayoutInflater.from(ctx)
+                    .inflate(R.layout.custom_player_view, null)
+                val playerView = view.findViewById<PlayerView>(R.id.custom_player_view)
 
-                    // 设置手势检测器
+                playerView.apply {
+                    player = viewModel.exoPlayer
+                    useController = false
+
                     val gestureDetector = GestureDetector(
                         ctx,
                         object : GestureDetector.SimpleOnGestureListener() {
@@ -75,109 +89,190 @@ fun VideoPlayer(
                             }
 
                             override fun onLongPress(e: MotionEvent) {
-                                // 长按开始：2x 倍速
-                                viewModel.setPlaybackSpeed(2.0f)
+                                isLongPressing = true
+                                longPressStartY = e.y
+                                currentSpeed = 2.0f
+                                viewModel.setPlaybackSpeed(currentSpeed)
                             }
                         },
                     )
 
-                    // 在 PlayerView 的触摸事件中分发手势
-                    setOnTouchListener { v, event ->
+                    setOnTouchListener { _, event ->
                         gestureDetector.onTouchEvent(event)
-                        // 长按松开时恢复正常速度
+
+                        if (isLongPressing && event.action == MotionEvent.ACTION_MOVE) {
+                            val deltaY = longPressStartY - event.y
+                            val speedDelta = (deltaY / 100f) * 0.25f
+                            val newSpeed = (2.0f + speedDelta).coerceIn(1f, 3f)
+                            currentSpeed = round(newSpeed / 0.25f) * 0.25f
+                            viewModel.setPlaybackSpeed(currentSpeed)
+                        }
+
                         if (event.action == MotionEvent.ACTION_UP ||
                             event.action == MotionEvent.ACTION_CANCEL
                         ) {
-                            viewModel.restoreNormalSpeed()
+                            if (isLongPressing) {
+                                isLongPressing = false
+                                viewModel.restoreNormalSpeed()
+                            }
                         }
-                        false // 不消费事件，让 PlayerView 也处理（如进度条拖动）
+                        true
                     }
                 }
+                view
             },
             modifier = Modifier.fillMaxSize(),
         )
 
-        // 底部 seek 手势热区（屏幕下方 20% 区域）
-        VideoSeekGestureArea(
-            currentPositionMs = currentPositionMs,
-            durationMs = durationMs,
-            onSeek = { viewModel.seekTo(it) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.2f)
-                .align(Alignment.BottomCenter),
-        )
-
-        // 在离开组合时暂停播放并恢复正常速度
-        DisposableEffect(Unit) {
-            onDispose {
-                viewModel.restoreNormalSpeed()
+        // 中央播放/暂停按钮
+        AnimatedVisibility(
+            visible = toolbarVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(Color.Black.copy(alpha = 0.3f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "暂停" else "播放",
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(36.dp),
+                    )
+                }
             }
         }
-    }
-}
 
-/**
- * 视频 seek 手势热区。
- * 在底部区域水平拖动 → 快进/快退。
- * 拖动时显示预览时间，松手后跳转。
- */
-@Composable
-private fun VideoSeekGestureArea(
-    currentPositionMs: Long,
-    durationMs: Long,
-    onSeek: (Long) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var seeking by remember { mutableStateOf(false) }
-    var seekTargetMs by remember { mutableLongStateOf(0L) }
-    var dragAccumulator by remember { mutableFloatStateOf(0f) }
+        // 底部 25% 区域：滑动 seek
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.25f)
+                .align(Alignment.BottomCenter)
+                .pointerInput(durationMs) {
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            isDragging = true
+                            dragTargetMs = currentPositionMs
+                        },
+                        onDragEnd = {
+                            if (isDragging) {
+                                viewModel.seekTo(dragTargetMs.coerceIn(0L, durationMs))
+                                isDragging = false
+                            }
+                        },
+                        onDragCancel = {
+                            isDragging = false
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            if (durationMs > 0) {
+                                val msPerPx = durationMs * 0.001f
+                                val deltaMs = (dragAmount * msPerPx).toLong()
+                                dragTargetMs = (dragTargetMs + deltaMs).coerceIn(0L, durationMs)
+                            }
+                        },
+                    )
+                },
+        ) {
+            // 底部进度条 + 时间
+            val showControls = toolbarVisible || isDragging
 
-    Box(
-        modifier = modifier.pointerInput(durationMs) {
-            detectHorizontalDragGestures(
-                onDragStart = {
-                    seeking = true
-                    seekTargetMs = currentPositionMs
-                    dragAccumulator = 0f
-                },
-                onDragEnd = {
-                    if (seeking) {
-                        onSeek(seekTargetMs.coerceIn(0L, durationMs))
-                        seeking = false
+            AnimatedVisibility(
+                visible = showControls,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(BottomBarShape)
+                        .background(PanelBg)
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                ) {
+                    val progress = if (durationMs > 0) {
+                        val displayMs = if (isDragging) dragTargetMs else currentPositionMs
+                        displayMs.toFloat() / durationMs
+                    } else 0f
+
+                    // 进度条
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fraction = progress)
+                                .height(3.dp)
+                                .background(Color.White, RoundedCornerShape(2.dp)),
+                        )
                     }
-                },
-                onDragCancel = {
-                    seeking = false
-                },
-                onHorizontalDrag = { _, dragAmount ->
-                    if (durationMs <= 0) return@detectHorizontalDragGestures
-                    dragAccumulator += dragAmount
-                    // 每像素对应 duration 的 0.1%
-                    val msPerPx = durationMs * 0.001f
-                    val deltaMs = (dragAccumulator * msPerPx).toLong()
-                    if (deltaMs != 0L) {
-                        seekTargetMs = (seekTargetMs + deltaMs).coerceIn(0L, durationMs)
-                        dragAccumulator -= deltaMs / msPerPx
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // 时间
+                    val displayTimeMs = if (isDragging) dragTargetMs else currentPositionMs
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = formatTime(displayTimeMs),
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = 11.sp,
+                        )
+                        Text(
+                            text = formatTime(durationMs),
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = 11.sp,
+                        )
                     }
-                },
-            )
-        },
-    ) {
-        // 拖动时显示预览时间
-        if (seeking && durationMs > 0) {
+                }
+            }
+
+            // 拖动时在进度条上方显示目标时间
+            if (isDragging && durationMs > 0) {
+                Text(
+                    text = formatTime(dragTargetMs),
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = (-48).dp)
+                        .background(PanelBg, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                )
+            }
+        }
+
+        // 倍速提示
+        if (isLongPressing) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .background(Color.Black.copy(alpha = 0.6f), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .offset(y = 80.dp)
+                    .background(PanelBg, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Text(
-                    text = "${formatTime(seekTargetMs)} / ${formatTime(durationMs)}",
+                    text = "${String.format("%.2f", currentSpeed)}x",
                     color = Color.White,
-                    fontSize = 14.sp,
+                    fontSize = 16.sp,
                 )
             }
+        }
+
+        DisposableEffect(Unit) {
+            onDispose { viewModel.restoreNormalSpeed() }
         }
     }
 }

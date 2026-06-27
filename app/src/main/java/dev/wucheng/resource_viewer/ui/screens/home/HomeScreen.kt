@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -185,10 +187,36 @@ private fun HomeScreenContent(
                             searchVisible = !searchVisible
                             if (!searchVisible) onSearchQueryChange("")
                         }) { Icon(Icons.Default.Search, contentDescription = "搜索") }
-                        IconButton(onClick = {
-                            val values = HomeViewModel.ResourceSort.entries
-                            onSortChange(values[(sort.ordinal + 1) % values.size])
-                        }) { Icon(Icons.Default.Sort, contentDescription = "排序") }
+
+                        // 排序按钮（带 DropdownMenu）
+                        var expandedSort by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { expandedSort = true }) {
+                                Icon(Icons.Default.Sort, contentDescription = "排序")
+                            }
+                            DropdownMenu(
+                                expanded = expandedSort,
+                                onDismissRequest = { expandedSort = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("按添加时间 ↑") },
+                                    onClick = { onSortChange(HomeViewModel.ResourceSort.ADDED_ASC); expandedSort = false },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("按添加时间 ↓") },
+                                    onClick = { onSortChange(HomeViewModel.ResourceSort.ADDED_DESC); expandedSort = false },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("按名称 A-Z") },
+                                    onClick = { onSortChange(HomeViewModel.ResourceSort.NAME_ASC); expandedSort = false },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("按名称 Z-A") },
+                                    onClick = { onSortChange(HomeViewModel.ResourceSort.NAME_DESC); expandedSort = false },
+                                )
+                            }
+                        }
+
                         IconButton(onClick = onEnterMultiSelect) { Icon(Icons.Default.Checklist, contentDescription = "多选") }
                     }
                 },
