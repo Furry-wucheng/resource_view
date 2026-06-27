@@ -30,8 +30,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
 import dev.wucheng.resource_viewer.data.local.converter.PageDirection
@@ -59,6 +62,22 @@ fun ViewerScreen(
     onNavigateBack: () -> Unit = {},
     viewModel: ViewerViewModel = koinViewModel { parametersOf(resourceId, contentPath, initialPage) },
 ) {
+    LaunchedEffect(resourceId) {
+        viewModel.loadResource()
+        viewModel.loadChapters()
+    }
+    ViewerScreenContent(viewModel = viewModel, onNavigateBack = onNavigateBack, modifier = modifier)
+}
+
+/**
+ * 查看器核心内容。被 ViewerScreen(resourceId) 和 ViewerScreen(sourceId, filePath) 共用。
+ */
+@Composable
+fun ViewerScreenContent(
+    viewModel: ViewerViewModel,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
     val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
@@ -71,10 +90,17 @@ fun ViewerScreen(
     // 工具栏可见性
     var toolbarVisible by remember { mutableStateOf(true) }
 
-    // 加载资源
-    LaunchedEffect(resourceId) {
-        viewModel.loadResource()
-        viewModel.loadChapters()
+    // 沉浸模式：进入时隐藏系统栏，退出时恢复
+    val view = LocalView.current
+    DisposableEffect(Unit) {
+        val window = (view.context as android.app.Activity).window
+        val controller = WindowCompat.getInsetsController(window, view)
+        controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        controller.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        onDispose {
+            controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        }
     }
 
     Box(
@@ -255,6 +281,31 @@ fun ViewerScreen(
             }
         }
     }
+}
+
+/**
+ * 文件浏览器直接查看文件的入口。
+ * 复用完整 ViewerScreen 基础设施（翻页、手势、滑动条、预加载、视频播放）。
+ */
+@Composable
+fun ViewerScreen(
+    sourceId: String,
+    filePath: String,
+    modifier: Modifier = Modifier,
+    onNavigateBack: () -> Unit = {},
+    viewModel: ViewerViewModel = koinViewModel { parametersOf("__file__", "", 0) },
+) {
+    // 使用 loadFromSource 代替 loadResource
+    LaunchedEffect(sourceId, filePath) {
+        viewModel.loadFromSource(sourceId, filePath)
+    }
+
+    // 复用同一个 ViewerScreen 主体
+    ViewerScreenContent(
+        viewModel = viewModel,
+        onNavigateBack = onNavigateBack,
+        modifier = modifier,
+    )
 }
 
 @Composable

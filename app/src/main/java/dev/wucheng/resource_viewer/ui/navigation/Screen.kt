@@ -43,4 +43,12 @@ sealed class Screen(val route: String) {
             return "viewer/$resourceId/sequence?path=$encodedPath&page=$initialPage"
         }
     }
+
+    /** 文件浏览器中直接打开文件的查看器路由 */
+    data object FileViewer : Screen("file-viewer/{sourceId}?path={path}") {
+        fun createRoute(sourceId: String, filePath: String): String {
+            val encodedPath = URLEncoder.encode(filePath, StandardCharsets.UTF_8.toString())
+            return "file-viewer/$sourceId?path=$encodedPath"
+        }
+    }
 }

@@ -14,6 +14,7 @@ import dev.wucheng.resource_viewer.ui.screens.viewer.ChapterListScreen
 import dev.wucheng.resource_viewer.ui.screens.viewer.ContentGridMode
 import dev.wucheng.resource_viewer.ui.screens.viewer.ContentGridScreen
 import dev.wucheng.resource_viewer.ui.screens.viewer.ViewerScreen
+import dev.wucheng.resource_viewer.ui.screens.viewer.ViewerViewModel
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
@@ -78,6 +79,9 @@ fun AppNavGraph(
             FileBrowserScreen(
                 sourceId = sourceId,
                 onNavigateBack = { navController.popBackStack() },
+                onOpenFile = { srcId, filePath ->
+                    navController.navigate(Screen.FileViewer.createRoute(srcId, filePath))
+                },
             )
         }
 
@@ -134,6 +138,18 @@ fun AppNavGraph(
                 resourceId = resourceId,
                 contentPath = URLDecoder.decode(encodedPath, StandardCharsets.UTF_8.toString()),
                 initialPage = initialPage,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        // === 文件浏览器直接查看文件 ===
+        composable(Screen.FileViewer.route) { backStackEntry ->
+            val sourceId = backStackEntry.arguments?.getString("sourceId") ?: return@composable
+            val encodedPath = backStackEntry.arguments?.getString("path") ?: return@composable
+            val filePath = URLDecoder.decode(encodedPath, StandardCharsets.UTF_8.toString())
+            ViewerScreen(
+                sourceId = sourceId,
+                filePath = filePath,
                 onNavigateBack = { navController.popBackStack() },
             )
         }

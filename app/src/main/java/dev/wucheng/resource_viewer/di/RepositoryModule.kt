@@ -26,7 +26,7 @@ val repositoryModule = module {
     single { TagRepository(get(), get()) }
     single { FilesystemRepository(get(), get(), get()) }
     single { DetectOrganizationModeUseCase() }
-    single { BatchAddResourcesUseCase(get(), get()) }
+    single { BatchAddResourcesUseCase(get(), get(), get(), get()) }
     single { ScanResourcesUseCase(get(), get()) }
     single { SplitResourceUseCase(get()) }
     single {

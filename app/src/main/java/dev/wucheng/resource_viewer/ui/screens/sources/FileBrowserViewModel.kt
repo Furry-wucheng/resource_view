@@ -7,6 +7,7 @@ import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.error.ScanResult
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Source
+import dev.wucheng.resource_viewer.domain.model.Tag
 import dev.wucheng.resource_viewer.domain.usecase.BatchAddResourcesUseCase
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,16 +22,23 @@ data class FileBrowserUiState(
     val source: Source? = null,
     val currentPath: String = "",
     val entries: List<FileEntry> = emptyList(),
+    /** 多选模式下的已选路径 */
     val selectedPaths: Set<String> = emptySet(),
+    /** 是否处于多选模式 */
+    val isMultiSelectMode: Boolean = false,
     val isLoading: Boolean = false,
     val isAdding: Boolean = false,
     val viewMode: FileViewMode = FileViewMode.LIST,
-    val previewFile: FileEntry? = null,
     val showBatchAddDialog: Boolean = false,
     val showDirectoryTree: Boolean = false,
-    val allTags: List<dev.wucheng.resource_viewer.domain.model.Tag> = emptyList(),
+    val allTags: List<Tag> = emptyList(),
     val error: String? = null,
     val lastAddResult: ScanResult? = null,
+    /** 当前路径段列表，用于面包屑渲染 */
+    val pathSegments: List<String> = emptyList(),
+    /** 已入库的资源路径集合（用于标记"已入库"） */
+    val importedPaths: Set<String> = emptySet(),
+    // 文件浏览状态已移至 ViewerScreen/ViewerViewModel 管理
 )
 
 class FileBrowserViewModel(
@@ -77,14 +85,25 @@ class FileBrowserViewModel(
         }
     }
 
+    /** 进入子目录 */
     fun openDirectory(path: String) {
         loadDirectory(path)
     }
 
-    fun goUp() {
+    /** 返回上层目录。返回 true 表示已导航，false 表示已在根目录。 */
+    fun goUp(): Boolean {
         val current = _uiState.value.currentPath.trim('/')
+        if (current.isEmpty()) return false
         val parent = current.substringBeforeLast("/", missingDelimiterValue = "")
         loadDirectory(parent)
+        return true
+    }
+
+    /** 面包屑：导航到路径的第 N 段（0 = 根目录） */
+    fun navigateToSegment(index: Int) {
+        val segments = _uiState.value.currentPath.trim('/').split('/').filter { it.isNotEmpty() }
+        val target = segments.take(index + 1).joinToString("/")
+        loadDirectory(target)
     }
 
     fun toggleDirectoryTree() {
@@ -95,26 +114,41 @@ class FileBrowserViewModel(
         _uiState.update { it.copy(showDirectoryTree = false) }
     }
 
-    /** Navigate to a specific path segment (e.g., clicking "folder" in "root/folder/sub") */
-    fun navigateToPathSegment(segmentIndex: Int) {
-        val segments = _uiState.value.currentPath.trim('/').split('/').filter { it.isNotEmpty() }
-        val targetPath = segments.take(segmentIndex + 1).joinToString("/")
-        loadDirectory(targetPath)
+    // ===== 多选模式 =====
+
+    /** 进入多选模式 */
+    fun enterMultiSelect() {
+        _uiState.update { it.copy(isMultiSelectMode = true, selectedPaths = emptySet()) }
     }
 
+    /** 退出多选模式 */
+    fun exitMultiSelect() {
+        _uiState.update { it.copy(isMultiSelectMode = false, selectedPaths = emptySet()) }
+    }
+
+    /** 切换某个文件的选中状态 */
     fun toggleSelection(path: String) {
         _uiState.update { state ->
             val next = state.selectedPaths.toMutableSet()
-            if (!next.add(path)) {
-                next.remove(path)
-            }
+            if (!next.add(path)) next.remove(path)
             state.copy(selectedPaths = next, lastAddResult = null)
         }
     }
 
-    /**
-     * 显示批量添加弹窗。
-     */
+    /** 全选当前目录 */
+    fun selectAll() {
+        _uiState.update { state ->
+            state.copy(selectedPaths = state.entries.map { it.relativePath }.toSet())
+        }
+    }
+
+    /** 取消全选 */
+    fun deselectAll() {
+        _uiState.update { it.copy(selectedPaths = emptySet()) }
+    }
+
+    // ===== 批量添加 =====
+
     fun showBatchAddDialog() {
         val selected = _uiState.value.selectedPaths
         if (selected.isEmpty()) return
@@ -124,17 +158,14 @@ class FileBrowserViewModel(
         }
     }
 
-    /**
-     * 隐藏批量添加弹窗。
-     */
     fun hideBatchAddDialog() {
         _uiState.update { it.copy(showBatchAddDialog = false, allTags = emptyList()) }
     }
 
-    /**
-     * 确认批量添加。
-     */
-    fun confirmBatchAdd(organizationMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode?, tagIds: List<String>) {
+    fun confirmBatchAdd(
+        organizationMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode?,
+        tagIds: List<String>,
+    ) {
         val source = _uiState.value.source ?: return
         val selected = _uiState.value.selectedPaths.toList()
         val fs = fileSource ?: return
@@ -149,6 +180,7 @@ class FileBrowserViewModel(
                         it.copy(
                             isAdding = false,
                             selectedPaths = emptySet(),
+                            isMultiSelectMode = false,
                             lastAddResult = result.value,
                         )
                     }
@@ -164,80 +196,48 @@ class FileBrowserViewModel(
         _uiState.update { it.copy(error = null, lastAddResult = null) }
     }
 
-    /**
-     * 切换视图模式（列表/网格）。
-     */
     fun toggleViewMode() {
         _uiState.update { state ->
-            state.copy(
-                viewMode = if (state.viewMode == FileViewMode.LIST) FileViewMode.GRID else FileViewMode.LIST,
-            )
+            state.copy(viewMode = if (state.viewMode == FileViewMode.LIST) FileViewMode.GRID else FileViewMode.LIST)
         }
     }
 
-    /**
-     * 判断文件是否为可预览类型（图片/视频/PDF）。
-     */
-    fun isPreviewable(entry: FileEntry): Boolean {
-        if (entry.isDirectory) return false
-        val ext = entry.extension.lowercase()
-        return ext in IMAGE_EXTENSIONS || ext in VIDEO_EXTENSIONS || ext == "pdf"
-    }
-
-    /**
-     * 打开文件预览。
-     */
-    fun openFilePreview(entry: FileEntry) {
-        _uiState.update { it.copy(previewFile = entry) }
-    }
-
-    /**
-     * 关闭文件预览。
-     */
-    fun closeFilePreview() {
-        _uiState.update { it.copy(previewFile = null) }
-    }
-
-    /**
-     * 加载预览图片的 Bitmap。
-     */
-    suspend fun loadPreviewBitmap(entry: FileEntry): android.graphics.Bitmap {
-        val fs = fileSource ?: throw IllegalStateException("FileSource not initialized")
-        val bytes = fs.readFile(entry.relativePath)
-        return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-            ?: throw IllegalStateException("Failed to decode image")
-    }
-
     companion object {
-        private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp", "bmp")
-        private val VIDEO_EXTENSIONS = setOf("mp4", "mkv", "avi", "mov", "webm")
+        // 常量已移至 ViewerViewModel 中统一管理
     }
 
     private fun loadDirectory(path: String) {
         val source = _uiState.value.source ?: return
         viewModelScope.launch {
+            val cleanPath = path.trim('/')
             _uiState.update {
                 it.copy(
                     isLoading = true,
                     error = null,
-                    currentPath = path.trim('/'),
+                    currentPath = cleanPath,
                     selectedPaths = emptySet(),
+                    isMultiSelectMode = false,
                     lastAddResult = null,
+                    pathSegments = if (cleanPath.isEmpty()) emptyList()
+                    else cleanPath.split('/').filter { s -> s.isNotEmpty() },
                 )
             }
-            when (val result = filesystemRepository.listDirectory(source, path.trim('/'))) {
+            when (val result = filesystemRepository.listDirectory(source, cleanPath)) {
                 is Result.Ok -> {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             entries = result.value.sortedWith(
-                                compareBy<FileEntry> { !it.isDirectory }.thenBy { entry -> entry.name.lowercase() }
+                                compareBy<FileEntry> { !it.isDirectory }
+                                    .thenBy { entry -> entry.name.lowercase() },
                             ),
                         )
                     }
                 }
                 is Result.Err -> {
-                    _uiState.update { it.copy(isLoading = false, entries = emptyList(), error = result.error.message) }
+                    _uiState.update {
+                        it.copy(isLoading = false, entries = emptyList(), error = result.error.message)
+                    }
                 }
             }
         }

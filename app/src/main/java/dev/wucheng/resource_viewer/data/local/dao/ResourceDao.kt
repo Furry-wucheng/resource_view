@@ -134,4 +134,7 @@ interface ResourceDao {
 
     @Query("UPDATE resources SET favorited = :favorited, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateFavorite(id: String, favorited: Boolean, updatedAt: Long)
+
+    @Query("UPDATE resources SET thumbnailPath = :thumbnailPath, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateThumbnail(id: String, thumbnailPath: String, updatedAt: Long = System.currentTimeMillis())
 }

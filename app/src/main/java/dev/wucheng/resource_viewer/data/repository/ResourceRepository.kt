@@ -117,6 +117,18 @@ class ResourceRepository(
     }
 
     /**
+     * 更新资源缩略图路径。
+     */
+    suspend fun updateThumbnail(resourceId: String, thumbnailPath: String): Result<Unit> {
+        return try {
+            resourceDao.updateThumbnail(resourceId, thumbnailPath)
+            Unit.asOk()
+        } catch (e: Exception) {
+            DomainError.DatabaseError("Failed to update thumbnail", e).asErr()
+        }
+    }
+
+    /**
      * 更新资源。
      */
     suspend fun update(resource: ResourceEntity): Result<Unit> {

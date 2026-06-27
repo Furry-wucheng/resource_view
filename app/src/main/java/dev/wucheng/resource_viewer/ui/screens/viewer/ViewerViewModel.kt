@@ -126,6 +126,161 @@ class ViewerViewModel(
     private var prefetchJob: Job? = null
 
     /**
+     * 从文件浏览器直接加载文件（不需要 resourceId）。
+     * 根据文件扩展名判断类型，创建对应的 ContentProvider。
+     */
+    fun loadFromSource(sourceId: String, filePath: String) {
+        prefetchJob?.cancel()
+        contentProvider?.dispose()
+        contentProvider = null
+        pageLoader = null
+        viewModelScope.launch {
+            _uiState.value = ViewerUiState.Loading
+            loadViewerConfig()
+
+            when (val sourceResult = filesystemRepository.getSource(sourceId)) {
+                is Result.Ok -> {
+                    val source = sourceResult.value
+                    if (source == null) {
+                        _uiState.value = ViewerUiState.Error("数据源不存在")
+                        return@launch
+                    }
+                    when (val fsResult = filesystemRepository.getFileSource(sourceId)) {
+                        is Result.Ok -> {
+                            val fileSource = fsResult.value
+                            val ext = filePath.substringAfterLast('.', "").lowercase()
+                            val fileName = filePath.substringAfterLast('/')
+
+                            when {
+                                ext in setOf("mp4", "mkv", "avi", "mov", "webm") -> {
+                                    // 视频文件
+                                    loadVideoFromSource(source, fileSource, filePath, fileName)
+                                }
+                                ext == "pdf" -> {
+                                    // PDF 文件
+                                    _resourceName.value = fileName
+                                    try {
+                                        val provider = withContext(ioDispatcher) {
+                                            PdfContentProvider(context, fileSource, filePath)
+                                        }
+                                        setupContentProvider(provider, "file:$sourceId:$filePath", fileName)
+                                    } catch (e: IOException) {
+                                        _uiState.value = ViewerUiState.Error("加密 PDF 暂不支持")
+                                    } catch (e: Exception) {
+                                        _uiState.value = ViewerUiState.Error("加载 PDF 失败")
+                                    }
+                                }
+                                ext in setOf("jpg", "jpeg", "png", "gif", "webp", "bmp") -> {
+                                    // 单张图片：用 ImageFolderProvider 加载所在目录
+                                    _resourceName.value = fileName
+                                    val dirPath = filePath.substringBeforeLast('/', "")
+                                    try {
+                                        val provider = withContext(ioDispatcher) {
+                                            ImageFolderProvider(fileSource, dirPath, recursive = false)
+                                        }
+                                        // 通过目录列表找到当前文件索引
+                                        val dirEntries = fileSource.listDirectory(dirPath)
+                                        val imageFiles = dirEntries
+                                            .filter { !it.isDirectory && it.extension.lowercase() in setOf("jpg","jpeg","png","gif","webp","bmp") }
+                                            .sortedBy { it.relativePath }
+                                            .map { it.relativePath }
+                                        val currentIndex = imageFiles.indexOf(filePath).coerceAtLeast(0)
+                                        setupContentProvider(provider, "file:$sourceId:$dirPath", fileName, currentIndex)
+                                    } catch (e: Exception) {
+                                        _uiState.value = ViewerUiState.Error("加载图片失败")
+                                    }
+                                }
+                                else -> {
+                                    _uiState.value = ViewerUiState.Error("不支持的文件类型")
+                                }
+                            }
+                        }
+                        is Result.Err -> {
+                            _uiState.value = ViewerUiState.Error("获取文件源失败")
+                        }
+                    }
+                }
+                is Result.Err -> {
+                    _uiState.value = ViewerUiState.Error("获取数据源失败")
+                }
+            }
+        }
+    }
+
+    private suspend fun setupContentProvider(
+        provider: ContentProvider,
+        providerKey: String,
+        resourceName: String,
+        initialPage: Int = 0,
+    ) {
+        contentProvider = provider
+        pageLoader = PageLoader(
+            maxCacheSize = PAGE_CACHE_BYTES,
+            sizeOf = { bitmap -> bitmap.allocationByteCount.toLong() },
+            load = { request ->
+                provider.loadPage(request.pageIndex, request.targetWidth, request.targetHeight)
+            },
+        )
+        _totalPages.value = provider.pageCount
+        _currentPage.value = initialPage.coerceIn(0, (provider.pageCount - 1).coerceAtLeast(0))
+
+        val items = (0 until provider.pageCount).map { index ->
+            ViewerItem.ImagePage(
+                title = resourceName,
+                pageIndex = index,
+                providerKey = providerKey,
+            )
+        }
+
+        _uiState.value = ViewerUiState.Success(
+            items = items,
+            resourceName = resourceName,
+        )
+    }
+
+    private suspend fun loadVideoFromSource(
+        source: dev.wucheng.resource_viewer.domain.model.Source,
+        fileSource: dev.wucheng.resource_viewer.shared.filesource.FileSource,
+        filePath: String,
+        fileName: String,
+    ) {
+        val videoSource = when (source.type) {
+            SourceType.LOCAL -> {
+                if (source.rootPath.startsWith("content://")) {
+                    val documentSource = fileSource as? DocumentTreeFileSource
+                    if (documentSource == null) {
+                        _uiState.value = ViewerUiState.Error("不支持的本地源类型")
+                        return
+                    }
+                    VideoMediaSource.LocalFile(path = documentSource.getDocumentUri(filePath).toString())
+                } else {
+                    VideoMediaSource.LocalFile(path = "${source.rootPath.trimEnd('/')}/$filePath")
+                }
+            }
+            SourceType.SMB -> {
+                val password = filesystemRepository.getPassword(source.id) ?: ""
+                val smbFactory = SmbDataSourceFactory(source, password)
+                VideoMediaSource.SmbFile(
+                    dataSourceFactory = smbFactory,
+                    relativePath = filePath,
+                    fileSize = 0L,
+                )
+            }
+            else -> {
+                _uiState.value = ViewerUiState.Error("不支持的源类型")
+                return
+            }
+        }
+
+        _resourceName.value = fileName
+        _totalPages.value = 1
+        _uiState.value = ViewerUiState.Success(
+            items = listOf(ViewerItem.Video(title = fileName, videoSource = videoSource)),
+            resourceName = fileName,
+        )
+    }
+
+    /**
      * 加载资源。
      * 根据资源类型（VIDEO / PDF / FOLDER 等）创建不同的 ViewerItem 列表。
      */

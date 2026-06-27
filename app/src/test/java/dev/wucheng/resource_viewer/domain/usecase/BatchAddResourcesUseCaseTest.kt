@@ -1,9 +1,11 @@
 package dev.wucheng.resource_viewer.domain.usecase
 
+import android.content.Context
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.data.local.entity.ResourceEntity
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
+import dev.wucheng.resource_viewer.data.repository.ThumbnailRepository
 import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.model.FileEntry
@@ -14,12 +16,15 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import java.io.File
 import java.util.UUID
 
 class BatchAddResourcesUseCaseTest {
 
     private lateinit var resourceRepository: ResourceRepository
     private lateinit var detectOrganizationModeUseCase: DetectOrganizationModeUseCase
+    private lateinit var thumbnailRepository: ThumbnailRepository
+    private lateinit var context: Context
     private lateinit var useCase: BatchAddResourcesUseCase
 
     private val testSource = Source(
@@ -33,9 +38,13 @@ class BatchAddResourcesUseCaseTest {
 
     @Before
     fun setup() {
-        resourceRepository = mockk()
+        resourceRepository = mockk(relaxed = true)
         detectOrganizationModeUseCase = mockk()
-        useCase = BatchAddResourcesUseCase(resourceRepository, detectOrganizationModeUseCase)
+        thumbnailRepository = mockk(relaxed = true)
+        context = mockk {
+            every { cacheDir } returns File("/tmp/test-cache")
+        }
+        useCase = BatchAddResourcesUseCase(resourceRepository, detectOrganizationModeUseCase, thumbnailRepository, context)
     }
 
     @Test

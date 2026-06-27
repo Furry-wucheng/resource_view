@@ -1,11 +1,14 @@
 package dev.wucheng.resource_viewer.domain.usecase
 
+import android.content.Context
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.local.entity.ResourceEntity
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
+import dev.wucheng.resource_viewer.data.repository.ThumbnailRepository
 import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.error.ScanResult
+import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import java.util.UUID
@@ -14,12 +17,15 @@ import java.util.UUID
  * 批量添加资源用例。
  *
  * 接收 ResourcePicker 勾选的路径列表 → 每条路径创建 Resource → 批量插入。
+ * 插入后为每个资源生成缩略图。
  *
  * 注意：此实现遵循 doc/share/06-error-handling.md 中的 ScanResult 定义。
  */
 class BatchAddResourcesUseCase(
     private val resourceRepository: ResourceRepository,
     private val detectOrganizationModeUseCase: DetectOrganizationModeUseCase,
+    private val thumbnailRepository: ThumbnailRepository,
+    private val context: Context,
 ) {
     /**
      * 批量添加资源。
@@ -73,6 +79,8 @@ class BatchAddResourcesUseCase(
                             resourceRepository.setResourceTags(entity.id, tagIds)
                         }
                     }
+                    // 生成缩略图
+                    generateThumbnails(batch, fileSource)
                 }
                 is Result.Err -> {
                     batch.forEach { entity ->
@@ -84,6 +92,30 @@ class BatchAddResourcesUseCase(
         }
 
         return Result.Ok(ScanResult(successCount, skipCount, failures))
+    }
+
+    /**
+     * 为插入的资源批量生成缩略图。
+     */
+    private suspend fun generateThumbnails(
+        entities: List<ResourceEntity>,
+        fileSource: FileSource,
+    ) {
+        val cacheDir = context.cacheDir
+        for (entity in entities) {
+            try {
+                val resource = entity.toDomain()
+                when (val result = thumbnailRepository.generateThumbnail(resource, fileSource, cacheDir)) {
+                    is Result.Ok -> {
+                        val thumbFile = result.value
+                        if (thumbFile != null) {
+                            resourceRepository.updateThumbnail(entity.id, thumbFile.absolutePath)
+                        }
+                    }
+                    is Result.Err -> { /* 缩略图生成失败不影响主流程 */ }
+                }
+            } catch (_: Exception) { /* 缩略图生成失败不影响主流程 */ }
+        }
     }
 
     /**
@@ -119,6 +151,27 @@ class BatchAddResourcesUseCase(
             fileSize = entry.size,
             isAvailable = true,
             lastScannedAt = System.currentTimeMillis(),
+        )
+    }
+
+    private fun ResourceEntity.toDomain(): Resource {
+        return Resource(
+            id = id,
+            sourceId = sourceId,
+            sourceName = "",
+            name = name,
+            type = type,
+            organizationMode = organizationMode,
+            relativePath = relativePath,
+            fileSize = fileSize,
+            fileCount = null,
+            favorited = favorited,
+            isAvailable = isAvailable,
+            lastScannedAt = lastScannedAt,
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+            thumbnailPath = thumbnailPath,
+            tags = emptyList(),
         )
     }
 }

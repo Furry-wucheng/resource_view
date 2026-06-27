@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -105,23 +106,28 @@ fun ResourceGridItem(
             }
         }
 
-        // 资源名称（最多 2 行）
-        Text(
-            text = resource.name,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = MAX_TITLE_LINES,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-
-        // 标签颜色小圆点（前 3 个）
-        if (resource.tags.isNotEmpty()) {
-            Row(
-                modifier = Modifier.padding(top = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                resource.tags.take(MAX_TAG_DOTS).forEach { tag ->
-                    TagDot(tag = tag)
+        // 资源名称（最多 2 行）+ 标签占位
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp)
+                .height(TEXT_AREA_HEIGHT),
+        ) {
+            Text(
+                text = resource.name,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = MAX_TITLE_LINES,
+                overflow = TextOverflow.Ellipsis,
+            )
+            // 标签颜色小圆点（前 3 个）
+            if (resource.tags.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    resource.tags.take(MAX_TAG_DOTS).forEach { tag ->
+                        TagDot(tag = tag)
+                    }
                 }
             }
         }
@@ -159,3 +165,6 @@ private const val MAX_TAG_DOTS = 3
 
 /** 标签圆点大小 */
 private val TAG_DOT_SIZE = 8.dp
+
+/** 文本区域固定高度（2 行标题 + 标签点） */
+private val TEXT_AREA_HEIGHT = 48.dp
