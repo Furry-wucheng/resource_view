@@ -21,7 +21,7 @@ import org.koin.dsl.module
  * 提供所有 ViewModel 实例。
  */
 val viewModelModule = module {
-    viewModel { SettingsViewModel(get(), get(), get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get(), get()) }
     viewModel { TagViewModel(get()) }
     viewModel { HomeViewModel(get(), get(), get()) }
     viewModel { SourceListViewModel(get(), get(), get(), get()) }

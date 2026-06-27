@@ -271,6 +271,34 @@
 | SMB 会话复用与批量添加标签选择 | fix | D-003 |
 | 系统返回键逐级返回 | fix | D-004 |
 
+### cache-management-refactor — 缓存管理重构
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `ui/screens/viewer/ViewerViewModel.kt` | cache-refactor | D-001, D-005 |
+| `shared/thumbnail/ImageThumbnailGenerator.kt` | cache-refactor | D-002, D-003 |
+| `shared/thumbnail/PdfThumbnailGenerator.kt` | cache-refactor | D-002, D-003 |
+| `shared/thumbnail/VideoThumbnailGenerator.kt` | cache-refactor | D-003 |
+| `domain/usecase/BatchAddResourcesUseCase.kt` | cache-refactor | D-004, D-005 |
+| `data/cache/CacheManager.kt` | cache-refactor | D-006 |
+| `di/CacheModule.kt` | cache-refactor | D-006 |
+| `data/local/entity/AppConfigEntity.kt` | cache-refactor | D-006 |
+| `domain/model/AppConfig.kt` | cache-refactor | D-006 |
+| `data/local/AppDatabase.kt` | cache-refactor | D-006 |
+| `data/local/migration/DatabaseMigrator.kt` | cache-refactor | D-006 |
+| `ui/screens/settings/SettingsViewModel.kt` | cache-refactor | D-006, D-007 |
+| `ui/screens/settings/SettingsScreen.kt` | cache-refactor | D-006, D-007 |
+| `ui/screens/sources/FileBrowserViewModel.kt` | cache-refactor | D-006 |
+| `di/CoilModule.kt` | cache-refactor | D-006 |
+| `di/RepositoryModule.kt` | cache-refactor | D-003 |
+| 预加载策略 +3 -1 | cache-refactor | D-001 |
+| 缩略图尺寸统一 320px | cache-refactor | D-002 |
+| Generator 缓存复用 | cache-refactor | D-003 |
+| 封面缓存目录独立 | cache-refactor | D-004 |
+| 批量并发生成缩略图 | cache-refactor | D-005 |
+| 三个独立缓存容量设置 | cache-refactor | D-006 |
+| 自定义容量内嵌输入框 | cache-refactor | D-007 |
+
 ---
 
 > ⚠️ 各 stage 完成后，Agent 需在此文件中新增自己 stage 涉及的组件行和决策主题行。

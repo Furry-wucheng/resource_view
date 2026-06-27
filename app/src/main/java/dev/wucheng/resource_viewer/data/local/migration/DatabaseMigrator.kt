@@ -23,6 +23,7 @@ class DatabaseMigrator(
     fun getMigrations(): Array<Migration> = arrayOf(
         MIGRATION_1_2,
         MIGRATION_2_3,
+        MIGRATION_3_4,
         // 后续迁移在此追加
     )
 
@@ -149,6 +150,18 @@ class DatabaseMigrator(
                 db.execSQL(
                     "ALTER TABLE resources ADD COLUMN favorited INTEGER NOT NULL DEFAULT 0"
                 )
+            }
+        }
+
+        /**
+         * Migration 3 -> 4
+         * 添加独立缓存容量设置到 app_config 表
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_config ADD COLUMN coverCacheLimitMB INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE app_config ADD COLUMN pageCacheLimitMB INTEGER NOT NULL DEFAULT 500")
+                db.execSQL("ALTER TABLE app_config ADD COLUMN thumbnailCacheLimitMB INTEGER NOT NULL DEFAULT 500")
             }
         }
     }

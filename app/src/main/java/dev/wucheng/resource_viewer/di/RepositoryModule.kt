@@ -9,6 +9,7 @@ import dev.wucheng.resource_viewer.domain.usecase.BatchAddResourcesUseCase
 import dev.wucheng.resource_viewer.domain.usecase.DetectOrganizationModeUseCase
 import dev.wucheng.resource_viewer.domain.usecase.ScanResourcesUseCase
 import dev.wucheng.resource_viewer.domain.usecase.SplitResourceUseCase
+import dev.wucheng.resource_viewer.shared.thumbnail.FileBrowserThumbnailDiskCache
 import dev.wucheng.resource_viewer.shared.thumbnail.ImageThumbnailGenerator
 import dev.wucheng.resource_viewer.shared.thumbnail.PdfThumbnailGenerator
 import dev.wucheng.resource_viewer.shared.thumbnail.VideoThumbnailGenerator
@@ -26,15 +27,16 @@ val repositoryModule = module {
     single { TagRepository(get(), get()) }
     single { FilesystemRepository(get(), get(), get()) }
     single { DetectOrganizationModeUseCase() }
-    single { BatchAddResourcesUseCase(get(), get(), get(), get()) }
+    single { BatchAddResourcesUseCase(get(), get(), get(), get(), get()) }
     single { ScanResourcesUseCase(get(), get()) }
     single { SplitResourceUseCase(get()) }
     single {
+        val diskCache = get<FileBrowserThumbnailDiskCache>()
         ThumbnailRepository(
             setOf(
-                VideoThumbnailGenerator(),
-                PdfThumbnailGenerator(get()),
-                ImageThumbnailGenerator(get()),
+                VideoThumbnailGenerator(diskCache),
+                PdfThumbnailGenerator(get(), diskCache),
+                ImageThumbnailGenerator(get(), diskCache),
                 // ArchiveThumbnailGenerator (P2)
             )
         )

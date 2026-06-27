@@ -92,7 +92,7 @@ class FileBrowserViewModel(
                         is Result.Ok -> {
                             val config = appConfigDao?.getConfig()?.first()
                             val configured = config?.thumbnailConcurrency ?: DEFAULT_THUMBNAIL_CONCURRENCY
-                            thumbnailDiskCache?.configureCapacity(config?.cacheLimitMB ?: 500)
+                            thumbnailDiskCache?.configureCapacity(config?.thumbnailCacheLimitMB ?: 500)
                             val effectiveConcurrency = if (source.type == SourceType.SMB) {
                                 ((configured + 1) / 2).coerceAtLeast(1)
                             } else configured

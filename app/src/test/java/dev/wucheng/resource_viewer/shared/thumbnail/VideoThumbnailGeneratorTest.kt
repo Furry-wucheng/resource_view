@@ -42,7 +42,7 @@ class VideoThumbnailGeneratorTest {
 
     @Before
     fun setup() {
-        generator = VideoThumbnailGenerator()
+        generator = VideoThumbnailGenerator(null)
         mockFileSource = mockk(relaxed = true)
         mockCacheDir = mockk(relaxed = true)
     }
@@ -75,11 +75,13 @@ class VideoThumbnailGeneratorTest {
     fun `generate should call readFile on fileSource`() = runTest {
         // Given
         coEvery { mockFileSource.readFile(any()) } returns ByteArray(1024)
-        every { mockCacheDir.absolutePath } returns "/tmp/cache"
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "test-cache-${System.currentTimeMillis()}")
+        tempDir.mkdirs()
+        tempDir.deleteOnExit()
 
         // When — generate 会因为 MediaMetadataRetriever 不可用而返回 null
         // 但我们可以验证它调用了 readFile
-        generator.generate(videoResource, mockFileSource, mockCacheDir)
+        generator.generate(videoResource, mockFileSource, tempDir)
 
         // Then
         coVerify { mockFileSource.readFile("videos/test_video.mp4") }

@@ -21,6 +21,10 @@ data class AppConfigEntity(
     val updatedAt: Long = System.currentTimeMillis(),
     // M12: 隐私政策同意状态
     val hasAcceptedPrivacy: Boolean = false,
+    // 缓存容量设置（0 表示无限制）
+    val coverCacheLimitMB: Int = 0,      // 封面缓存容量，默认无限制（永久）
+    val pageCacheLimitMB: Int = 500,     // 页面缓存容量，默认 500MB
+    val thumbnailCacheLimitMB: Int = 500, // 缩略图缓存容量，默认 500MB
 )
 
 fun AppConfigEntity.toDomain(): AppConfig = AppConfig(
@@ -31,4 +35,7 @@ fun AppConfigEntity.toDomain(): AppConfig = AppConfig(
     cacheLimitMB = cacheLimitMB,
     thumbnailConcurrency = thumbnailConcurrency,
     autoSyncInterval = autoSyncInterval,
+    coverCacheLimitMB = coverCacheLimitMB,
+    pageCacheLimitMB = pageCacheLimitMB,
+    thumbnailCacheLimitMB = thumbnailCacheLimitMB,
 )

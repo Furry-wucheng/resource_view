@@ -13,4 +13,8 @@ data class AppConfig(
     val cacheLimitMB: Int = 500,
     val thumbnailConcurrency: Int = 4,
     val autoSyncInterval: AutoSyncInterval? = null,
+    // 缓存容量设置（0 表示无限制）
+    val coverCacheLimitMB: Int = 0,      // 封面缓存容量，默认无限制（永久）
+    val pageCacheLimitMB: Int = 500,     // 页面缓存容量，默认 500MB
+    val thumbnailCacheLimitMB: Int = 500, // 缩略图缓存容量，默认 500MB
 )

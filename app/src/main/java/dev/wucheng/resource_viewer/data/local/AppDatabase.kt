@@ -25,7 +25,7 @@ import dev.wucheng.resource_viewer.data.local.entity.TagEntity
         ResourceTagEntity::class,
         AppConfigEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -38,12 +38,21 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         const val DATABASE_NAME = "resource_viewer.db"
-        const val DATABASE_VERSION = 3
+        const val DATABASE_VERSION = 4
 
         /** Migration from version 2 to 3: Add favorited column to resources */
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE resources ADD COLUMN favorited INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Migration from version 3 to 4: Add cache limit columns to app_config */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_config ADD COLUMN coverCacheLimitMB INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE app_config ADD COLUMN pageCacheLimitMB INTEGER NOT NULL DEFAULT 500")
+                db.execSQL("ALTER TABLE app_config ADD COLUMN thumbnailCacheLimitMB INTEGER NOT NULL DEFAULT 500")
             }
         }
     }

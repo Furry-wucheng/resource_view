@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import coil3.ImageLoader
+import dev.wucheng.resource_viewer.data.cache.CacheManager
 import dev.wucheng.resource_viewer.data.local.AppDatabase
 import dev.wucheng.resource_viewer.data.local.converter.AutoSyncInterval
 import dev.wucheng.resource_viewer.data.local.converter.DoublePageMode
@@ -16,14 +17,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.io.File
 
 /**
  * M25: 设置页 ViewModel
  *
  * 处理设置页的业务逻辑，包括：
  * - 读取/更新 AppConfig
- * - 缓存管理：显示当前缓存大小、手动清理
+ * - 缓存管理：显示当前缓存大小、手动清理（分类管理）
  * - 外观切换：system / light / dark（实时生效）
  */
 class SettingsViewModel(
@@ -31,6 +31,7 @@ class SettingsViewModel(
     private val database: AppDatabase,
     private val securePrefs: SecurePrefs,
     private val imageLoader: ImageLoader,
+    private val cacheManager: CacheManager,
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -56,9 +57,11 @@ class SettingsViewModel(
                         pageDirection = config.pageDirection,
                         doublePageMode = config.doublePageMode,
                         crossChapter = config.crossChapter,
-                        cacheLimitMB = config.cacheLimitMB,
                         thumbnailConcurrency = config.thumbnailConcurrency,
                         autoSyncInterval = config.autoSyncInterval,
+                        coverCacheLimitMB = config.coverCacheLimitMB,
+                        pageCacheLimitMB = config.pageCacheLimitMB,
+                        thumbnailCacheLimitMB = config.thumbnailCacheLimitMB,
                         isLoading = false,
                     )
                 } else {
@@ -161,13 +164,11 @@ class SettingsViewModel(
     }
 
     /**
-     * 更新缓存限制
+     * 更新封面缓存容量（0 表示无限制）
      */
-    fun updateCacheLimit(cacheLimitMB: Int) {
-        if (cacheLimitMB < 500) {
-            _uiState.value = _uiState.value.copy(
-                error = "最小容量为 500 MB",
-            )
+    fun updateCoverCacheLimit(limitMB: Int) {
+        if (limitMB < 0) {
+            _uiState.value = _uiState.value.copy(error = "容量不能为负数")
             return
         }
 
@@ -175,14 +176,66 @@ class SettingsViewModel(
             try {
                 val currentConfig = database.appConfigDao().getConfig().first()
                 val updatedConfig = (currentConfig ?: AppConfigEntity()).copy(
-                    cacheLimitMB = cacheLimitMB,
+                    coverCacheLimitMB = limitMB,
                     updatedAt = System.currentTimeMillis(),
                 )
                 database.appConfigDao().save(updatedConfig)
-                _uiState.value = _uiState.value.copy(cacheLimitMB = cacheLimitMB)
+                _uiState.value = _uiState.value.copy(coverCacheLimitMB = limitMB)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = "更新缓存限制失败: ${e.message}",
+                    error = "更新封面缓存容量失败: ${e.message}",
+                )
+            }
+        }
+    }
+
+    /**
+     * 更新页面缓存容量
+     */
+    fun updatePageCacheLimit(limitMB: Int) {
+        if (limitMB < 100) {
+            _uiState.value = _uiState.value.copy(error = "最小容量为 100 MB")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val currentConfig = database.appConfigDao().getConfig().first()
+                val updatedConfig = (currentConfig ?: AppConfigEntity()).copy(
+                    pageCacheLimitMB = limitMB,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                database.appConfigDao().save(updatedConfig)
+                _uiState.value = _uiState.value.copy(pageCacheLimitMB = limitMB)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "更新页面缓存容量失败: ${e.message}",
+                )
+            }
+        }
+    }
+
+    /**
+     * 更新缩略图缓存容量
+     */
+    fun updateThumbnailCacheLimit(limitMB: Int) {
+        if (limitMB < 100) {
+            _uiState.value = _uiState.value.copy(error = "最小容量为 100 MB")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val currentConfig = database.appConfigDao().getConfig().first()
+                val updatedConfig = (currentConfig ?: AppConfigEntity()).copy(
+                    thumbnailCacheLimitMB = limitMB,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                database.appConfigDao().save(updatedConfig)
+                _uiState.value = _uiState.value.copy(thumbnailCacheLimitMB = limitMB)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "更新缩略图缓存容量失败: ${e.message}",
                 )
             }
         }
@@ -238,18 +291,19 @@ class SettingsViewModel(
     }
 
     /**
-     * 计算缓存大小
+     * 计算缓存大小（使用 CacheManager 获取分类大小）
      */
     fun calculateCacheSize() {
         viewModelScope.launch {
             try {
-                val context = getApplication<Application>()
-                val cacheDir = context.cacheDir.resolve("image_cache")
-                val size = calculateDirSize(cacheDir)
-                _uiState.value = _uiState.value.copy(cacheSizeBytes = size)
+                val cacheSizes = cacheManager.getCacheSizes()
+                _uiState.value = _uiState.value.copy(
+                    coverCacheSizeBytes = cacheSizes.coverCacheBytes,
+                    pageCacheSizeBytes = cacheSizes.pageCacheBytes,
+                    thumbnailCacheSizeBytes = cacheSizes.thumbnailCacheBytes,
+                )
             } catch (e: Exception) {
                 // 缓存大小计算失败不影响主功能
-                _uiState.value = _uiState.value.copy(cacheSizeBytes = 0)
             }
         }
     }
@@ -259,22 +313,42 @@ class SettingsViewModel(
      */
     private fun loadCachePath() {
         val context = getApplication<Application>()
-        val cacheDir = context.cacheDir.resolve("image_cache")
+        val cacheDir = context.cacheDir
         _uiState.value = _uiState.value.copy(cachePath = cacheDir.absolutePath)
     }
 
     /**
-     * 显示自定义容量对话框
+     * 清理封面缓存
      */
-    fun showCustomCapacityDialog() {
-        _uiState.value = _uiState.value.copy(showCustomCapacityDialog = true)
+    fun clearCoverCache() {
+        viewModelScope.launch {
+            try {
+                cacheManager.clearCoverCache()
+                calculateCacheSize()
+                _uiState.value = _uiState.value.copy(cacheCleared = true)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "清理封面缓存失败: ${e.message}",
+                )
+            }
+        }
     }
 
     /**
-     * 隐藏自定义容量对话框
+     * 清理页面缓存
      */
-    fun hideCustomCapacityDialog() {
-        _uiState.value = _uiState.value.copy(showCustomCapacityDialog = false)
+    fun clearPageCache() {
+        viewModelScope.launch {
+            try {
+                cacheManager.clearPageCache()
+                calculateCacheSize()
+                _uiState.value = _uiState.value.copy(cacheCleared = true)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "清理页面缓存失败: ${e.message}",
+                )
+            }
+        }
     }
 
     /**
@@ -283,23 +357,12 @@ class SettingsViewModel(
     fun clearThumbnailCache() {
         viewModelScope.launch {
             try {
-                // 清除 Coil DiskCache
-                imageLoader.diskCache?.clear()
-
-                // 清除应用缓存目录中的图片缓存
-                val context = getApplication<Application>()
-                val cacheDir = context.cacheDir.resolve("image_cache")
-                if (cacheDir.exists()) {
-                    cacheDir.deleteRecursively()
-                }
-
-                _uiState.value = _uiState.value.copy(
-                    cacheSizeBytes = 0,
-                    cacheCleared = true,
-                )
+                cacheManager.clearThumbnailCache()
+                calculateCacheSize()
+                _uiState.value = _uiState.value.copy(cacheCleared = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    error = "清理缓存失败: ${e.message}",
+                    error = "清理缩略图缓存失败: ${e.message}",
                 )
             }
         }
@@ -325,9 +388,11 @@ class SettingsViewModel(
                     pageDirection = defaultConfig.pageDirection,
                     doublePageMode = defaultConfig.doublePageMode,
                     crossChapter = defaultConfig.crossChapter,
-                    cacheLimitMB = defaultConfig.cacheLimitMB,
                     thumbnailConcurrency = defaultConfig.thumbnailConcurrency,
                     autoSyncInterval = defaultConfig.autoSyncInterval,
+                    coverCacheLimitMB = defaultConfig.coverCacheLimitMB,
+                    pageCacheLimitMB = defaultConfig.pageCacheLimitMB,
+                    thumbnailCacheLimitMB = defaultConfig.thumbnailCacheLimitMB,
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -343,24 +408,6 @@ class SettingsViewModel(
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
-
-    /**
-     * 递归计算目录大小
-     */
-    private fun calculateDirSize(dir: File): Long {
-        if (!dir.exists()) return 0
-        if (dir.isFile) return dir.length()
-
-        var size = 0L
-        dir.listFiles()?.forEach { file ->
-            size += if (file.isDirectory) {
-                calculateDirSize(file)
-            } else {
-                file.length()
-            }
-        }
-        return size
-    }
 }
 
 /**
@@ -371,13 +418,18 @@ data class SettingsUiState(
     val pageDirection: PageDirection = PageDirection.RIGHT_TO_LEFT,
     val doublePageMode: DoublePageMode = DoublePageMode.AUTO,
     val crossChapter: Boolean = true,
-    val cacheLimitMB: Int = 500,
     val thumbnailConcurrency: Int = 4,
     val autoSyncInterval: AutoSyncInterval? = null,
-    val cacheSizeBytes: Long = 0,
+    // 缓存大小
+    val coverCacheSizeBytes: Long = 0,
+    val pageCacheSizeBytes: Long = 0,
+    val thumbnailCacheSizeBytes: Long = 0,
+    // 缓存容量设置（0 表示无限制）
+    val coverCacheLimitMB: Int = 0,
+    val pageCacheLimitMB: Int = 500,
+    val thumbnailCacheLimitMB: Int = 500,
     val cachePath: String = "",
     val cacheCleared: Boolean = false,
-    val showCustomCapacityDialog: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
 )

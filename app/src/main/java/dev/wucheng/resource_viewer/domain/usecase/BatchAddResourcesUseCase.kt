@@ -1,6 +1,7 @@
 package dev.wucheng.resource_viewer.domain.usecase
 
 import android.content.Context
+import dev.wucheng.resource_viewer.data.local.AppDatabase
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.local.entity.ResourceEntity
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
@@ -11,14 +12,19 @@ import dev.wucheng.resource_viewer.domain.error.ScanResult
 import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailTaskPool
 import java.util.UUID
 import dev.wucheng.resource_viewer.shared.media.MediaFormats
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 
 /**
  * 批量添加资源用例。
  *
  * 接收 ResourcePicker 勾选的路径列表 → 每条路径创建 Resource → 批量插入。
- * 插入后为每个资源生成缩略图。
+ * 插入后为每个资源并发生成缩略图，遵循设置中的 thumbnailConcurrency 配置。
  *
  * 注意：此实现遵循 doc/share/06-error-handling.md 中的 ScanResult 定义。
  */
@@ -27,6 +33,7 @@ class BatchAddResourcesUseCase(
     private val detectOrganizationModeUseCase: DetectOrganizationModeUseCase,
     private val thumbnailRepository: ThumbnailRepository,
     private val context: Context,
+    private val database: AppDatabase,
 ) {
     /**
      * 批量添加资源。
@@ -96,27 +103,41 @@ class BatchAddResourcesUseCase(
     }
 
     /**
-     * 为插入的资源批量生成缩略图。
+     * 为插入的资源批量并发生成缩略图。
+     * 使用 ThumbnailTaskPool 控制并发数，遵循设置中的 thumbnailConcurrency 配置。
      */
     private suspend fun generateThumbnails(
         entities: List<ResourceEntity>,
         fileSource: FileSource,
     ) {
-        val cacheDir = context.cacheDir.resolve("image_cache/resources")
+        // 读取并发配置
+        val config = database.appConfigDao().getConfig().first()
+        val concurrency = config?.thumbnailConcurrency ?: 4
+        val pool = ThumbnailTaskPool(concurrency)
+
+        // 封面缓存目录（移出 image_cache/ 避免被误删）
+        val cacheDir = context.cacheDir.resolve("thumbnails/resources")
         cacheDir.mkdirs()
-        for (entity in entities) {
-            try {
-                val resource = entity.toDomain()
-                when (val result = thumbnailRepository.generateThumbnail(resource, fileSource, cacheDir)) {
-                    is Result.Ok -> {
-                        val thumbFile = result.value
-                        if (thumbFile != null) {
-                            resourceRepository.updateThumbnail(entity.id, thumbFile.absolutePath)
-                        }
+
+        coroutineScope {
+            entities.map { entity ->
+                async {
+                    pool.run {
+                        try {
+                            val resource = entity.toDomain()
+                            when (val result = thumbnailRepository.generateThumbnail(resource, fileSource, cacheDir)) {
+                                is Result.Ok -> {
+                                    val thumbFile = result.value
+                                    if (thumbFile != null) {
+                                        resourceRepository.updateThumbnail(entity.id, thumbFile.absolutePath)
+                                    }
+                                }
+                                is Result.Err -> { /* 缩略图生成失败不影响主流程 */ }
+                            }
+                        } catch (_: Exception) { /* 缩略图生成失败不影响主流程 */ }
                     }
-                    is Result.Err -> { /* 缩略图生成失败不影响主流程 */ }
                 }
-            } catch (_: Exception) { /* 缩略图生成失败不影响主流程 */ }
+            }.awaitAll()
         }
     }
 

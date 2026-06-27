@@ -20,10 +20,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -64,7 +62,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showClearCacheDialog by remember { mutableStateOf(false) }
+    var showClearCacheDialog by remember { mutableStateOf<ClearCacheType?>(null) }
     var showResetDefaultsDialog by remember { mutableStateOf(false) }
 
     // 监听缓存清理状态
@@ -102,94 +100,42 @@ fun SettingsScreen(
         ) {
             // ========== 缓存管理 ==========
             SettingsGroup(title = "缓存管理") {
-                // 缓存大小显示
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = "缩略图缓存",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            text = "已用: ${formatBytes(uiState.cacheSizeBytes)} / 上限: ${uiState.cacheLimitMB} MB",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = {
-                            if (uiState.cacheLimitMB > 0) {
-                                (uiState.cacheSizeBytes.toFloat() / (uiState.cacheLimitMB * 1024 * 1024)).coerceIn(0f, 1f)
-                            } else {
-                                0f
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                // 封面缓存
+                CacheSettingItem(
+                    label = "封面缓存",
+                    subtitle = "资源库封面，默认永久存储",
+                    sizeBytes = uiState.coverCacheSizeBytes,
+                    limitMB = uiState.coverCacheLimitMB,
+                    onLimitChange = { viewModel.updateCoverCacheLimit(it) },
+                    onClear = { showClearCacheDialog = ClearCacheType.COVER },
+                    presets = listOf(0, 500, 1000, 2000),
+                    presetLabels = listOf("无限制", "500 MB", "1000 MB", "2000 MB"),
+                    isUnlimited = uiState.coverCacheLimitMB == 0,
+                )
 
-                // 容量上限选择
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                ) {
-                    Text(
-                        text = "容量上限",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        listOf(500, 1000, 1500, 2000).forEach { limit ->
-                            FilterChip(
-                                selected = uiState.cacheLimitMB == limit,
-                                onClick = { viewModel.updateCacheLimit(limit) },
-                                label = { Text("$limit MB") },
-                            )
-                        }
-                        // 自定义按钮
-                        FilterChip(
-                            selected = uiState.cacheLimitMB !in listOf(500, 1000, 1500, 2000),
-                            onClick = { viewModel.showCustomCapacityDialog() },
-                            label = { Text("自定义") },
-                        )
-                    }
-                }
+                // 页面缓存
+                CacheSettingItem(
+                    label = "页面缓存",
+                    subtitle = "SMB 远程文件本地缓存",
+                    sizeBytes = uiState.pageCacheSizeBytes,
+                    limitMB = uiState.pageCacheLimitMB,
+                    onLimitChange = { viewModel.updatePageCacheLimit(it) },
+                    onClear = { showClearCacheDialog = ClearCacheType.PAGE },
+                    presets = listOf(500, 1000, 2000, 5000),
+                    presetLabels = listOf("500 MB", "1000 MB", "2000 MB", "5000 MB"),
+                )
 
-                // 清理缓存按钮
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clickable { showClearCacheDialog = true },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                    ),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        Text(
-                            text = "清理缩略图缓存",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                    }
-                }
+                // 缩略图缓存
+                CacheSettingItem(
+                    label = "缩略图缓存",
+                    subtitle = "文件浏览器缩略图",
+                    sizeBytes = uiState.thumbnailCacheSizeBytes,
+                    limitMB = uiState.thumbnailCacheLimitMB,
+                    onLimitChange = { viewModel.updateThumbnailCacheLimit(it) },
+                    onClear = { showClearCacheDialog = ClearCacheType.THUMBNAIL },
+                    presets = listOf(500, 1000, 2000, 5000),
+                    presetLabels = listOf("500 MB", "1000 MB", "2000 MB", "5000 MB"),
+                )
 
                 // 缓存位置
                 Text(
@@ -314,9 +260,23 @@ fun SettingsScreen(
     }
 
     // 清理缓存确认对话框
-    if (showClearCacheDialog) {
+    showClearCacheDialog?.let { cacheType ->
+        val (title, message) = when (cacheType) {
+            ClearCacheType.COVER -> Pair(
+                "清理封面缓存",
+                "将清除 ${formatBytes(uiState.coverCacheSizeBytes)} 的封面缓存，下次打开资源库时需重新生成。确定吗？",
+            )
+            ClearCacheType.PAGE -> Pair(
+                "清理页面缓存",
+                "将清除 ${formatBytes(uiState.pageCacheSizeBytes)} 的 SMB 页面缓存，下次浏览时需重新下载。确定吗？",
+            )
+            ClearCacheType.THUMBNAIL -> Pair(
+                "清理缩略图缓存",
+                "将清除 ${formatBytes(uiState.thumbnailCacheSizeBytes)} 的缩略图缓存，下次浏览时需重新生成。确定吗？",
+            )
+        }
         AlertDialog(
-            onDismissRequest = { showClearCacheDialog = false },
+            onDismissRequest = { showClearCacheDialog = null },
             icon = {
                 Icon(
                     imageVector = Icons.Default.Warning,
@@ -326,18 +286,22 @@ fun SettingsScreen(
             },
             title = {
                 Text(
-                    text = "确认清理缓存",
+                    text = title,
                     fontWeight = FontWeight.Bold,
                 )
             },
             text = {
-                Text("将清除 ${formatBytes(uiState.cacheSizeBytes)} 的缩略图缓存，下次浏览时需重新生成。确定吗？")
+                Text(message)
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showClearCacheDialog = false
-                        viewModel.clearThumbnailCache()
+                        showClearCacheDialog = null
+                        when (cacheType) {
+                            ClearCacheType.COVER -> viewModel.clearCoverCache()
+                            ClearCacheType.PAGE -> viewModel.clearPageCache()
+                            ClearCacheType.THUMBNAIL -> viewModel.clearThumbnailCache()
+                        }
                     },
                 ) {
                     Text(
@@ -347,7 +311,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearCacheDialog = false }) {
+                TextButton(onClick = { showClearCacheDialog = null }) {
                     Text("取消")
                 }
             },
@@ -385,47 +349,172 @@ fun SettingsScreen(
         )
     }
 
-    // 自定义容量对话框
-    if (uiState.showCustomCapacityDialog) {
-        var customCapacityText by remember { mutableStateOf(uiState.cacheLimitMB.toString()) }
-        AlertDialog(
-            onDismissRequest = { viewModel.hideCustomCapacityDialog() },
-            title = {
-                Text(
-                    text = "自定义缓存容量",
-                    fontWeight = FontWeight.Bold,
-                )
-            },
-            text = {
-                Column {
-                    Text("请输入缓存容量上限（MB），最小 500 MB")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = customCapacityText,
-                        onValueChange = { customCapacityText = it },
-                        label = { Text("容量 (MB)") },
-                        singleLine = true,
-                    )
+    // 自定义容量对话框（已移除，改为内嵌输入）
+}
+
+/**
+ * 缓存类型枚举
+ */
+private enum class ClearCacheType {
+    COVER, PAGE, THUMBNAIL
+}
+
+/**
+ * 缓存设置项
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CacheSettingItem(
+    label: String,
+    subtitle: String,
+    sizeBytes: Long,
+    limitMB: Int,
+    onLimitChange: (Int) -> Unit,
+    onClear: () -> Unit,
+    presets: List<Int>,
+    presetLabels: List<String>,
+    isUnlimited: Boolean = false,
+) {
+    var showCustomInput by remember { mutableStateOf(false) }
+    var customInputText by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        // 标题行 + 大小
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = if (isUnlimited) {
+                    "${formatBytes(sizeBytes)} / 无限制"
+                } else {
+                    "${formatBytes(sizeBytes)} / ${limitMB} MB"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // 进度条
+        LinearProgressIndicator(
+            progress = {
+                if (isUnlimited) {
+                    0f
+                } else if (limitMB == 0) {
+                    0f
+                } else {
+                    (sizeBytes.toFloat() / (limitMB * 1024 * 1024)).coerceIn(0f, 1f)
                 }
             },
-            confirmButton = {
+            modifier = Modifier.fillMaxWidth(),
+            color = if (isUnlimited) {
+                MaterialTheme.colorScheme.surfaceVariant
+            } else {
+                MaterialTheme.colorScheme.primary
+            },
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // 容量选择行
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                presets.forEachIndexed { index, value ->
+                    FilterChip(
+                        selected = if (isUnlimited) value == 0 else limitMB == value,
+                        onClick = {
+                            onLimitChange(value)
+                            showCustomInput = false
+                        },
+                        label = {
+                            Text(
+                                text = presetLabels[index],
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        },
+                    )
+                }
+                // 自定义按钮
+                FilterChip(
+                    selected = showCustomInput,
+                    onClick = {
+                        showCustomInput = !showCustomInput
+                        if (showCustomInput) {
+                            customInputText = if (limitMB == 0) "" else limitMB.toString()
+                        }
+                    },
+                    label = {
+                        Text(
+                            text = "自定义",
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    },
+                )
+            }
+            // 清理按钮
+            if (sizeBytes > 0) {
+                TextButton(onClick = onClear) {
+                    Text(
+                        text = "清理",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+        }
+
+        // 自定义输入框（展开时显示）
+        if (showCustomInput) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = customInputText,
+                    onValueChange = { customInputText = it.filter { c -> c.isDigit() } },
+                    label = { Text("MB") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 TextButton(
                     onClick = {
-                        val capacity = customCapacityText.toIntOrNull()
-                        if (capacity != null && capacity >= 500) {
-                            viewModel.updateCacheLimit(capacity)
-                            viewModel.hideCustomCapacityDialog()
+                        val value = customInputText.toIntOrNull()
+                        if (value != null && (isUnlimited || value >= 100)) {
+                            onLimitChange(value)
+                            showCustomInput = false
                         }
                     },
                 ) {
                     Text("确认")
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.hideCustomCapacityDialog() }) {
-                    Text("取消")
-                }
-            },
+            }
+        }
+
+        // 副标题
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

@@ -127,6 +127,9 @@ class ViewerViewModel(
     /** 旧页面的预取必须可取消，避免与用户当前页争抢 SMB 带宽。 */
     private var prefetchJob: Job? = null
 
+    /** 页面缓存容量（从配置读取） */
+    private var pageCacheLimitBytes: Long = 500L * 1024 * 1024
+
     /**
      * 从文件浏览器直接加载文件（不需要 resourceId）。
      * 根据文件扩展名判断类型，创建对应的 ContentProvider。
@@ -179,13 +182,13 @@ class ViewerViewModel(
                                         } else null
 
                                         val (provider, viewerItems) = withContext(ioDispatcher) {
-                                            val mixedProvider = MixedFolderProvider(
+                                        val mixedProvider = MixedFolderProvider(
                                                 fileSource = fileSource,
                                                 relativePath = dirPath,
                                                 sourceId = sourceId,
                                                 videoDataSourceFactory = videoFactory,
                                                 pageCacheDirectory = context.cacheDir,
-                                                pageCacheLimitBytes = 500L * 1024 * 1024,
+                                                pageCacheLimitBytes = pageCacheLimitBytes,
                                             )
                                             mixedProvider to mixedProvider.buildViewerItems()
                                         }
@@ -442,7 +445,7 @@ class ViewerViewModel(
                                         dev.wucheng.resource_viewer.data.local.converter.OrganizationMode.CHAPTER_GALLERY,
                                     ),
                                     pageCacheDirectory = context.cacheDir,
-                                    pageCacheLimitBytes = 500L * 1024 * 1024,
+                                    pageCacheLimitBytes = pageCacheLimitBytes,
                                 )
                             }
                         }
@@ -526,6 +529,7 @@ class ViewerViewModel(
         _pageDirection.value = config.pageDirection
         _doublePageMode.value = config.doublePageMode
         _crossChapter.value = config.crossChapter
+        pageCacheLimitBytes = config.pageCacheLimitMB.toLong() * 1024 * 1024
     }
 
     fun cyclePageDirection() {
@@ -592,7 +596,7 @@ class ViewerViewModel(
             current.pageIndex + 1,
             current.pageIndex - 1,
             current.pageIndex + 2,
-            current.pageIndex - 2,
+            current.pageIndex + 3,
         )
         pageOrder
             .filter { it in 0 until _totalPages.value }

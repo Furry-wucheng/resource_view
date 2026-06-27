@@ -30,7 +30,7 @@ val coilModule = module {
         // 从数据库读取缓存配置
         val cacheLimitMB = runBlocking {
             val config = database.appConfigDao().getConfig().first()
-            config?.cacheLimitMB ?: 500
+            config?.thumbnailCacheLimitMB ?: 500
         }
 
         ImageLoader.Builder(context)
@@ -41,7 +41,7 @@ val coilModule = module {
             }
             .diskCache {
                 DiskCache.Builder()
-                    .directory(context.cacheDir.resolve("image_cache").toOkioPath())
+                    .directory(context.cacheDir.resolve("image_cache/coil").toOkioPath())
                     .maxSizeBytes(cacheLimitMB.toLong() * 1024 * 1024) // 根据配置设置磁盘缓存大小
                     .build()
             }
