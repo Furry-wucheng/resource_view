@@ -13,14 +13,13 @@ import java.io.File
 /**
  * VideoThumbnailGenerator 单元测试。
  *
- * 注意：MediaMetadataRetriever 是 Android API，需要 mock。
- * 此测试验证 canHandle 逻辑和 generate 的调用流程。
+ * 注意：MediaMetadataRetriever 是 Android API，需要 mock 或借助 Robolectric。
+ * 此测试验证 canHandle 逻辑、generate 调用流程，以及不再调用 readFile（全量读取）。
  */
 class VideoThumbnailGeneratorTest {
 
     private lateinit var generator: VideoThumbnailGenerator
     private lateinit var mockFileSource: FileSource
-    private lateinit var mockCacheDir: File
 
     private val videoResource = Resource(
         id = "video-1",
@@ -44,10 +43,9 @@ class VideoThumbnailGeneratorTest {
     fun setup() {
         generator = VideoThumbnailGenerator(null)
         mockFileSource = mockk(relaxed = true)
-        mockCacheDir = mockk(relaxed = true)
     }
 
-    // ===== RED: canHandle 测试 =====
+    // ===== canHandle 测试 =====
 
     @Test
     fun `canHandle should return true for VIDEO resource type`() {
@@ -69,33 +67,53 @@ class VideoThumbnailGeneratorTest {
         assertFalse(generator.canHandle(ResourceType.ARCHIVE))
     }
 
-    // ===== RED: generate 测试 =====
+    // ===== generate 流程测试 =====
 
     @Test
-    fun `generate should call readFile on fileSource`() = runTest {
+    fun `generate should not call readFile on fileSource`() = runTest {
         // Given
-        coEvery { mockFileSource.readFile(any()) } returns ByteArray(1024)
         val tempDir = File(System.getProperty("java.io.tmpdir"), "test-cache-${System.currentTimeMillis()}")
         tempDir.mkdirs()
         tempDir.deleteOnExit()
 
         // When — generate 会因为 MediaMetadataRetriever 不可用而返回 null
-        // 但我们可以验证它调用了 readFile
+        // 但关键是验证它**没有**调用 readFile
         generator.generate(videoResource, mockFileSource, tempDir)
 
         // Then
-        coVerify { mockFileSource.readFile("videos/test_video.mp4") }
+        coVerify(exactly = 0) { mockFileSource.readFile(any()) }
     }
 
     @Test
-    fun `generate should return null when readFile fails`() = runTest {
+    fun `generate should return null when MediaMetadataRetriever fails`() = runTest {
         // Given
-        coEvery { mockFileSource.readFile(any()) } throws RuntimeException("File not found")
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "test-cache-${System.currentTimeMillis()}")
+        tempDir.mkdirs()
+        tempDir.deleteOnExit()
 
-        // When
-        val result = generator.generate(videoResource, mockFileSource, mockCacheDir)
+        // When — 没有 mock 真实的 MediaMetadataRetriever，返回 null
+        val result = generator.generate(videoResource, mockFileSource, tempDir)
 
         // Then
         assertNull(result)
+    }
+
+    @Test
+    fun `generate should return cached file when it already exists`() = runTest {
+        // Given
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "test-cache-${System.currentTimeMillis()}")
+        tempDir.mkdirs()
+        tempDir.deleteOnExit()
+
+        // 预创建缓存文件
+        val cachedFile = File(tempDir, "thumb_${videoResource.id}.jpg")
+        cachedFile.writeBytes("fake-image".toByteArray())
+
+        // When
+        val result = generator.generate(videoResource, mockFileSource, tempDir)
+
+        // Then
+        assertNotNull(result)
+        assertEquals(cachedFile.absolutePath, result!!.absolutePath)
     }
 }

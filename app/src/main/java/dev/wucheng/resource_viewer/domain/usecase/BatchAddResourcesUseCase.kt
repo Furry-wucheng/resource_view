@@ -1,24 +1,24 @@
 package dev.wucheng.resource_viewer.domain.usecase
 
 import android.content.Context
+import android.util.Log
 import dev.wucheng.resource_viewer.data.local.AppDatabase
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.local.entity.ResourceEntity
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.ThumbnailRepository
-import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.error.ScanResult
-import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
-import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailTaskPool
-import java.util.UUID
 import dev.wucheng.resource_viewer.shared.media.MediaFormats
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailTaskPool
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import java.io.File
+import java.util.UUID
 
 /**
  * 批量添加资源用例。
@@ -54,7 +54,7 @@ class BatchAddResourcesUseCase(
     ): Result<ScanResult> {
         var successCount = 0
         var skipCount = 0
-        val failures = mutableListOf<Pair<String, DomainError>>()
+        val failures = mutableListOf<Pair<String, dev.wucheng.resource_viewer.domain.error.DomainError>>()
         val batch = mutableListOf<ResourceEntity>()
 
         for (path in paths) {
@@ -73,7 +73,12 @@ class BatchAddResourcesUseCase(
                     skipCount++
                 }
             } catch (e: Exception) {
-                failures.add(path to DomainError.DatabaseError("Failed to process path: $path", e))
+                failures.add(
+                    path to dev.wucheng.resource_viewer.domain.error.DomainError.DatabaseError(
+                        "Failed to process path: $path",
+                        e,
+                    )
+                )
             }
         }
 
@@ -105,6 +110,7 @@ class BatchAddResourcesUseCase(
     /**
      * 为插入的资源批量并发生成缩略图。
      * 使用 ThumbnailTaskPool 控制并发数，遵循设置中的 thumbnailConcurrency 配置。
+     * 异常会被记录但不会中断主流程。
      */
     private suspend fun generateThumbnails(
         entities: List<ResourceEntity>,
@@ -132,9 +138,20 @@ class BatchAddResourcesUseCase(
                                         resourceRepository.updateThumbnail(entity.id, thumbFile.absolutePath)
                                     }
                                 }
-                                is Result.Err -> { /* 缩略图生成失败不影响主流程 */ }
+                                is Result.Err -> {
+                                    Log.e(
+                                        TAG,
+                                        "Thumbnail generation failed for ${entity.name}: ${result.error}",
+                                    )
+                                }
                             }
-                        } catch (_: Exception) { /* 缩略图生成失败不影响主流程 */ }
+                        } catch (e: Exception) {
+                            Log.e(
+                                TAG,
+                                "Thumbnail generation exception for ${entity.name}",
+                                e,
+                            )
+                        }
                     }
                 }
             }.awaitAll()
@@ -177,8 +194,8 @@ class BatchAddResourcesUseCase(
         )
     }
 
-    private fun ResourceEntity.toDomain(): Resource {
-        return Resource(
+    private fun ResourceEntity.toDomain(): dev.wucheng.resource_viewer.domain.model.Resource {
+        return dev.wucheng.resource_viewer.domain.model.Resource(
             id = id,
             sourceId = sourceId,
             sourceName = "",
@@ -196,5 +213,9 @@ class BatchAddResourcesUseCase(
             thumbnailPath = thumbnailPath,
             tags = emptyList(),
         )
+    }
+
+    companion object {
+        private const val TAG = "BatchAddResourcesUseCase"
     }
 }

@@ -4,47 +4,53 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.domain.model.Resource
-import dev.wucheng.resource_viewer.domain.model.Tag
+import java.io.File
 
 /**
  * 资源缩略图卡片。
- * 竖版卡片，显示封面图片、资源名称（最多 2 行）、标签颜色小圆点（前 3 个）。
- * 支持点击和长按。
+ * 采用文件浏览器的 Card 卡片风格：
+ * - 3:4 比例，底部渐变遮罩 + 白色文字
+ * - 无缩略图时显示类型颜色 + 类型图标
+ * - 左上角收藏星标（保留）
+ * - 右上角选中标记
  *
  * @param resource 资源数据
  * @param onClick 点击回调
  * @param onLongClick 长按回调（可选）
+ * @param selected 是否处于多选选中状态
+ * @param onToggleFavorite 收藏切换回调（null 则不显示星标）
  * @param modifier Modifier
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -57,33 +63,73 @@ fun ResourceGridItem(
     onToggleFavorite: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Card(
         modifier = modifier
             .fillMaxWidth()
+            .aspectRatio(THUMBNAIL_ASPECT_RATIO)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
+            else MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        shape = MaterialTheme.shapes.medium,
     ) {
-        // 缩略图封面
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(THUMBNAIL_ASPECT_RATIO)
-                .clip(MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-        ) {
-            if (resource.thumbnailPath != null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            val thumbnailPath = resource.thumbnailPath
+
+            if (thumbnailPath != null) {
+                // 有缩略图：Coil 加载本地文件（必须传 File 对象，否则会被当作 URL）
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(resource.thumbnailPath)
+                        .data(File(thumbnailPath))
                         .build(),
                     contentDescription = resource.name,
-                    modifier = Modifier.matchParentSize(),
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
+            } else {
+                // 无缩略图：类型颜色 + 类型图标
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(resourceTypeColor(resource.type)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = resourceTypeIcon(resource.type),
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        tint = Color.White.copy(alpha = 0.72f),
+                    )
+                }
             }
-            // 收藏星标
+
+            // 底部渐变遮罩 + 标题
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.88f))
+                        )
+                    )
+                    .padding(start = 6.dp, end = 6.dp, top = 40.dp, bottom = 8.dp),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                Text(
+                    text = resource.name,
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            // 收藏星标（左上角）
             if (onToggleFavorite != null) {
                 Icon(
                     imageVector = if (resource.favorited) Icons.Default.Star else Icons.Default.StarBorder,
@@ -96,75 +142,36 @@ fun ResourceGridItem(
                         .clickable { onToggleFavorite() },
                 )
             }
+
+            // 选中标记（右上角）
             if (selected) {
                 Icon(
-                    Icons.Default.CheckCircle,
+                    imageVector = Icons.Default.CheckCircle,
                     contentDescription = "已选择",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(22.dp),
                 )
             }
         }
-
-        // 资源名称（最多 2 行）+ 标签占位
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp)
-                .height(TEXT_AREA_HEIGHT),
-        ) {
-            Text(
-                text = resource.name,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = MAX_TITLE_LINES,
-                overflow = TextOverflow.Ellipsis,
-            )
-            // 标签颜色小圆点（前 3 个）
-            if (resource.tags.isNotEmpty()) {
-                Row(
-                    modifier = Modifier.padding(top = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    resource.tags.take(MAX_TAG_DOTS).forEach { tag ->
-                        TagDot(tag = tag)
-                    }
-                }
-            }
-        }
     }
 }
 
-/**
- * 标签颜色小圆点
- */
-@Composable
-private fun TagDot(tag: Tag) {
-    val color = try {
-        Color(android.graphics.Color.parseColor(tag.color))
-    } catch (e: Exception) {
-        MaterialTheme.colorScheme.outline
-    }
-
-    Box(
-        modifier = Modifier
-            .size(TAG_DOT_SIZE)
-            .semantics { contentDescription = "标签: ${tag.name}" }
-            .clip(CircleShape)
-            .background(color),
-    )
+private fun resourceTypeColor(type: ResourceType): Color = when (type) {
+    ResourceType.FOLDER -> Color(0xFF1565C0)
+    ResourceType.PDF -> Color(0xFFC62828)
+    ResourceType.VIDEO -> Color(0xFF2E7D32)
+    ResourceType.ARCHIVE -> Color(0xFF757575)
 }
 
-/** 缩略图宽高比 */
-private const val THUMBNAIL_ASPECT_RATIO = 2f / 3f
+private fun resourceTypeIcon(type: ResourceType): ImageVector = when (type) {
+    ResourceType.FOLDER -> Icons.Default.Folder
+    ResourceType.PDF -> Icons.Default.PictureAsPdf
+    ResourceType.VIDEO -> Icons.Default.Movie
+    ResourceType.ARCHIVE -> Icons.Default.Folder
+}
 
-/** 标题最大行数 */
-private const val MAX_TITLE_LINES = 2
-
-/** 最大标签圆点数 */
-private const val MAX_TAG_DOTS = 3
-
-/** 标签圆点大小 */
-private val TAG_DOT_SIZE = 8.dp
-
-/** 文本区域固定高度（2 行标题 + 标签点） */
-private val TEXT_AREA_HEIGHT = 48.dp
+/** 缩略图宽高比（与文件浏览器一致） */
+private const val THUMBNAIL_ASPECT_RATIO = 3f / 4f
