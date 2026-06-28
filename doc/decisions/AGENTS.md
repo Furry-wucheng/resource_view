@@ -39,5 +39,6 @@
 | M27 | 批量添加 + 拆分 UseCase | 4 | ✅ | claude | 2026-06-25 |
 | M28 | 打磨完善 | 3 | ✅ | claude | 2026-06-27 |
 | M30 | 修复底栏导航 + SMB 线程与权限 | 5 | ✅ | claude | 2026-06-27 |
+| batchadd-viewer-thumbnail-video-fix | 批量添加性能优化 + 查看器缩略图补全 + 视频支持 + 模式即时切换 | 8 | ✅ | opencode | 2026-06-29 |
 | fix | 文件浏览、混合查看器、缩略图、标签与 SMB 回归修复 | 4 | ✅ | claude | 2026-06-27 |
 | cache-refactor | 缓存管理重构 — 独立容量控制 + 预加载优化 + 缩略图复用 | 7 | ✅ | opencode | 2026-06-27 |

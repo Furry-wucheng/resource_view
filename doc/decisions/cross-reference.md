@@ -48,14 +48,14 @@
 | `shared/content/ImageFolderProvider.kt` | M14 | D-001, D-002 |
 | `shared/content/PdfContentProvider.kt` | M22 | — |
 | `shared/organization/OrganizationStrategy.kt` | M11 | — |
-| `shared/organization/FlatGridStrategy.kt` | home-grid-style-thumbnail-perf | D-012 |
-| `shared/organization/GalleryStrategy.kt` | home-grid-style-thumbnail-perf | D-012 |
-| `shared/organization/ChapterStrategy.kt` | home-grid-style-thumbnail-perf | D-012 |
-| `shared/organization/ChapterGalleryStrategy.kt` | home-grid-style-thumbnail-perf | D-012 |
-| `ui/screens/viewer/ChapterListScreen.kt` | home-grid-style-thumbnail-perf | D-010, D-011, D-013 |
-| `ui/screens/viewer/ContentGridScreen.kt` | home-grid-style-thumbnail-perf | D-010, D-011, D-013 |
-| `ui/screens/viewer/ChapterListViewModel.kt` | home-grid-style-thumbnail-perf | D-010 |
-| `ui/screens/viewer/ContentGridViewModel.kt` | home-grid-style-thumbnail-perf | D-010, D-012 |
+| `shared/organization/FlatGridStrategy.kt` | M20, batchadd-viewer-thumbnail-video-fix | D-007 |
+| `shared/organization/GalleryStrategy.kt` | M20, batchadd-viewer-thumbnail-video-fix | D-007 |
+| `shared/organization/ChapterStrategy.kt` | M21, batchadd-viewer-thumbnail-video-fix | D-007 |
+| `shared/organization/ChapterGalleryStrategy.kt` | M21, batchadd-viewer-thumbnail-video-fix | D-007 |
+| `ui/screens/viewer/ChapterListScreen.kt` | M21, batchadd-viewer-thumbnail-video-fix | D-005, D-006, D-008 |
+| `ui/screens/viewer/ContentGridScreen.kt` | batchadd-viewer-thumbnail-video-fix | D-005, D-006, D-008 |
+| `ui/screens/viewer/ChapterListViewModel.kt` | batchadd-viewer-thumbnail-video-fix | D-005 |
+| `ui/screens/viewer/ContentGridViewModel.kt` | batchadd-viewer-thumbnail-video-fix | D-005 |
 | `shared/thumbnail/ThumbnailGenerator.kt` | M11 | — |
 | `shared/thumbnail/ImageThumbnailGenerator.kt` | M23 | — |
 | `shared/thumbnail/PdfThumbnailGenerator.kt` | M22 | — |
@@ -64,13 +64,13 @@
 | `ui/screens/viewer/VideoPlayerViewModelTest.kt` | M19 | — |
 | `ui/screens/viewer/components/VideoPlayer.kt` | M19 | D-004 |
 | `ui/screens/home/HomeScreen.kt` | M05 → M23 | D-003 |
-| `ui/screens/home/HomeViewModel.kt` | M23 | D-001 |
+| `ui/screens/home/HomeViewModel.kt` | M23, batchadd-viewer-thumbnail-video-fix | D-004 |
 | `ui/components/FilterBar.kt` | M23 | D-002 |
 | `ui/components/ResourceGridItem.kt` | M23 | — |
 | `ui/screens/sources/SourceListScreen.kt` | M05 → M17 → M30 | D-003 |
 | `ui/screens/sources/SourceListViewModel.kt` | M17 → M30 | — |
 | `ui/screens/sources/FileBrowserScreen.kt` | M13 | — |
-| `ui/screens/sources/FileBrowserViewModel.kt` | M13 | — |
+| `ui/screens/sources/FileBrowserViewModel.kt` | M13, batchadd-viewer-thumbnail-video-fix | D-003 |
 | `ui/screens/viewer/ViewerScreen.kt` | M14 → M19 → M22 | D-003, D-004 |
 | `ui/screens/viewer/ViewerViewModel.kt` | M14 → M19 | D-003 |
 | `ui/screens/viewer/components/SlideBar.kt` | M14 | D-005 |
@@ -79,7 +79,7 @@
 | `ui/screens/tags/TagManagerScreen.kt` | M15 | D-003, D-004 |
 | `ui/screens/tags/TagViewModel.kt` | M15 | D-001, D-002 |
 | `ui/screens/tags/TagEditorDialog.kt` | M15 | D-003 |
-| `di/ViewModelModule.kt` | M15 | D-005 |
+| `di/ViewModelModule.kt` | M15, batchadd-viewer-thumbnail-video-fix | D-004, D-005 |
 | `ui/screens/settings/SettingsScreen.kt` | M05 → M25 | D-003 |
 | `ui/screens/settings/SettingsViewModel.kt` | M25 | — |
 | `ui/components/FilterBar.kt` | M16 | — |
@@ -94,7 +94,7 @@
 | `domain/usecase/FilterResourcesByTagsUseCase.kt` | M16 | — |
 | `domain/usecase/DetectOrganizationModeUseCase.kt` | M20 | — |
 | `domain/usecase/ScanResourcesUseCase.kt` | M27 | D-001, D-002, D-003 |
-| `domain/usecase/BatchAddResourcesUseCase.kt` | M27 | D-001, D-002, D-003 |
+| `domain/usecase/BatchAddResourcesUseCase.kt` | M27, home-grid-style-thumbnail-perf, batchadd-viewer-thumbnail-video-fix | D-001, D-002, D-003 |
 | `domain/usecase/SplitResourceUseCase.kt` | M27 | D-001, D-004 |
 | `di/DatabaseModule.kt` | M02 → M08 | — |
 | `di/RepositoryModule.kt` | M02 → M10 | — |
@@ -338,26 +338,40 @@
 | 代码组件 / 决策主题 | Stage | 决策 ID |
 |---------------------|-------|---------|
 | `ui/components/ResourceGridItem.kt` | home-grid-style-thumbnail-perf | D-001, D-002 |
-| `ui/screens/home/HomeViewModel.kt` | home-grid-style-thumbnail-perf | D-009 |
-| `di/ViewModelModule.kt` | home-grid-style-thumbnail-perf | D-009 |
-| `domain/usecase/BatchAddResourcesUseCase.kt` | home-grid-style-thumbnail-perf | D-005, D-006, D-007, D-008 |
-| `ui/screens/sources/FileBrowserViewModel.kt` | home-grid-style-thumbnail-perf | D-008 |
+| `shared/thumbnail/VideoThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | D-003 |
 | `shared/thumbnail/FileEntryThumbnailLoader.kt` | home-grid-style-thumbnail-perf | D-004 |
 | `shared/thumbnail/ImageThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | — |
-| `shared/thumbnail/VideoThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | D-003 |
+| `domain/usecase/BatchAddResourcesUseCase.kt` | home-grid-style-thumbnail-perf | D-005 |
 | 主页网格视觉与文件浏览器对齐 | home-grid-style-thumbnail-perf | D-001 |
 | Coil 3 本地文件加载修复 | home-grid-style-thumbnail-perf | D-002 |
 | 视频缩略图分块读取 | home-grid-style-thumbnail-perf | D-003 |
 | FileSourceMediaDataSource 可见性提升 | home-grid-style-thumbnail-perf | D-004 |
 | 缩略图异常日志可见性 | home-grid-style-thumbnail-perf | D-005 |
-| stat() 并行化 | home-grid-style-thumbnail-perf | D-006 |
-| 批量添加跳过组织模式深度检测 | home-grid-style-thumbnail-perf | D-007 |
-| 缩略图异步生成不阻塞主流程 | home-grid-style-thumbnail-perf | D-008 |
-| 首页缩略图缺失检测与后台补全 | home-grid-style-thumbnail-perf | D-009 |
-| 查看器缩略图改用 FileEntryThumbnailLoader | home-grid-style-thumbnail-perf | D-010 |
-| OrgModeSwitcher 接入导航即时切换 | home-grid-style-thumbnail-perf | D-011 |
-| OrganizationStrategy 纳入视频文件 | home-grid-style-thumbnail-perf | D-012 |
-| 视频条目导航到 FileViewer | home-grid-style-thumbnail-perf | D-013 |
+
+### batchadd-viewer-thumbnail-video-fix — 批量添加性能优化 + 查看器缩略图补全 + 视频支持 + 模式即时切换
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `domain/usecase/BatchAddResourcesUseCase.kt` | batchadd-viewer-thumbnail-video-fix | D-001, D-002, D-003 |
+| `ui/screens/home/HomeViewModel.kt` | batchadd-viewer-thumbnail-video-fix | D-004 |
+| `di/ViewModelModule.kt` | batchadd-viewer-thumbnail-video-fix | D-004, D-005 |
+| `ui/screens/sources/FileBrowserViewModel.kt` | batchadd-viewer-thumbnail-video-fix | D-003 |
+| `shared/organization/FlatGridStrategy.kt` | batchadd-viewer-thumbnail-video-fix | D-007 |
+| `shared/organization/GalleryStrategy.kt` | batchadd-viewer-thumbnail-video-fix | D-007 |
+| `shared/organization/ChapterStrategy.kt` | batchadd-viewer-thumbnail-video-fix | D-007 |
+| `shared/organization/ChapterGalleryStrategy.kt` | batchadd-viewer-thumbnail-video-fix | D-007 |
+| `ui/screens/viewer/ChapterListScreen.kt` | batchadd-viewer-thumbnail-video-fix | D-005, D-006, D-008 |
+| `ui/screens/viewer/ContentGridScreen.kt` | batchadd-viewer-thumbnail-video-fix | D-005, D-006, D-008 |
+| `ui/screens/viewer/ChapterListViewModel.kt` | batchadd-viewer-thumbnail-video-fix | D-005 |
+| `ui/screens/viewer/ContentGridViewModel.kt` | batchadd-viewer-thumbnail-video-fix | D-005 |
+| stat() 并行化 | batchadd-viewer-thumbnail-video-fix | D-001 |
+| 批量添加跳过组织模式深度检测 | batchadd-viewer-thumbnail-video-fix | D-002 |
+| 缩略图异步生成不阻塞主流程 | batchadd-viewer-thumbnail-video-fix | D-003 |
+| 首页缩略图缺失检测与后台补全 | batchadd-viewer-thumbnail-video-fix | D-004 |
+| 查看器缩略图改用 FileEntryThumbnailLoader | batchadd-viewer-thumbnail-video-fix | D-005 |
+| OrgModeSwitcher 接入导航即时切换 | batchadd-viewer-thumbnail-video-fix | D-006 |
+| OrganizationStrategy 纳入视频文件 | batchadd-viewer-thumbnail-video-fix | D-007 |
+| 视频条目导航到 FileViewer | batchadd-viewer-thumbnail-video-fix | D-008 |
 
 ---
 
