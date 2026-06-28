@@ -57,8 +57,9 @@ fun fileTypeIcon(entry: FileEntry): ImageVector = when {
  *
  * @param entry 文件条目
  * @param loadThumbnail 缩略图加载回调（由 ViewModel 的 ThumbnailLoadManager 提供）
- * @param selected 是否处于多选选中状态
+ * @param onClick 点击回调
  * @param onLongClick 长按回调
+ * @param selected 是否处于多选选中状态
  * @param leadingIcon 左上角 slot
  * @param trailingIcon 右上角 slot
  * @param bottomEndBadge 右下角 slot（如文件夹角标）
@@ -69,8 +70,9 @@ fun FileThumbnailCard(
     entry: FileEntry,
     loadThumbnail: suspend (FileEntry) -> Bitmap?,
     modifier: Modifier = Modifier,
-    selected: Boolean = false,
+    onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    selected: Boolean = false,
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
     bottomEndBadge: (@Composable () -> Unit)? = null,
@@ -85,8 +87,11 @@ fun FileThumbnailCard(
             .fillMaxWidth()
             .aspectRatio(THUMBNAIL_CARD_ASPECT_RATIO)
             .then(
-                if (onLongClick != null) {
-                    Modifier.combinedClickable(onClick = { }, onLongClick = onLongClick)
+                if (onClick != null || onLongClick != null) {
+                    Modifier.combinedClickable(
+                        onClick = onClick ?: {},
+                        onLongClick = onLongClick,
+                    )
                 } else {
                     Modifier
                 }

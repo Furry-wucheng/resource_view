@@ -318,6 +318,11 @@ private fun FileContentArea(
                             entry = entry,
                             loadThumbnail = { viewModel.loadThumbnail(it) },
                             selected = selected && isMultiSelect,
+                            onClick = {
+                                if (isMultiSelect) viewModel.toggleSelection(entry.relativePath)
+                                else if (entry.isDirectory) viewModel.openDirectory(entry.relativePath)
+                                else onOpenFile(uiState.source?.id ?: "", entry.relativePath)
+                            },
                             onLongClick = {
                                 if (!isMultiSelect) {
                                     viewModel.enterMultiSelect()
@@ -344,13 +349,6 @@ private fun FileContentArea(
                                     )
                                 }
                             },
-                            modifier = Modifier.clickable(
-                                onClick = {
-                                    if (isMultiSelect) viewModel.toggleSelection(entry.relativePath)
-                                    else if (entry.isDirectory) viewModel.openDirectory(entry.relativePath)
-                                    else onOpenFile(uiState.source?.id ?: "", entry.relativePath)
-                                }
-                            ),
                         )
                     }
                 }

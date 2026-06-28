@@ -81,7 +81,7 @@ fun ContentGridScreen(
                         FileThumbnailCard(
                             entry = entry,
                             loadThumbnail = { viewModel.loadEntryThumbnail(it) },
-                            modifier = Modifier.clickable {
+                            onClick = {
                                 if (entry.isDirectory) {
                                     viewModel.openDirectory(entry.relativePath)
                                 } else if (MediaFormats.isVideo(entry.extension)) {
