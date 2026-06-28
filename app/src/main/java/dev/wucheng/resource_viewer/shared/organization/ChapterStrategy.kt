@@ -18,27 +18,27 @@ import dev.wucheng.resource_viewer.shared.media.MediaFormats
 class ChapterStrategy : OrganizationStrategy {
     /** 支持的图片扩展名 */
     private val imageExtensions = MediaFormats.imageExtensions
+    /** 支持的视频扩展名 */
+    private val videoExtensions = MediaFormats.videoExtensions
 
     override val mode: OrganizationMode = OrganizationMode.CHAPTER
 
-    /**
-     * 获取章节列表 - 列出子文件夹作为章节。
-     * 每个章节统计图片数量和封面路径。
-     */
     override suspend fun getChapters(resource: Resource, fileSource: FileSource): List<Chapter> {
         val entries = fileSource.listDirectory(resource.relativePath)
         val directories = entries.filter { it.isDirectory }
 
         return directories.map { dir ->
             val chapterEntries = fileSource.listDirectory(dir.relativePath)
-            val imageFiles = chapterEntries.filter {
-                !it.isDirectory && it.extension.lowercase() in imageExtensions
+            val mediaFiles = chapterEntries.filter {
+                !it.isDirectory && it.extension.lowercase() in (imageExtensions + videoExtensions)
             }
+            val imageFiles = mediaFiles.filter { it.extension.lowercase() in imageExtensions }
             Chapter(
                 name = dir.name,
                 relativePath = dir.relativePath,
-                fileCount = imageFiles.size,
-                coverPath = imageFiles.firstOrNull()?.relativePath,
+                fileCount = mediaFiles.size,
+                coverPath = imageFiles.firstOrNull()?.relativePath
+                    ?: mediaFiles.firstOrNull()?.relativePath,
             )
         }
     }

@@ -93,6 +93,9 @@ fun AppNavGraph(
                 onNavigateToViewer = { resId, chapterPath ->
                     navController.navigate(Screen.ChapterViewer.createRoute(resId, chapterPath))
                 },
+                onOpenVideo = { sourceId, filePath ->
+                    navController.navigate(Screen.FileViewer.createRoute(sourceId, filePath))
+                },
                 onNavigateToMode = { mode ->
                     val route = when (resolveResourceDestination(mode)) {
                         ResourceDestination.CHAPTER_LIST -> Screen.ChapterList.createRoute(resourceId)
@@ -127,6 +130,9 @@ fun AppNavGraph(
                 onOpenViewer = { path, page ->
                     navController.navigate(Screen.SequenceViewer.createRoute(resourceId, path, page))
                 },
+                onOpenVideo = { sourceId, filePath ->
+                    navController.navigate(Screen.FileViewer.createRoute(sourceId, filePath))
+                },
                 onNavigateToMode = { mode ->
                     val route = when (resolveResourceDestination(mode)) {
                         ResourceDestination.CHAPTER_LIST -> Screen.ChapterList.createRoute(resourceId)
@@ -148,6 +154,9 @@ fun AppNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onOpenViewer = { path, page ->
                     navController.navigate(Screen.SequenceViewer.createRoute(resourceId, path, page))
+                },
+                onOpenVideo = { sourceId, filePath ->
+                    navController.navigate(Screen.FileViewer.createRoute(sourceId, filePath))
                 },
                 onNavigateToMode = { mode ->
                     val route = when (resolveResourceDestination(mode)) {

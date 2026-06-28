@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.domain.model.FileEntry
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.OrgModeSwitcher
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -37,6 +38,7 @@ fun ContentGridScreen(
     mode: ContentGridMode,
     onNavigateBack: () -> Unit,
     onOpenViewer: (contentPath: String, initialPage: Int) -> Unit,
+    onOpenVideo: (sourceId: String, filePath: String) -> Unit = { _, _ -> },
     onNavigateToMode: (OrganizationMode) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ContentGridViewModel = koinViewModel { parametersOf(resourceId, mode) },
@@ -89,6 +91,8 @@ fun ContentGridScreen(
                         GridEntryCard(entry = entry, viewModel = viewModel) {
                             if (entry.isDirectory) {
                                 viewModel.openDirectory(entry.relativePath)
+                            } else if (MediaFormats.isVideo(entry.extension)) {
+                                onOpenVideo(state.sourceId, entry.relativePath)
                             } else {
                                 val images = state.entries.filter { !it.isDirectory }
                                 val index = images.indexOfFirst { it.relativePath == entry.relativePath }

@@ -38,12 +38,13 @@ class FlatGridStrategyTest {
         }
 
     @Test
-    fun `getContents should return only image files`() =
+    fun `getContents should return image and video files`() =
         runTest {
             val entries =
                 listOf(
                     FileEntry("photo1.jpg", "photo1.jpg", false, 1024, System.currentTimeMillis(), "jpg"),
                     FileEntry("photo2.png", "photo2.png", false, 2048, System.currentTimeMillis(), "png"),
+                    FileEntry("video.mp4", "video.mp4", false, 8192, System.currentTimeMillis(), "mp4"),
                     FileEntry("document.pdf", "document.pdf", false, 4096, System.currentTimeMillis(), "pdf"),
                     FileEntry("subfolder", "subfolder", true, 0, System.currentTimeMillis(), ""),
                 )
@@ -51,17 +52,31 @@ class FlatGridStrategyTest {
 
             val contents = strategy.getContents(mockResource, mockFileSource)
 
-            assertEquals(2, contents.size)
-            assertTrue(contents.all { it.extension.lowercase() in setOf("jpg", "jpeg", "png", "webp", "bmp", "gif") })
+            assertEquals(3, contents.size)
+            assertEquals(setOf("jpg", "png", "mp4"), contents.map { it.extension }.toSet())
         }
 
     @Test
-    fun `getContents should return empty list when no image files`() =
+    fun `getContents should include video files`() =
+        runTest {
+            val entries =
+                listOf(
+                    FileEntry("video.mp4", "video.mp4", false, 8192, System.currentTimeMillis(), "mp4"),
+                )
+            coEvery { mockFileSource.listDirectory(any()) } returns entries
+
+            val contents = strategy.getContents(mockResource, mockFileSource)
+
+            assertEquals(1, contents.size)
+            assertEquals("mp4", contents[0].extension)
+        }
+
+    @Test
+    fun `getContents should return empty list when no supported files`() =
         runTest {
             val entries =
                 listOf(
                     FileEntry("document.pdf", "document.pdf", false, 4096, System.currentTimeMillis(), "pdf"),
-                    FileEntry("video.mp4", "video.mp4", false, 8192, System.currentTimeMillis(), "mp4"),
                 )
             coEvery { mockFileSource.listDirectory(any()) } returns entries
 

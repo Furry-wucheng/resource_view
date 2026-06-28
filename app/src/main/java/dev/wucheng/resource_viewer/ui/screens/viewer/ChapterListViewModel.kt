@@ -40,6 +40,7 @@ sealed class ChapterListUiState {
         val chapters: List<Chapter>,
         val looseFiles: List<FileEntry>,
         val resourceName: String,
+        val sourceId: String,
         val organizationMode: OrganizationMode,
         val viewMode: ChapterViewMode = ChapterViewMode.LIST,
     ) : ChapterListUiState()
@@ -111,6 +112,7 @@ class ChapterListViewModel(
                                     chapters = chapters,
                                     looseFiles = looseFiles,
                                     resourceName = res.name,
+                                    sourceId = res.sourceId,
                                     organizationMode = res.organizationMode ?: OrganizationMode.CHAPTER,
                                 )
                             } catch (e: Exception) {

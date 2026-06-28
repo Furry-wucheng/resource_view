@@ -18,23 +18,19 @@ import dev.wucheng.resource_viewer.shared.media.MediaFormats
 class FlatGridStrategy : OrganizationStrategy {
     /** 支持的图片扩展名 */
     private val imageExtensions = MediaFormats.imageExtensions
+    /** 支持的视频扩展名 */
+    private val videoExtensions = MediaFormats.videoExtensions
 
     override val mode: OrganizationMode = OrganizationMode.FLATGRID
 
-    /**
-     * 获取章节列表 - FlatGrid 模式无章节，返回空列表。
-     */
     override suspend fun getChapters(resource: Resource, fileSource: FileSource): List<Chapter> {
         return emptyList()
     }
 
-    /**
-     * 获取内容列表 - 返回文件夹内所有图片文件。
-     */
     override suspend fun getContents(resource: Resource, fileSource: FileSource): List<FileEntry> {
         val entries = fileSource.listDirectory(resource.relativePath)
         return entries.filter { entry ->
-            !entry.isDirectory && entry.extension.lowercase() in imageExtensions
+            !entry.isDirectory && entry.extension.lowercase() in (imageExtensions + videoExtensions)
         }
     }
 

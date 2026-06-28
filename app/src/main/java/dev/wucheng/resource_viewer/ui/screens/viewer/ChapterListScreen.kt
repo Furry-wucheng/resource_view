@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.domain.model.Chapter
 import dev.wucheng.resource_viewer.domain.model.FileEntry
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.OrgModeSwitcher
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -48,6 +49,7 @@ fun ChapterListScreen(
     resourceId: String,
     onNavigateBack: () -> Unit,
     onNavigateToViewer: (String, String) -> Unit,
+    onOpenVideo: (sourceId: String, filePath: String) -> Unit = { _, _ -> },
     onNavigateToMode: (OrganizationMode) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ChapterListViewModel = koinViewModel { parametersOf(resourceId) },
@@ -144,6 +146,7 @@ fun ChapterListScreen(
                                     onNavigateToMode(mode)
                                 },
                                 onToggleViewMode = { viewModel.toggleViewMode() },
+                                onOpenVideo = { srcId, path -> onOpenVideo(srcId, path) },
                                 viewModel = viewModel,
                             )
                         } else {
@@ -156,6 +159,7 @@ fun ChapterListScreen(
                                     viewModel.changeOrganizationMode(mode)
                                     onNavigateToMode(mode)
                                 },
+                                onOpenVideo = { srcId, path -> onOpenVideo(srcId, path) },
                                 viewModel = viewModel,
                             )
                         }
@@ -175,10 +179,10 @@ private fun NarrowChapterLayout(
     resourceId: String,
     onNavigateToViewer: (String, String) -> Unit,
     onChangeOrgMode: (OrganizationMode) -> Unit,
+    onOpenVideo: (String, String) -> Unit,
     viewModel: ChapterListViewModel,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        // 组织模式切换器
         OrgModeSwitcher(
             currentMode = state.organizationMode,
             onModeChanged = onChangeOrgMode,
@@ -192,6 +196,7 @@ private fun NarrowChapterLayout(
                 state = state,
                 resourceId = resourceId,
                 onNavigateToViewer = onNavigateToViewer,
+                onOpenVideo = onOpenVideo,
                 viewModel = viewModel,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -209,6 +214,7 @@ private fun WideChapterLayout(
     onNavigateToViewer: (String, String) -> Unit,
     onChangeOrgMode: (OrganizationMode) -> Unit,
     onToggleViewMode: () -> Unit,
+    onOpenVideo: (String, String) -> Unit,
     viewModel: ChapterListViewModel,
 ) {
     Row(modifier = Modifier.fillMaxSize()) {
@@ -287,6 +293,7 @@ private fun WideChapterLayout(
                 state = state,
                 resourceId = resourceId,
                 onNavigateToViewer = onNavigateToViewer,
+                onOpenVideo = onOpenVideo,
                 viewModel = viewModel,
                 modifier = Modifier.weight(1f),
             )
@@ -327,6 +334,7 @@ private fun ChapterContent(
     state: ChapterListUiState.Success,
     resourceId: String,
     onNavigateToViewer: (String, String) -> Unit,
+    onOpenVideo: (String, String) -> Unit,
     viewModel: ChapterListViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -362,7 +370,13 @@ private fun ChapterContent(
                     ) { file ->
                         LooseFileItem(
                             file = file,
-                            onClick = { onNavigateToViewer(resourceId, file.relativePath) },
+                            onClick = {
+                                if (MediaFormats.isVideo(file.extension)) {
+                                    onOpenVideo(state.sourceId, file.relativePath)
+                                } else {
+                                    onNavigateToViewer(resourceId, file.relativePath)
+                                }
+                            },
                         )
                     }
                 }
@@ -401,7 +415,13 @@ private fun ChapterContent(
                     ) { file ->
                         LooseFileGridItem(
                             file = file,
-                            onClick = { onNavigateToViewer(resourceId, file.relativePath) },
+                            onClick = {
+                                if (MediaFormats.isVideo(file.extension)) {
+                                    onOpenVideo(state.sourceId, file.relativePath)
+                                } else {
+                                    onNavigateToViewer(resourceId, file.relativePath)
+                                }
+                            },
                         )
                     }
                 }

@@ -18,34 +18,30 @@ import dev.wucheng.resource_viewer.shared.media.MediaFormats
 class ChapterGalleryStrategy : OrganizationStrategy {
     /** 支持的图片扩展名 */
     private val imageExtensions = MediaFormats.imageExtensions
+    /** 支持的视频扩展名 */
+    private val videoExtensions = MediaFormats.videoExtensions
 
     override val mode: OrganizationMode = OrganizationMode.CHAPTER_GALLERY
 
-    /**
-     * 获取章节列表 - 根层子文件夹作为章节。
-     * 每个章节递归统计图片数量和封面路径。
-     */
     override suspend fun getChapters(resource: Resource, fileSource: FileSource): List<Chapter> {
         val entries = fileSource.listDirectory(resource.relativePath)
         val directories = entries.filter { it.isDirectory }
 
         return directories.map { dir ->
-            val allImages = collectImagesRecursive(fileSource, dir.relativePath)
+            val allMedia = collectMediaRecursive(fileSource, dir.relativePath)
+            val allImages = allMedia.filter { it.extension.lowercase() in imageExtensions }
             Chapter(
                 name = dir.name,
                 relativePath = dir.relativePath,
-                fileCount = allImages.size,
-                coverPath = allImages.firstOrNull()?.relativePath,
+                fileCount = allMedia.size,
+                coverPath = allImages.firstOrNull()?.relativePath
+                    ?: allMedia.firstOrNull()?.relativePath,
             )
         }
     }
 
-    /**
-     * 获取内容列表 - 返回整个资源目录下所有图片（递归扁平）。
-     * 用于跨子文件夹连续阅读。
-     */
     override suspend fun getContents(resource: Resource, fileSource: FileSource): List<FileEntry> {
-        return collectImagesRecursive(fileSource, resource.relativePath)
+        return collectMediaRecursive(fileSource, resource.relativePath)
     }
 
     /**
@@ -64,7 +60,7 @@ class ChapterGalleryStrategy : OrganizationStrategy {
     /**
      * 递归收集目录下所有图片文件。
      */
-    private suspend fun collectImagesRecursive(
+    private suspend fun collectMediaRecursive(
         fileSource: FileSource,
         directoryPath: String,
     ): List<FileEntry> {
@@ -73,9 +69,8 @@ class ChapterGalleryStrategy : OrganizationStrategy {
 
         for (entry in entries) {
             if (entry.isDirectory) {
-                // 递归进入子目录
-                result.addAll(collectImagesRecursive(fileSource, entry.relativePath))
-            } else if (entry.extension.lowercase() in imageExtensions) {
+                result.addAll(collectMediaRecursive(fileSource, entry.relativePath))
+            } else if (entry.extension.lowercase() in (imageExtensions + videoExtensions)) {
                 result.add(entry)
             }
         }

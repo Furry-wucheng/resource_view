@@ -25,6 +25,7 @@ enum class ContentGridMode { FLAT_GRID, GALLERY }
 
 data class ContentGridUiState(
     val title: String = "",
+    val sourceId: String = "",
     val rootPath: String = "",
     val currentPath: String = "",
     val entries: List<FileEntry> = emptyList(),
@@ -78,6 +79,7 @@ class ContentGridViewModel(
                             }
                             _uiState.value = ContentGridUiState(
                                 title = resource.name,
+                                sourceId = resource.sourceId,
                                 rootPath = resource.relativePath,
                                 currentPath = resource.relativePath,
                                 entries = entries,
@@ -117,17 +119,13 @@ class ContentGridViewModel(
 
     private suspend fun listFlat(source: FileSource, path: String): List<FileEntry> =
         source.listDirectory(path)
-            .filter { it.isDirectory || it.extension.lowercase() in IMAGE_EXTENSIONS }
+            .filter { it.isDirectory || it.extension.lowercase() in SUPPORTED_EXTENSIONS }
             .sortedWith(compareBy<FileEntry> { !it.isDirectory }.thenBy { it.relativePath })
 
     private fun fail(message: String) {
         _uiState.value = _uiState.value.copy(isLoading = false, error = message)
     }
 
-    /**
-     * 更改组织模式。
-     * 更新资源的组织模式。
-     */
     fun changeOrganizationMode(mode: OrganizationMode) {
         val state = _uiState.value
         _uiState.value = state.copy(organizationMode = mode)
@@ -136,10 +134,6 @@ class ContentGridViewModel(
         }
     }
 
-    /**
-     * 加载文件条目缩略图。
-     * 通过 FileEntryThumbnailLoader 从 FileSource 加载，复用磁盘缓存。
-     */
     suspend fun loadEntryThumbnail(entry: FileEntry): Bitmap? {
         if (entry.isDirectory) return null
         synchronized(thumbnailCache) { thumbnailCache[entry.relativePath] }?.let { return it }
@@ -168,6 +162,6 @@ class ContentGridViewModel(
     }
 
     companion object {
-        val IMAGE_EXTENSIONS = MediaFormats.imageExtensions
+        private val SUPPORTED_EXTENSIONS = MediaFormats.imageExtensions + MediaFormats.videoExtensions
     }
 }
