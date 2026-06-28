@@ -204,9 +204,11 @@ fun ViewerScreenContent(
                             beyondViewportPageCount = 0,
                             modifier = pagerModifier,
                         ) { page ->
-                            ViewerPagerContent(items, spreads[page], pageDirection, viewModel, toolbarVisible) {
-                                toolbarVisible = !toolbarVisible
-                            }
+                            ViewerPagerContent(
+                                items, spreads[page], pageDirection, viewModel, toolbarVisible,
+                                onToggleToolbar = { toolbarVisible = !toolbarVisible },
+                                isPageSelected = page == pagerState.currentPage,
+                            )
                         }
                     } else {
                         HorizontalPager(
@@ -215,9 +217,11 @@ fun ViewerScreenContent(
                             beyondViewportPageCount = 0,
                             modifier = pagerModifier,
                         ) { page ->
-                            ViewerPagerContent(items, spreads[page], pageDirection, viewModel, toolbarVisible) {
-                                toolbarVisible = !toolbarVisible
-                            }
+                            ViewerPagerContent(
+                                items, spreads[page], pageDirection, viewModel, toolbarVisible,
+                                onToggleToolbar = { toolbarVisible = !toolbarVisible },
+                                isPageSelected = page == pagerState.currentPage,
+                            )
                         }
                     }
 
@@ -311,6 +315,7 @@ private fun ViewerPagerPage(
     viewModel: ViewerViewModel,
     toolbarVisible: Boolean,
     onToggleToolbar: () -> Unit,
+    isPageSelected: Boolean = true,
 ) {
     when (item) {
         is ViewerItem.ImagePage -> PageContent(
@@ -320,7 +325,10 @@ private fun ViewerPagerPage(
             onToggleToolbar = onToggleToolbar,
             modifier = Modifier.fillMaxSize(),
         )
-        is ViewerItem.Video -> VideoPageContent(item, toolbarVisible, onToggleToolbar, Modifier.fillMaxSize())
+        is ViewerItem.Video -> VideoPageContent(
+            item, toolbarVisible, onToggleToolbar, Modifier.fillMaxSize(),
+            isPageSelected = isPageSelected,
+        )
     }
 }
 
@@ -332,9 +340,13 @@ private fun ViewerPagerContent(
     viewModel: ViewerViewModel,
     toolbarVisible: Boolean,
     onToggleToolbar: () -> Unit,
+    isPageSelected: Boolean = true,
 ) {
     if (spread.itemIndices.size == 1) {
-        ViewerPagerPage(items[spread.itemIndices.first()], viewModel, toolbarVisible, onToggleToolbar)
+        ViewerPagerPage(
+            items[spread.itemIndices.first()], viewModel, toolbarVisible, onToggleToolbar,
+            isPageSelected = isPageSelected,
+        )
         return
     }
     val pair = spread.itemIndices.map(items::get)
@@ -342,7 +354,7 @@ private fun ViewerPagerContent(
     Row(Modifier.fillMaxSize()) {
         orderedPair.forEach { item ->
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                ViewerPagerPage(item, viewModel, toolbarVisible, onToggleToolbar)
+                ViewerPagerPage(item, viewModel, toolbarVisible, onToggleToolbar, isPageSelected = isPageSelected)
             }
         }
     }
@@ -351,6 +363,9 @@ private fun ViewerPagerContent(
 /**
  * 视频页面内容。
  * 使用 [VideoPlayer] Composable 播放视频。
+ *
+ * @param isPageSelected 当在 Pager 中为非当前页时为 false，此时不创建 ExoPlayer，
+ *   避免多个硬解码器实例共存导致 NO_MEMORY。
  */
 @Composable
 private fun VideoPageContent(
@@ -358,9 +373,15 @@ private fun VideoPageContent(
     toolbarVisible: Boolean,
     onToggleToolbar: () -> Unit,
     modifier: Modifier = Modifier,
+    isPageSelected: Boolean = true,
 ) {
+    if (!isPageSelected) {
+        Box(modifier = modifier.background(Color.Black))
+        return
+    }
+
     val context = LocalContext.current
-    val controller = remember(videoItem.videoSource) {
+    val controller = remember {
         val player = ExoPlayer.Builder(context).build()
         VideoPlayerController(player)
     }
@@ -369,7 +390,7 @@ private fun VideoPageContent(
         controller.loadMedia(videoItem.videoSource)
     }
 
-    DisposableEffect(videoItem.videoSource) {
+    DisposableEffect(Unit) {
         onDispose { controller.release() }
     }
 

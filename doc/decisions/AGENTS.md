@@ -44,3 +44,4 @@
 | fix | 文件浏览、混合查看器、缩略图、标签与 SMB 回归修复 | 4 | ✅ | claude | 2026-06-27 |
 | cache-refactor | 缓存管理重构 — 独立容量控制 + 预加载优化 + 缩略图复用 | 7 | ✅ | opencode | 2026-06-27 |
 | 2026-06-29-smb-gif-uri-fix | SMB/本地源 GIF 查看无限加载修复 | 3 | ✅ | opencode | 2026-06-29 |
+| 2026-06-29-video-thumbnail-cache-fix | 视频NO_MEMORY修复 + 查看器无缝切换 + 缩略图缓存统一 | 8 | ✅ | opencode | 2026-06-29 |

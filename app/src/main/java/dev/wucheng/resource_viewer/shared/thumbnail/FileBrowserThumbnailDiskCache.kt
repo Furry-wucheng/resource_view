@@ -94,7 +94,6 @@ class FileBrowserThumbnailDiskCache(context: Context) {
             CACHE_VERSION,
             sourceId,
             entry.relativePath,
-            entry.modifiedAt,
             entry.size,
             policy.name,
         ).joinToString("|")

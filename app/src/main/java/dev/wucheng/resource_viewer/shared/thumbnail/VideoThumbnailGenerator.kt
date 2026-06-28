@@ -1,6 +1,7 @@
 package dev.wucheng.resource_viewer.shared.thumbnail
 
 import android.media.MediaMetadataRetriever
+import android.util.Log
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Resource
@@ -98,7 +99,7 @@ class VideoThumbnailGenerator(
 
             outputFile
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Video thumbnail generation failed for ${resource.name}", e)
             null
         }
     }
@@ -119,7 +120,7 @@ class VideoThumbnailGenerator(
             retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 ?: retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to extract video frame for $path", e)
             null
         } finally {
             try {
@@ -127,5 +128,9 @@ class VideoThumbnailGenerator(
             } catch (_: Exception) {
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "VideoThumbGenerator"
     }
 }

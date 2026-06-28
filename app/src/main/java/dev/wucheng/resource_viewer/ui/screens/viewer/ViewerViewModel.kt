@@ -352,7 +352,7 @@ class ViewerViewModel(
 
     /**
      * 加载视频资源。
-     * 根据数据源类型（LOCAL / SMB）创建不同的 VideoMediaSource。
+     * 使用 MixedFolderProvider 加载视频所在目录，支持同目录下图片/视频无缝翻页。
      */
     private suspend fun loadVideoResource(resource: dev.wucheng.resource_viewer.domain.model.Resource) {
         when (val sourceResult = filesystemRepository.getSource(resource.sourceId)) {
@@ -362,60 +362,76 @@ class ViewerViewModel(
                     _uiState.value = ViewerUiState.Error("Source not found")
                     return
                 }
+                when (val fsResult = filesystemRepository.getFileSource(source.id)) {
+                    is Result.Ok -> {
+                        val fileSource = fsResult.value
+                        val dirPath = resource.relativePath.substringBeforeLast('/', "").ifBlank { "." }
+                        val videoFactory = if (source.type == SourceType.SMB) {
+                            val password = filesystemRepository.getPassword(source.id) ?: ""
+                            SmbDataSourceFactory(source, password)
+                        } else null
 
-                val videoSource = when (source.type) {
-                    SourceType.LOCAL -> {
-                        if (source.rootPath.startsWith("content://")) {
-                            when (val fsResult = filesystemRepository.getFileSource(source.id)) {
-                                is Result.Ok -> {
-                                    val documentSource = fsResult.value as? DocumentTreeFileSource
-                                    if (documentSource == null) {
-                                        _uiState.value = ViewerUiState.Error("Unsupported local source")
-                                        return
-                                    }
-                                    VideoMediaSource.LocalFile(
-                                        path = documentSource.getDocumentUri(resource.relativePath).toString(),
-                                    )
-                                }
-                                is Result.Err -> {
-                                    _uiState.value = ViewerUiState.Error("Failed to get file source")
-                                    return
-                                }
+                        try {
+                            val (provider, rawItems) = withContext(ioDispatcher) {
+                                val mixedProvider = MixedFolderProvider(
+                                    fileSource = fileSource,
+                                    relativePath = dirPath,
+                                    sourceId = source.id,
+                                    videoDataSourceFactory = videoFactory,
+                                    pageCacheDirectory = context.cacheDir,
+                                    pageCacheLimitBytes = pageCacheLimitBytes,
+                                )
+                                mixedProvider to mixedProvider.buildViewerItems()
                             }
-                        } else {
-                            VideoMediaSource.LocalFile(
-                                path = "${source.rootPath.trimEnd('/')}/${resource.relativePath}",
+                            if (rawItems.isEmpty()) {
+                                _uiState.value = ViewerUiState.Error("目录中没有可浏览的文件")
+                                return
+                            }
+
+                            val viewerItems = if (source.type == SourceType.LOCAL) {
+                                rawItems.map { item ->
+                                    if (item is ViewerItem.Video && item.videoSource is VideoMediaSource.LocalFile) {
+                                        val absPath = if (source.rootPath.startsWith("content://")) {
+                                            val documentSource =
+                                                fileSource as? DocumentTreeFileSource
+                                                    ?: return@map item
+                                            documentSource.getDocumentUri(
+                                                item.videoSource.path
+                                            ).toString()
+                                        } else {
+                                            "${source.rootPath.trimEnd('/')}/${item.videoSource.path}"
+                                        }
+                                        item.copy(videoSource = VideoMediaSource.LocalFile(path = absPath))
+                                    } else item
+                                }
+                            } else rawItems
+
+                            val currentIndex = provider.findIndex(resource.relativePath)
+
+                            contentProvider = provider
+                            pageLoader = PageLoader(
+                                maxCacheSize = PAGE_CACHE_BYTES,
+                                sizeOf = { bitmap -> bitmap.allocationByteCount.toLong() },
+                                load = { request ->
+                                    provider.loadPage(
+                                        request.pageIndex, request.targetWidth, request.targetHeight
+                                    )
+                                },
                             )
+                            _totalPages.value = viewerItems.size
+                            _currentPage.value = currentIndex.coerceIn(0, viewerItems.size - 1)
+                            _uiState.value = ViewerUiState.Success(
+                                items = viewerItems,
+                                resourceName = resource.name,
+                            )
+                        } catch (e: Exception) {
+                            _uiState.value = ViewerUiState.Error("加载失败: ${e.message}")
                         }
                     }
-                    SourceType.SMB -> {
-                        val password = filesystemRepository.getPassword(source.id)
-                            ?: ""
-                        val smbFactory = SmbDataSourceFactory(source, password)
-                        VideoMediaSource.SmbFile(
-                            dataSourceFactory = smbFactory,
-                            relativePath = resource.relativePath,
-                            fileSize = resource.fileSize ?: 0L,
-                        )
-                    }
-                    else -> {
-                        _uiState.value = ViewerUiState.Error("Unsupported source type for video")
-                        return
+                    is Result.Err -> {
+                        _uiState.value = ViewerUiState.Error("Failed to get file source")
                     }
                 }
-
-                val items = listOf(
-                    ViewerItem.Video(
-                        title = resource.name,
-                        videoSource = videoSource,
-                    )
-                )
-
-                _totalPages.value = 1
-                _uiState.value = ViewerUiState.Success(
-                    items = items,
-                    resourceName = resource.name,
-                )
             }
             is Result.Err -> {
                 _uiState.value = ViewerUiState.Error("Failed to get source")
@@ -425,65 +441,90 @@ class ViewerViewModel(
 
     /**
      * 加载图片/PDF/压缩包资源。
-     * 根据资源类型创建不同的 ContentProvider。
+     * 对于文件夹类资源，使用 MixedFolderProvider 支持图片+视频无缝浏览。
      */
     private suspend fun loadContentProviderResource(resource: dev.wucheng.resource_viewer.domain.model.Resource) {
         when (val fsResult = filesystemRepository.getFileSource(resource.sourceId)) {
             is Result.Ok -> {
                 val fileSource = fsResult.value
                 try {
-                    val provider = withContext(ioDispatcher) {
-                        when (resource.type) {
-                            ResourceType.PDF -> {
-                                PdfContentProvider(
-                                    context = context,
-                                    fileSource = fileSource,
-                                    relativePath = resource.relativePath,
-                                )
-                            }
-                            else -> {
-                                ImageFolderProvider(
-                                    fileSource = fileSource,
-                                    relativePath = contentPath.ifBlank { resource.relativePath },
-                                    recursive = resource.organizationMode in setOf(
-                                        dev.wucheng.resource_viewer.data.local.converter.OrganizationMode.GALLERY,
-                                        dev.wucheng.resource_viewer.data.local.converter.OrganizationMode.CHAPTER_GALLERY,
-                                    ),
-                                    pageCacheDirectory = context.cacheDir,
-                                    pageCacheLimitBytes = pageCacheLimitBytes,
-                                )
-                            }
+                    if (resource.type == ResourceType.PDF) {
+                        val provider = withContext(ioDispatcher) {
+                            PdfContentProvider(
+                                context = context,
+                                fileSource = fileSource,
+                                relativePath = resource.relativePath,
+                            )
                         }
-                    }
-                    contentProvider = provider
-                    pageLoader = PageLoader(
-                        maxCacheSize = PAGE_CACHE_BYTES,
-                        sizeOf = { bitmap -> bitmap.allocationByteCount.toLong() },
-                        load = { request ->
-                            provider.loadPage(request.pageIndex, request.targetWidth, request.targetHeight)
-                        },
-                    )
-                    _totalPages.value = provider.pageCount
-                    _currentPage.value = initialPage.coerceIn(0, (provider.pageCount - 1).coerceAtLeast(0))
+                        contentProvider = provider
+                        pageLoader = PageLoader(
+                            maxCacheSize = PAGE_CACHE_BYTES,
+                            sizeOf = { bitmap -> bitmap.allocationByteCount.toLong() },
+                            load = { request ->
+                                provider.loadPage(request.pageIndex, request.targetWidth, request.targetHeight)
+                            },
+                        )
+                        _totalPages.value = provider.pageCount
+                        _currentPage.value = initialPage.coerceIn(0, (provider.pageCount - 1).coerceAtLeast(0))
 
-                    // 创建 ViewerItem 列表
-                    val items = (0 until provider.pageCount).map { index ->
-                        val extension = when (provider) {
-                            is ImageFolderProvider -> provider.getPageExtension(index)
-                            else -> ""
+                        val items = (0 until provider.pageCount).map { index ->
+                            ViewerItem.ImagePage(
+                                title = resource.name,
+                                pageIndex = index,
+                                providerKey = resourceId,
+                                extension = "",
+                            )
                         }
-                        ViewerItem.ImagePage(
-                            title = resource.name,
-                            pageIndex = index,
-                            providerKey = resourceId,
-                            extension = extension,
+                        _uiState.value = ViewerUiState.Success(
+                            items = items,
+                            resourceName = resource.name,
+                        )
+                    } else {
+                        // 图片文件夹/画廊/章节：使用 MixedFolderProvider 支持图片+视频无缝浏览
+                        val isRecursive = resource.organizationMode in setOf(
+                            OrganizationMode.GALLERY,
+                            OrganizationMode.CHAPTER_GALLERY,
+                        )
+                        val videoFactory = when (val srcResult = filesystemRepository.getSource(resource.sourceId)) {
+                            is Result.Ok -> {
+                                val source = srcResult.value
+                                if (source != null && source.type == SourceType.SMB) {
+                                    val password = filesystemRepository.getPassword(source.id) ?: ""
+                                    SmbDataSourceFactory(source, password)
+                                } else null
+                            }
+                            is Result.Err -> null
+                        }
+
+                        val provider = withContext(ioDispatcher) {
+                            MixedFolderProvider(
+                                fileSource = fileSource,
+                                relativePath = contentPath.ifBlank { resource.relativePath },
+                                sourceId = resource.sourceId,
+                                videoDataSourceFactory = videoFactory,
+                                recursive = isRecursive,
+                                pageCacheDirectory = context.cacheDir,
+                                pageCacheLimitBytes = pageCacheLimitBytes,
+                            )
+                        }
+                        val viewerItems = provider.buildViewerItems()
+
+                        contentProvider = provider
+                        pageLoader = PageLoader(
+                            maxCacheSize = PAGE_CACHE_BYTES,
+                            sizeOf = { bitmap -> bitmap.allocationByteCount.toLong() },
+                            load = { request ->
+                                provider.loadPage(request.pageIndex, request.targetWidth, request.targetHeight)
+                            },
+                        )
+                        _totalPages.value = viewerItems.size
+                        _currentPage.value = initialPage.coerceIn(0, (viewerItems.size - 1).coerceAtLeast(0))
+
+                        _uiState.value = ViewerUiState.Success(
+                            items = viewerItems,
+                            resourceName = resource.name,
                         )
                     }
-
-                    _uiState.value = ViewerUiState.Success(
-                        items = items,
-                        resourceName = resource.name,
-                    )
                 } catch (e: IOException) {
                     // 加密 PDF 或其他 IO 错误
                     _uiState.value = ViewerUiState.Error(

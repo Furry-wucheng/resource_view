@@ -16,14 +16,14 @@ import dev.wucheng.resource_viewer.shared.media.MediaFormats
 import dev.wucheng.resource_viewer.shared.organization.ChapterGalleryStrategy
 import dev.wucheng.resource_viewer.shared.organization.ChapterStrategy
 import dev.wucheng.resource_viewer.shared.organization.OrganizationStrategy
-import dev.wucheng.resource_viewer.shared.thumbnail.FileBrowserThumbnailDiskCache
-import dev.wucheng.resource_viewer.shared.thumbnail.FileEntryThumbnailLoader
 import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailLoadManager
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailSearchPolicy
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class ChapterViewMode { LIST, GRID }
 
@@ -44,7 +44,7 @@ class ChapterListViewModel(
     private val resourceId: String,
     private val resourceRepository: ResourceRepository,
     private val filesystemRepository: FilesystemRepository,
-    private val thumbnailDiskCache: FileBrowserThumbnailDiskCache? = null,
+    private val thumbnailLoadManager: ThumbnailLoadManager,
     private val appConfigDao: AppConfigDao? = null,
 ) : ViewModel() {
 
@@ -53,7 +53,6 @@ class ChapterListViewModel(
 
     private var resource: Resource? = null
     private var fileSource: FileSource? = null
-    private var thumbnailManager: ThumbnailLoadManager? = null
 
     fun loadChapters() {
         viewModelScope.launch {
@@ -73,14 +72,7 @@ class ChapterListViewModel(
                         is Result.Ok -> {
                             val fs = fsResult.value
                             fileSource = fs
-                            val loader = FileEntryThumbnailLoader(fs)
-                            val concurrency = appConfigDao?.getConfig()?.first()?.thumbnailConcurrency ?: 4
-                            thumbnailManager = ThumbnailLoadManager(
-                                sourceId = resourceId,
-                                thumbnailLoader = loader,
-                                diskCache = thumbnailDiskCache,
-                                maxConcurrency = concurrency,
-                            )
+                            thumbnailLoadManager.setFileSource(fs)
 
                             try {
                                 val strategy = getStrategy(res)
@@ -148,5 +140,27 @@ class ChapterListViewModel(
         }
     }
 
-    suspend fun loadChapterCover(path: String): Bitmap? = thumbnailManager?.load(path)
+    /**
+     * 加载章节封面缩略图。
+     * 章廊模式使用 RESOURCE_COVER（递归查找预览图），
+     * 章节模式使用 DIRECT_CHILD（只看直接子文件）。
+     *
+     * 优先用 [FileSource.stat] 获取真实 [FileEntry]（含文件大小），
+     * 确保磁盘缓存 key 与其他模式一致。
+     */
+    suspend fun loadChapterCover(path: String): Bitmap? {
+        val state = _uiState.value as? ChapterListUiState.Success ?: return null
+        val fs = fileSource ?: return null
+        val policy = if (state.organizationMode == OrganizationMode.CHAPTER_GALLERY)
+            ThumbnailSearchPolicy.RESOURCE_COVER
+        else
+            ThumbnailSearchPolicy.DIRECT_CHILD
+
+        val entry = withContext(Dispatchers.IO) { fs.stat(path) }
+        return if (entry != null) {
+            thumbnailLoadManager.load(state.sourceId, entry, policy)
+        } else {
+            thumbnailLoadManager.load(state.sourceId, path, policy)
+        }
+    }
 }

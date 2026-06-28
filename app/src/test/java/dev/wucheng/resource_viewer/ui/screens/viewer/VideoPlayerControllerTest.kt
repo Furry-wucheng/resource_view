@@ -16,7 +16,9 @@ import org.junit.Test
  * VideoPlayerController 单元测试。
  * 使用 MockK mock ExoPlayer 进行纯 JVM 测试。
  *
- * 核心验证：释放（release）后不再操作底层 MediaCodec，避免 NO_MEMORY 的连锁错误。
+ * 核心验证：
+ * - 加载前先 stop + clearMediaItems，防止切换视频时 NO_MEMORY
+ * - 释放（release）后不再操作底层 MediaCodec
  */
 class VideoPlayerControllerTest {
 
@@ -36,6 +38,83 @@ class VideoPlayerControllerTest {
     fun teardown() {
         controller.release()
         unmockkStatic(Uri::class)
+    }
+
+    @Test
+    fun `should call stop and clearMediaItems when stopping`() {
+        controller.stop()
+
+        verify { mockPlayer.stop() }
+        verify { mockPlayer.clearMediaItems() }
+    }
+
+    @Test
+    fun `should not call stop after release`() {
+        controller.release()
+        clearMocks(mockPlayer)
+
+        controller.stop()
+
+        verify(exactly = 0) { mockPlayer.stop() }
+        verify(exactly = 0) { mockPlayer.clearMediaItems() }
+    }
+
+    @Test
+    fun `should stop before loading local source`() {
+        val localSource = VideoMediaSource.LocalFile("/storage/emulated/0/video.mp4")
+
+        controller.loadMedia(localSource)
+
+        verifySequence {
+            mockPlayer.stop()
+            mockPlayer.clearMediaItems()
+            mockPlayer.setMediaItem(any<MediaItem>())
+            mockPlayer.prepare()
+            mockPlayer.playWhenReady = true
+        }
+    }
+
+    @Test
+    fun `should stop before loading SMB source`() {
+        val mockDataSourceFactory = mockk<DataSource.Factory>(relaxed = true)
+        val smbSource = VideoMediaSource.SmbFile(
+            dataSourceFactory = mockDataSourceFactory,
+            relativePath = "videos/movie.mp4",
+            fileSize = 1024L * 1024,
+        )
+
+        controller.loadMedia(smbSource)
+
+        verifySequence {
+            mockPlayer.stop()
+            mockPlayer.clearMediaItems()
+            mockPlayer.setMediaSource(any())
+            mockPlayer.prepare()
+            mockPlayer.playWhenReady = true
+        }
+    }
+
+    @Test
+    fun `should stop previous source when switching videos`() {
+        val localSource = VideoMediaSource.LocalFile("/storage/video1.mp4")
+        val smbSource = VideoMediaSource.SmbFile(
+            dataSourceFactory = mockk(relaxed = true),
+            relativePath = "videos/movie.mp4",
+            fileSize = 1024L * 1024,
+        )
+
+        controller.loadMedia(localSource)
+        clearMocks(mockPlayer)
+
+        controller.loadMedia(smbSource)
+
+        verifySequence {
+            mockPlayer.stop()
+            mockPlayer.clearMediaItems()
+            mockPlayer.setMediaSource(any())
+            mockPlayer.prepare()
+            mockPlayer.playWhenReady = true
+        }
     }
 
     @Test

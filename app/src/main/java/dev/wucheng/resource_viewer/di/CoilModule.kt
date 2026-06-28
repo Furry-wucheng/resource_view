@@ -15,20 +15,25 @@ import kotlinx.coroutines.runBlocking
 import okio.Path.Companion.toOkioPath
 import org.koin.dsl.module
 import dev.wucheng.resource_viewer.shared.thumbnail.FileBrowserThumbnailDiskCache
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailLoadManager
 
-/**
- * Coil Koin Module。
- * 提供全局 ImageLoader 单例，配置内存缓存和磁盘缓存。
- *
- * 注意：此实现遵循 doc/share/03-di-contracts.md 中的 CoilModule 契约。
- */
 val coilModule = module {
     single { FileBrowserThumbnailDiskCache(get()) }
+    single {
+        val database = get<AppDatabase>()
+        val config = runBlocking { database.appConfigDao().getConfig().first() }
+        val loadManager = ThumbnailLoadManager(
+            diskCache = get(),
+            maxConcurrency = config?.thumbnailConcurrency ?: 4,
+            maxCacheSize = 64,
+        )
+        loadManager.configureCapacity(config?.thumbnailCacheLimitMB ?: 500)
+        loadManager
+    }
     single {
         val context = get<Context>()
         val database = get<AppDatabase>()
 
-        // 从数据库读取缓存配置
         val cacheLimitMB = runBlocking {
             val config = database.appConfigDao().getConfig().first()
             config?.thumbnailCacheLimitMB ?: 500
@@ -40,13 +45,13 @@ val coilModule = module {
             }
             .memoryCache {
                 MemoryCache.Builder()
-                    .maxSizePercent(context, 0.25) // 内存缓存 25%
+                    .maxSizePercent(context, 0.25)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(context.cacheDir.resolve("image_cache/coil").toOkioPath())
-                    .maxSizeBytes(cacheLimitMB.toLong() * 1024 * 1024) // 根据配置设置磁盘缓存大小
+                    .maxSizeBytes(cacheLimitMB.toLong() * 1024 * 1024)
                     .build()
             }
             .crossfade(true)

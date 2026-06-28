@@ -15,12 +15,15 @@ import java.io.File
  *
  * 图片通过 ContentProvider.loadPage() 返回 Bitmap，
  * 视频通过 ViewerItem.Video + VideoMediaSource 由 ExoPlayer 渲染。
+ *
+ * @param recursive 是否递归扫描子目录，用于 GALLERY/CHAPTER_GALLERY 组织模式。
  */
 class MixedFolderProvider(
     private val fileSource: FileSource,
     private val relativePath: String,
     private val sourceId: String,
     private val videoDataSourceFactory: DataSource.Factory? = null,
+    private val recursive: Boolean = false,
     pageCacheDirectory: File? = null,
     pageCacheLimitBytes: Long = 500L * 1024 * 1024,
 ) : ContentProvider {
@@ -55,11 +58,24 @@ class MixedFolderProvider(
 
     private fun loadMixedEntries(): List<FileEntry> {
         return kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
-            val entries = fileSource.listDirectory(relativePath)
-            entries
-                .filter { !it.isDirectory && (it.extension.lowercase() in IMAGE_EXTENSIONS || it.extension.lowercase() in VIDEO_EXTENSIONS) }
-                .sortedBy { it.relativePath }
+            collectMixedEntries(relativePath)
         }
+    }
+
+    private suspend fun collectMixedEntries(path: String): List<FileEntry> {
+        val entries = fileSource.listDirectory(path)
+        val supported = entries.filter { !it.isDirectory && isSupported(it.extension) }
+        if (!recursive) return supported.sortedBy { it.relativePath }
+
+        val nested = entries
+            .filter { it.isDirectory }
+            .flatMap { collectMixedEntries(it.relativePath) }
+        return (supported + nested).sortedBy { it.relativePath }
+    }
+
+    private fun isSupported(ext: String): Boolean {
+        val lower = ext.lowercase()
+        return lower in IMAGE_EXTENSIONS || lower in VIDEO_EXTENSIONS
     }
 
     /**

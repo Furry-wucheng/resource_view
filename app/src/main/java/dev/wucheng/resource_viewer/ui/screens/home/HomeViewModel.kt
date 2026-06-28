@@ -305,7 +305,10 @@ class HomeViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val resources = resourceRepository.getVisibleResources().first()
-                val missing = resources.filter { it.thumbnailPath.isNullOrBlank() }
+                val missing = resources.filter { resource ->
+                    val path = resource.thumbnailPath
+                    path.isNullOrBlank() || !java.io.File(path).exists()
+                }
                 if (missing.isEmpty()) return@launch
 
                 val config = db.appConfigDao().getConfig().first()
@@ -332,7 +335,10 @@ class HomeViewModel(
                                                             resource.id,
                                                             thumbFile.absolutePath,
                                                         )
-                                                    }
+                                                    } ?: Log.w(
+                                                        TAG,
+                                                        "No thumbnail generated for ${resource.name} (type=${resource.type})",
+                                                    )
                                                 }
                                                 is Result.Err -> {
                                                     Log.e(TAG, "Thumbnail failed for ${resource.name}: ${genResult.error}")

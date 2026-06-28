@@ -2,6 +2,7 @@ package dev.wucheng.resource_viewer.shared.thumbnail
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Resource
@@ -69,17 +70,23 @@ class ImageThumbnailGenerator(
                 }
             }
 
-            // 4. 生成新的缩略图
-            val bitmap = loader.load(entry, MAX_THUMBNAIL_SIZE, ThumbnailSearchPolicy.RESOURCE_COVER) ?: return null
-            saveBitmap(bitmap, outputFile)
+            // 4. 生成新的缩略图（复用已找到的 previewEntry，避免 BFS 跑两遍）
+            val bitmap = if (previewEntry != null) {
+                loader.load(previewEntry, MAX_THUMBNAIL_SIZE, ThumbnailSearchPolicy.DIRECT_CHILD)
+            } else {
+                null
+            } ?: return null
 
-            // 5. 写入 FileBrowserThumbnailDiskCache
+            // 5. 写入 FileBrowserThumbnailDiskCache（在 saveBitmap 前，避免 bitmap 被 recycle）
             if (previewEntry != null && thumbnailDiskCache != null) {
                 thumbnailDiskCache.put(resource.sourceId, previewEntry, ThumbnailSearchPolicy.RESOURCE_COVER, bitmap)
             }
 
+            saveBitmap(bitmap, outputFile)
+
             outputFile
         } catch (e: Exception) {
+            Log.e(TAG, "Image thumbnail generation failed for ${resource.name}", e)
             null
         }
     }
@@ -99,6 +106,7 @@ class ImageThumbnailGenerator(
     }
 
     private companion object {
+        private const val TAG = "ImageThumbGenerator"
         const val MAX_THUMBNAIL_SIZE = 320
     }
 }

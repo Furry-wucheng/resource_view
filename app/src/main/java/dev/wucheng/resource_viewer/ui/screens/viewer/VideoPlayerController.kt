@@ -43,14 +43,27 @@ class VideoPlayerController(
     private var isReleased = false
 
     /**
+     * 停止播放并清除当前媒体资源。
+     * 释放底层 MediaCodec，确保切换视频时旧解码器已释放。
+     */
+    fun stop() {
+        if (isReleased) return
+        player.stop()
+        player.clearMediaItems()
+    }
+
+    /**
      * 加载视频资源。
      * 根据 [VideoMediaSource] 类型设置不同的 MediaSource。
+     *
+     * 加载前先调用 [stop] 确保旧解码器已释放，防止切换时 NO_MEMORY。
      *
      * - [VideoMediaSource.LocalFile]: 使用文件路径 URI，ExoPlayer 默认 DataSource 处理
      * - [VideoMediaSource.SmbFile]: 使用调用方提供的 [DataSource.Factory] 构建 ProgressiveMediaSource
      */
     fun loadMedia(source: VideoMediaSource) {
         if (isReleased) return
+        stop()
         when (source) {
             is VideoMediaSource.LocalFile -> {
                 val mediaItem = MediaItem.fromUri(source.path)

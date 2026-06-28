@@ -12,12 +12,9 @@ import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import dev.wucheng.resource_viewer.shared.media.MediaFormats
 import dev.wucheng.resource_viewer.shared.organization.GalleryStrategy
-import dev.wucheng.resource_viewer.shared.thumbnail.FileBrowserThumbnailDiskCache
-import dev.wucheng.resource_viewer.shared.thumbnail.FileEntryThumbnailLoader
 import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailLoadManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 enum class ContentGridMode { FLAT_GRID, GALLERY }
@@ -38,13 +35,12 @@ class ContentGridViewModel(
     private val mode: ContentGridMode,
     private val resourceRepository: ResourceRepository,
     private val filesystemRepository: FilesystemRepository,
-    private val thumbnailDiskCache: FileBrowserThumbnailDiskCache? = null,
+    private val thumbnailLoadManager: ThumbnailLoadManager,
     private val appConfigDao: AppConfigDao? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ContentGridUiState())
     val uiState = _uiState.asStateFlow()
     private var fileSource: FileSource? = null
-    private var thumbnailManager: ThumbnailLoadManager? = null
 
     fun load() {
         viewModelScope.launch {
@@ -57,14 +53,7 @@ class ContentGridViewModel(
                         is Result.Err -> fail(sourceResult.error.message)
                         is Result.Ok -> {
                             fileSource = sourceResult.value
-                            val loader = FileEntryThumbnailLoader(sourceResult.value)
-                            val concurrency = appConfigDao?.getConfig()?.first()?.thumbnailConcurrency ?: 4
-                            thumbnailManager = ThumbnailLoadManager(
-                                sourceId = resourceId,
-                                thumbnailLoader = loader,
-                                diskCache = thumbnailDiskCache,
-                                maxConcurrency = concurrency,
-                            )
+                            thumbnailLoadManager.setFileSource(sourceResult.value)
                             val entries = try {
                                 if (mode == ContentGridMode.GALLERY) {
                                     GalleryStrategy().getContents(resource, sourceResult.value)
@@ -95,7 +84,6 @@ class ContentGridViewModel(
         val source = fileSource ?: return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            thumbnailManager?.clear()
             runCatching { listFlat(source, path) }
                 .onSuccess { entries ->
                     _uiState.value = _uiState.value.copy(
@@ -133,7 +121,11 @@ class ContentGridViewModel(
         }
     }
 
-    suspend fun loadEntryThumbnail(entry: FileEntry): Bitmap? = thumbnailManager?.load(entry)
+    suspend fun loadEntryThumbnail(entry: FileEntry): Bitmap? =
+        thumbnailLoadManager.load(
+            sourceId = _uiState.value.sourceId,
+            entry = entry,
+        )
 
     companion object {
         private val SUPPORTED_EXTENSIONS = MediaFormats.imageExtensions + MediaFormats.videoExtensions

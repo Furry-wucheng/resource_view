@@ -2,6 +2,7 @@ package dev.wucheng.resource_viewer.shared.thumbnail
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.remote.pdf.PdfRenderer
 import dev.wucheng.resource_viewer.domain.model.Resource
@@ -86,17 +87,18 @@ class PdfThumbnailGenerator(
 
                 val bitmap = r.renderPage(0, width, height)
 
-                // 保存到缓存
-                saveBitmap(bitmap, outputFile)
-
-                // 5. 写入 FileBrowserThumbnailDiskCache
+                // 5. 写入 FileBrowserThumbnailDiskCache（在 saveBitmap 前，避免 bitmap 被 recycle）
                 if (thumbnailDiskCache != null) {
                     thumbnailDiskCache.put(resource.sourceId, entry, ThumbnailSearchPolicy.RESOURCE_COVER, bitmap)
                 }
 
+                // 保存到缓存
+                saveBitmap(bitmap, outputFile)
+
                 outputFile
             }
         } catch (e: Exception) {
+            Log.e(TAG, "PDF thumbnail generation failed for ${resource.name}", e)
             null
         }
     }
@@ -119,5 +121,9 @@ class PdfThumbnailGenerator(
             bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
         }
         bitmap.recycle()
+    }
+
+    companion object {
+        private const val TAG = "PdfThumbGenerator"
     }
 }

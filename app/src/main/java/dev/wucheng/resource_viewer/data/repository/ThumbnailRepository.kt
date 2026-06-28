@@ -1,5 +1,6 @@
 package dev.wucheng.resource_viewer.data.repository
 
+import android.util.Log
 import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.error.asErr
@@ -36,6 +37,7 @@ class ThumbnailRepository(
                 val file = generator.generate(resource, fileSource, cacheDir)
                 file.asOk()
             } else {
+                Log.w(TAG, "No thumbnail generator for type=${resource.type}, resource=${resource.name}")
                 null.asOk()
             }
         } catch (e: Exception) {
@@ -58,5 +60,9 @@ class ThumbnailRepository(
      */
     fun hasGenerator(resourceType: dev.wucheng.resource_viewer.data.local.converter.ResourceType): Boolean {
         return thumbnailGenerators.any { it.canHandle(resourceType) }
+    }
+
+    companion object {
+        private const val TAG = "ThumbnailRepository"
     }
 }

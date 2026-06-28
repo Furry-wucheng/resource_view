@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.wucheng.resource_viewer.data.local.dao.AppConfigDao
-import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.data.local.datastore.FileBrowserPrefsStore
 import dev.wucheng.resource_viewer.data.local.datastore.FileSortMode
 import dev.wucheng.resource_viewer.data.local.datastore.FileViewMode
@@ -17,8 +16,6 @@ import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.domain.model.Tag
 import dev.wucheng.resource_viewer.domain.usecase.BatchAddResourcesUseCase
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
-import dev.wucheng.resource_viewer.shared.thumbnail.FileBrowserThumbnailDiskCache
-import dev.wucheng.resource_viewer.shared.thumbnail.FileEntryThumbnailLoader
 import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailLoadManager
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -55,14 +52,13 @@ class FileBrowserViewModel(
     private val batchAddResourcesUseCase: BatchAddResourcesUseCase,
     private val tagRepository: dev.wucheng.resource_viewer.data.repository.TagRepository,
     private val appConfigDao: AppConfigDao? = null,
-    private val thumbnailDiskCache: FileBrowserThumbnailDiskCache? = null,
+    private val thumbnailLoadManager: ThumbnailLoadManager,
     private val prefsStore: FileBrowserPrefsStore,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(FileBrowserUiState())
     val uiState: StateFlow<FileBrowserUiState> = _uiState.asStateFlow()
 
     private var fileSource: FileSource? = null
-    private var thumbnailManager: ThumbnailLoadManager? = null
     private val inFlightThumbnails = mutableMapOf<String, Deferred<Bitmap?>>()
 
     fun load() {
@@ -83,19 +79,9 @@ class FileBrowserViewModel(
                     when (val fsResult = filesystemRepository.getFileSource(sourceId)) {
                         is Result.Ok -> {
                             val config = appConfigDao?.getConfig()?.first()
-                            val configured = config?.thumbnailConcurrency ?: DEFAULT_THUMBNAIL_CONCURRENCY
-                            thumbnailDiskCache?.configureCapacity(config?.thumbnailCacheLimitMB ?: 500)
-                            val effectiveConcurrency = if (source.type == SourceType.SMB) {
-                                ((configured + 1) / 2).coerceAtLeast(1)
-                            } else configured
+                            thumbnailLoadManager.configureCapacity(config?.thumbnailCacheLimitMB ?: 500)
                             fileSource = fsResult.value
-                            thumbnailManager = ThumbnailLoadManager(
-                                sourceId = sourceId,
-                                thumbnailLoader = FileEntryThumbnailLoader(fsResult.value),
-                                diskCache = thumbnailDiskCache,
-                                maxConcurrency = effectiveConcurrency,
-                                maxCacheSize = 64,
-                            )
+                            thumbnailLoadManager.setFileSource(fsResult.value)
                             val showDirectoryTree = config?.showDirectoryTree ?: true
                             _uiState.update { it.copy(source = source, showDirectoryTree = showDirectoryTree) }
                             loadDirectory("")
@@ -251,10 +237,9 @@ class FileBrowserViewModel(
     }
 
     suspend fun loadThumbnail(entry: FileEntry): Bitmap? {
-        val manager = thumbnailManager ?: return null
         val deferred = synchronized(inFlightThumbnails) {
             inFlightThumbnails[entry.relativePath]
-                ?: viewModelScope.async { manager.load(entry) }
+                ?: viewModelScope.async { thumbnailLoadManager.load(sourceId, entry) }
                     .also { inFlightThumbnails[entry.relativePath] = it }
         }
         return deferred.await().also {
@@ -265,7 +250,6 @@ class FileBrowserViewModel(
     }
 
     companion object {
-        private const val DEFAULT_THUMBNAIL_CONCURRENCY = 4
     }
 
     private fun loadDirectory(path: String) {
@@ -275,7 +259,6 @@ class FileBrowserViewModel(
                 inFlightThumbnails.values.forEach { it.cancel() }
                 inFlightThumbnails.clear()
             }
-            thumbnailManager?.clear()
             val cleanPath = path.trim('/')
 
             val prefs = prefsStore.loadPrefs(sourceId, cleanPath)

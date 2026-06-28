@@ -2,6 +2,7 @@
 
 package dev.wucheng.resource_viewer.di
 
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailLoadManager
 import dev.wucheng.resource_viewer.ui.screens.home.HomeViewModel
 import dev.wucheng.resource_viewer.ui.screens.settings.SettingsViewModel
 import dev.wucheng.resource_viewer.ui.screens.sources.FileBrowserViewModel
@@ -14,16 +15,14 @@ import dev.wucheng.resource_viewer.ui.screens.viewer.ViewerViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
-/**
- * ViewModel Koin Module。
- * 提供所有 ViewModel 实例。
- */
 val viewModelModule = module {
     viewModel { SettingsViewModel(get(), get(), get(), get(), get()) }
     viewModel { TagViewModel(get()) }
     viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { SourceListViewModel(get(), get(), get(), get()) }
-    viewModel { (sourceId: String) -> FileBrowserViewModel(sourceId, get(), get(), get(), get(), get(), get()) }
+    viewModel { (sourceId: String) ->
+        FileBrowserViewModel(sourceId, get(), get(), get(), get(), get(), get())
+    }
     viewModel { (resourceId: String, contentPath: String, initialPage: Int) ->
         ViewerViewModel(
             resourceId = resourceId,
@@ -35,7 +34,9 @@ val viewModelModule = module {
             appConfigDao = get(),
         )
     }
-    viewModel { (resourceId: String) -> ChapterListViewModel(resourceId, get(), get(), get(), get()) }
+    viewModel { (resourceId: String) ->
+        ChapterListViewModel(resourceId, get(), get(), get(), get())
+    }
     viewModel { (resourceId: String, mode: ContentGridMode) ->
         ContentGridViewModel(resourceId, mode, get(), get(), get(), get())
     }

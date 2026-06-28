@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaDataSource
 import android.media.MediaMetadataRetriever
+import android.util.Log
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import dev.wucheng.resource_viewer.shared.media.MediaFormats
@@ -31,7 +32,8 @@ class FileEntryThumbnailLoader(private val fileSource: FileSource) {
                 MediaFormats.isVideo(preview.extension) -> decodeVideo(preview, targetSize)
                 else -> null
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "Thumbnail load failed for ${entry.relativePath}", e)
             null
         }
     }
@@ -77,7 +79,8 @@ class FileEntryThumbnailLoader(private val fileSource: FileSource) {
             retriever.setDataSource(FileSourceMediaDataSource(fileSource, entry.relativePath, entry.size))
             retriever.getScaledFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, target, target)
                 ?: retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to decode video thumbnail for ${entry.relativePath}", e)
             null
         } finally {
             retriever.release()
@@ -85,6 +88,7 @@ class FileEntryThumbnailLoader(private val fileSource: FileSource) {
     }
 
     companion object {
+        private const val TAG = "EntryThumbLoader"
         const val MAX_RESOURCE_DEPTH = 4
         const val MAX_RESOURCE_DIRECTORIES = 64
     }

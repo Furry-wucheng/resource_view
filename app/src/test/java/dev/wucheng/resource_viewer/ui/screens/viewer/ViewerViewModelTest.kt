@@ -68,6 +68,8 @@ class ViewerViewModelTest {
         // 设置默认行为
         every { mockContentProvider.pageCount } returns 10
         every { mockContentProvider.dispose() } just Runs
+        // MixedFolderProvider 需要获取 Source 判断是否 SMB
+        coEvery { mockFilesystemRepository.getSource(any()) } returns Result.Ok(localSource)
 
         viewModel = ViewerViewModel(
             resourceId = testResourceId,
@@ -90,12 +92,19 @@ class ViewerViewModelTest {
         // Arrange
         coEvery { mockResourceRepository.getById(testResourceId) } returns Result.Ok(testResource)
         coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
+        coEvery { mockFileSource.listDirectory(any()) } returns listOf(
+            dev.wucheng.resource_viewer.domain.model.FileEntry(
+                name = "image1.jpg", relativePath = "test/path/image1.jpg",
+                isDirectory = false, size = 1024,
+                modifiedAt = System.currentTimeMillis(), extension = "jpg",
+            ),
+        )
 
         // Act
         viewModel.loadResource()
         advanceUntilIdle()
 
-        // Assert - 初始状态应该是 loading
+        // Assert - 初始状态应该是 loading（或快速完成时为 success）
         val state = viewModel.uiState.value
         assertTrue(state is ViewerUiState.Loading || state is ViewerUiState.Success)
     }
@@ -316,6 +325,16 @@ class ViewerViewModelTest {
         coEvery { mockResourceRepository.getById("video-local-id") } returns Result.Ok(localVideoResource)
         coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
         coEvery { mockFilesystemRepository.getSource(any()) } returns Result.Ok(localSource)
+        coEvery { mockFileSource.listDirectory(any()) } returns listOf(
+            dev.wucheng.resource_viewer.domain.model.FileEntry(
+                name = "movie.mp4",
+                relativePath = "videos/movie.mp4",
+                isDirectory = false,
+                size = 1024L * 1024 * 100,
+                modifiedAt = System.currentTimeMillis(),
+                extension = "mp4",
+            ),
+        )
 
         // Act
         videoViewModel.loadResource()
@@ -345,6 +364,16 @@ class ViewerViewModelTest {
         coEvery { mockFilesystemRepository.getFileSource(any()) } returns Result.Ok(mockFileSource)
         coEvery { mockFilesystemRepository.getSource(any()) } returns Result.Ok(smbSource)
         every { mockFilesystemRepository.getPassword(any()) } returns "testpass"
+        coEvery { mockFileSource.listDirectory(any()) } returns listOf(
+            dev.wucheng.resource_viewer.domain.model.FileEntry(
+                name = "movie.mp4",
+                relativePath = "videos/movie.mp4",
+                isDirectory = false,
+                size = 1024L * 1024 * 100,
+                modifiedAt = System.currentTimeMillis(),
+                extension = "mp4",
+            ),
+        )
 
         // Act
         videoViewModel.loadResource()

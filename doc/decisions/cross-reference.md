@@ -407,7 +407,28 @@
 | fileTypeColor/fileTypeIcon 公共化 | refactor-unified-thumbnail | D-003 |
 | 并发数统一读 AppConfigDao | refactor-unified-thumbnail | D-004 |
 
----
+### 2026-06-29 — 视频NO_MEMORY修复 + 查看器无缝切换 + 缩略图缓存统一
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `ui/screens/viewer/VideoPlayerController.kt` | 2026-06-29-video-thumbnail-cache-fix | D-001 |
+| `ui/screens/viewer/ViewerScreen.kt` | 2026-06-29-video-thumbnail-cache-fix | D-001 |
+| `ui/screens/viewer/ViewerViewModel.kt` | 2026-06-29-video-thumbnail-cache-fix | D-002 |
+| `shared/content/MixedFolderProvider.kt` | 2026-06-29-video-thumbnail-cache-fix | D-002 |
+| `shared/thumbnail/ThumbnailLoadManager.kt` | 2026-06-29-video-thumbnail-cache-fix | D-004, D-006 |
+| `di/CoilModule.kt` | 2026-06-29-video-thumbnail-cache-fix | D-004 |
+| `di/ViewModelModule.kt` | 2026-06-29-video-thumbnail-cache-fix | D-004 |
+| `ui/screens/viewer/ContentGridViewModel.kt` | 2026-06-29-video-thumbnail-cache-fix | D-004 |
+| `ui/screens/viewer/ChapterListViewModel.kt` | 2026-06-29-video-thumbnail-cache-fix | D-004, D-005 |
+| `ui/screens/sources/FileBrowserViewModel.kt` | 2026-06-29-video-thumbnail-cache-fix | D-004 |
+| ExoPlayer 生命周期管理 — 复用 + Pager | 2026-06-29-video-thumbnail-cache-fix | D-001 |
+| 查看器无缝切换 — MixedFolderProvider | 2026-06-29-video-thumbnail-cache-fix | D-002 |
+| 缩略图异常日志可见性 | 2026-06-29-video-thumbnail-cache-fix | D-003 |
+| 缩略图缓存统一 — LoadManager 单例 | 2026-06-29-video-thumbnail-cache-fix | D-004 |
+| 章廊 vs 章节策略区分 | 2026-06-29-video-thumbnail-cache-fix | D-005 |
+| CancellationException 不透传 misses | 2026-06-29-video-thumbnail-cache-fix | D-006 |
+| 磁盘缓存 key 精简 | 2026-06-29-video-thumbnail-cache-fix | D-007 |
+| 清缓存后自动重生成封面 | 2026-06-29-video-thumbnail-cache-fix | D-008 |
 
 > ⚠️ 各 stage 完成后，Agent 需在此文件中新增自己 stage 涉及的组件行和决策主题行。
 > 已有行的决策 ID 列留空（`—`），待对应 stage 完成后由 Agent 填写。

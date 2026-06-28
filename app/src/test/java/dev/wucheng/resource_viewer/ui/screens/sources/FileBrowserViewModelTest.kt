@@ -11,6 +11,7 @@ import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.domain.usecase.BatchAddResourcesUseCase
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailLoadManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -35,6 +36,7 @@ class FileBrowserViewModelTest {
     private lateinit var tagRepository: TagRepository
     private lateinit var fileSource: FileSource
     private lateinit var prefsStore: FileBrowserPrefsStore
+    private lateinit var thumbnailLoadManager: ThumbnailLoadManager
     private lateinit var viewModel: FileBrowserViewModel
 
     private val source = Source(
@@ -54,8 +56,9 @@ class FileBrowserViewModelTest {
         tagRepository = mockk(relaxed = true)
         fileSource = mockk()
         prefsStore = mockk(relaxed = true)
+        thumbnailLoadManager = mockk(relaxed = true)
         coEvery { prefsStore.loadPrefs(any(), any()) } returns FolderPrefs()
-        viewModel = FileBrowserViewModel("source-1", filesystemRepository, batchAddResourcesUseCase, tagRepository, prefsStore = prefsStore)
+        viewModel = FileBrowserViewModel("source-1", filesystemRepository, batchAddResourcesUseCase, tagRepository, thumbnailLoadManager = thumbnailLoadManager, prefsStore = prefsStore)
     }
 
     @After

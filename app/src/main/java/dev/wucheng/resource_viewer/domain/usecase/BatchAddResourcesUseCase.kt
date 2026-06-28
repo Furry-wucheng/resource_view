@@ -162,6 +162,11 @@ class BatchAddResourcesUseCase(
                                     val thumbFile = result.value
                                     if (thumbFile != null) {
                                         resourceRepository.updateThumbnail(entity.id, thumbFile.absolutePath)
+                                    } else {
+                                        Log.w(
+                                            TAG,
+                                            "No thumbnail generated for ${entity.name} (type=${entity.type})",
+                                        )
                                     }
                                 }
                                 is Result.Err -> {
