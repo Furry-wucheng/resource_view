@@ -20,8 +20,6 @@ class ThumbnailLoadManager(
     private val misses = mutableSetOf<String>()
 
     suspend fun load(entry: FileEntry): Bitmap? {
-        if (entry.isDirectory) return null
-
         synchronized(cache) { cache[entry.relativePath] }?.let { return it }
         if (synchronized(misses) { entry.relativePath in misses }) return null
 
