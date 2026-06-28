@@ -133,10 +133,7 @@ class ContentGridViewModel(
         }
     }
 
-    suspend fun loadEntryThumbnail(entry: FileEntry): Bitmap? {
-        if (entry.isDirectory) return null
-        return thumbnailManager?.load(entry)
-    }
+    suspend fun loadEntryThumbnail(entry: FileEntry): Bitmap? = thumbnailManager?.load(entry)
 
     companion object {
         private val SUPPORTED_EXTENSIONS = MediaFormats.imageExtensions + MediaFormats.videoExtensions
