@@ -111,6 +111,8 @@
 | `shared/thumbnail/FileEntryThumbnailLoader.kt` | home-grid-style-thumbnail-perf | D-004 |
 | `shared/thumbnail/ImageThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | — |
 | `shared/thumbnail/VideoThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | D-003 |
+| `shared/thumbnail/ThumbnailLoadManager.kt` | refactor-unified-thumbnail | D-001 |
+| `ui/components/FileThumbnailCard.kt` | refactor-unified-thumbnail | D-002, D-003 |
 | `ui/components/ResourceGridItem.kt` | home-grid-style-thumbnail-perf | D-001, D-002 |
 | `domain/usecase/BatchAddResourcesUseCase.kt` | home-grid-style-thumbnail-perf | D-005 |
 
@@ -393,6 +395,17 @@
 | OrgModeSwitcher 接入导航即时切换 | batchadd-viewer-thumbnail-video-fix | D-006 |
 | OrganizationStrategy 纳入视频文件 | batchadd-viewer-thumbnail-video-fix | D-007 |
 | 视频条目导航到 FileViewer | batchadd-viewer-thumbnail-video-fix | D-008 |
+
+### refactor-unified-thumbnail — 统一缩略图加载管理器和卡片组件
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `shared/thumbnail/ThumbnailLoadManager.kt` | refactor-unified-thumbnail | D-001 |
+| `ui/components/FileThumbnailCard.kt` | refactor-unified-thumbnail | D-002, D-003 |
+| 统一三处 ViewModel 缓存逻辑 | refactor-unified-thumbnail | D-001 |
+| 统一两处网格卡片 UI | refactor-unified-thumbnail | D-002 |
+| fileTypeColor/fileTypeIcon 公共化 | refactor-unified-thumbnail | D-003 |
+| 并发数统一读 AppConfigDao | refactor-unified-thumbnail | D-004 |
 
 ---
 
