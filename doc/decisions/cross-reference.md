@@ -48,10 +48,14 @@
 | `shared/content/ImageFolderProvider.kt` | M14 | D-001, D-002 |
 | `shared/content/PdfContentProvider.kt` | M22 | — |
 | `shared/organization/OrganizationStrategy.kt` | M11 | — |
-| `shared/organization/FlatGridStrategy.kt` | M20 | — |
-| `shared/organization/GalleryStrategy.kt` | M20 | — |
-| `shared/organization/ChapterStrategy.kt` | M21 | — |
-| `shared/organization/ChapterGalleryStrategy.kt` | M21 | — |
+| `shared/organization/FlatGridStrategy.kt` | home-grid-style-thumbnail-perf | D-012 |
+| `shared/organization/GalleryStrategy.kt` | home-grid-style-thumbnail-perf | D-012 |
+| `shared/organization/ChapterStrategy.kt` | home-grid-style-thumbnail-perf | D-012 |
+| `shared/organization/ChapterGalleryStrategy.kt` | home-grid-style-thumbnail-perf | D-012 |
+| `ui/screens/viewer/ChapterListScreen.kt` | home-grid-style-thumbnail-perf | D-010, D-011, D-013 |
+| `ui/screens/viewer/ContentGridScreen.kt` | home-grid-style-thumbnail-perf | D-010, D-011, D-013 |
+| `ui/screens/viewer/ChapterListViewModel.kt` | home-grid-style-thumbnail-perf | D-010 |
+| `ui/screens/viewer/ContentGridViewModel.kt` | home-grid-style-thumbnail-perf | D-010, D-012 |
 | `shared/thumbnail/ThumbnailGenerator.kt` | M11 | — |
 | `shared/thumbnail/ImageThumbnailGenerator.kt` | M23 | — |
 | `shared/thumbnail/PdfThumbnailGenerator.kt` | M22 | — |
@@ -350,6 +354,10 @@
 | 批量添加跳过组织模式深度检测 | home-grid-style-thumbnail-perf | D-007 |
 | 缩略图异步生成不阻塞主流程 | home-grid-style-thumbnail-perf | D-008 |
 | 首页缩略图缺失检测与后台补全 | home-grid-style-thumbnail-perf | D-009 |
+| 查看器缩略图改用 FileEntryThumbnailLoader | home-grid-style-thumbnail-perf | D-010 |
+| OrgModeSwitcher 接入导航即时切换 | home-grid-style-thumbnail-perf | D-011 |
+| OrganizationStrategy 纳入视频文件 | home-grid-style-thumbnail-perf | D-012 |
+| 视频条目导航到 FileViewer | home-grid-style-thumbnail-perf | D-013 |
 
 ---
 

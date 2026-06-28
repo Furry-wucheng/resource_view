@@ -52,9 +52,20 @@
 | `shared/thumbnail/FileEntryThumbnailLoader.kt` | ✏️ 修改 | FileSourceMediaDataSource private → internal |
 | `shared/thumbnail/VideoThumbnailGeneratorTest.kt` | ✏️ 更新 | 验证不再调用 readFile、验证缓存复用 |
 | `ui/screens/home/HomeViewModel.kt` | ✏️ 修改 | 新增 generateMissingThumbnails() 后台补全缩略图 |
-| `di/ViewModelModule.kt` | ✏️ 修改 | HomeViewModel 注入 ThumbnailRepository / FilesystemRepository / AppDatabase / Context |
+| `di/ViewModelModule.kt` | ✏️ 修改 | HomeViewModel/ChapterListVM/ContentGridVM 注入缩略图依赖 |
 | `ui/screens/sources/FileBrowserViewModel.kt` | ✏️ 修改 | confirmBatchAdd 传入 viewModelScope 启用异步缩略图 |
 | `.../FileBrowserViewModelTest.kt` | ✏️ 修改 | mock 适配新增 thumbnailScope 参数 |
+| `shared/organization/FlatGridStrategy.kt` | ✏️ 修改 | getContents() 纳入 videoExtensions |
+| `shared/organization/GalleryStrategy.kt` | ✏️ 修改 | collectMedia() 纳入 videoExtensions |
+| `shared/organization/ChapterStrategy.kt` | ✏️ 修改 | fileCount 计入视频，coverPath 视频回落 |
+| `shared/organization/ChapterGalleryStrategy.kt` | ✏️ 修改 | 同上 |
+| `ui/screens/viewer/ChapterListViewModel.kt` | ✏️ 修改 | 注入 diskCache + loadChapterCover() + sourceId |
+| `ui/screens/viewer/ContentGridViewModel.kt` | ✏️ 修改 | 注入 diskCache + loadEntryThumbnail() + listFlat 纳视频 |
+| `ui/screens/viewer/ChapterListScreen.kt` | ✏️ 修改 | AsyncImage→produceState + onNavigateToMode + onOpenVideo |
+| `ui/screens/viewer/ContentGridScreen.kt` | ✏️ 修改 | GridEntryCard→缩略图卡片 + onNavigateToMode + onOpenVideo |
+| `ui/navigation/AppNavGraph.kt` | ✏️ 修改 | 接线 onNavigateToMode + onOpenVideo |
+| `.../FlatGridStrategyTest.kt` | ✏️ 更新 | 验证视频纳入 + 更新断言 |
+| `.../GalleryStrategyTest.kt` | ✏️ 更新 | 验证视频纳入 + 更新断言 |
 
 > 操作图例: 🆕 新增 · ✏️ 修改 · 🗑️ 删除
 
@@ -90,3 +101,27 @@
 - **选择**: `HomeViewModel.init` 中非阻塞调用 `generateMissingThumbnails()`。收集 `thumbnailPath == null` 的资源，通过 `ThumbnailRepository` 和 `ThumbnailTaskPool` 并发生成，完成后 Room Flow 自动刷新 UI。依赖通过 Koin 可选注入（null 时跳过）
 - **备选**: 在 `HomeScreen` 的 `LaunchedEffect` 中触发 → 放弃，ViewModel init 更早触发且不会因 recomposition 重复执行
 - **影响文件**: `ui/screens/home/HomeViewModel.kt:186-265`, `di/ViewModelModule.kt:26`
+
+---
+
+## 第三轮优化 (2026-06-29, opencode)
+
+### D-010: 查看器缩略图改用 FileEntryThumbnailLoader
+- **背景**: `ChapterListScreen` 用 Coil `AsyncImage` + 裸相对路径加载章节封面，`ContentGridScreen` 的 `GridEntryCard` 只显示图标。两者都不走 `FileEntryThumbnailLoader`，导致缩略图不显示
+- **选择**: ViewModel 注入 `FileBrowserThumbnailDiskCache`，添加 `loadChapterCover()`/`loadEntryThumbnail()` 方法。Screen 端用 `produceState<Bitmap>` 加载，fallback 显示类型颜色+图标。与文件浏览器 `FileEntryGridItem` 缩略图逻辑一致
+- **影响文件**: `ChapterListViewModel.kt`, `ContentGridViewModel.kt`, `ChapterListScreen.kt`, `ContentGridScreen.kt`
+
+### D-011: OrgModeSwitcher 接入导航实现即时切换
+- **背景**: `OrgModeSwitcher` 只调 `changeOrganizationMode()` 写 DB 不触发导航。用户点击平铺后仍在章节列表
+- **选择**: 新增 `onNavigateToMode: (OrganizationMode) -> Unit` 回调穿透至 `AppNavGraph`。切换时 `navController.navigate(route) { popUpTo(Home) }` 替换回退栈
+- **影响文件**: `ChapterListScreen.kt`, `ContentGridScreen.kt`, `AppNavGraph.kt`
+
+### D-012: OrganizationStrategy 纳入视频文件
+- **背景**: 4 个策略全部只用 `MediaFormats.imageExtensions` 过滤，视频文件在任何组织模式下不可见
+- **选择**: `FlatGridStrategy`/`GalleryStrategy` 的 `getContents()` 加入 `videoExtensions`；`ChapterStrategy`/`ChapterGalleryStrategy` 的 `fileCount` 计入视频、`coverPath` 图片优先视频回落
+- **影响文件**: `FlatGridStrategy.kt`, `GalleryStrategy.kt`, `ChapterStrategy.kt`, `ChapterGalleryStrategy.kt`
+
+### D-013: 视频条目导航到 FileViewer
+- **背景**: 视频在 ContentGrid/ChapterList 可见后，点击走 `SequenceViewer` → `ImageFolderProvider`（只看图），无法播放
+- **选择**: 新增 `onOpenVideo: (sourceId, filePath) -> Unit` 回调。`MediaFormats.isVideo()` 检测，点击导航到 `Screen.FileViewer` → `loadFromSource()` → `MixedFolderProvider`
+- **影响文件**: `ContentGridScreen.kt`, `ChapterListScreen.kt`, `AppNavGraph.kt`
