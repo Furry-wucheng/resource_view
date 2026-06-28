@@ -93,6 +93,17 @@ fun AppNavGraph(
                 onNavigateToViewer = { resId, chapterPath ->
                     navController.navigate(Screen.ChapterViewer.createRoute(resId, chapterPath))
                 },
+                onNavigateToMode = { mode ->
+                    val route = when (resolveResourceDestination(mode)) {
+                        ResourceDestination.CHAPTER_LIST -> Screen.ChapterList.createRoute(resourceId)
+                        ResourceDestination.FLAT_GRID -> Screen.FlatGrid.createRoute(resourceId)
+                        ResourceDestination.GALLERY -> Screen.Gallery.createRoute(resourceId)
+                        ResourceDestination.VIEWER -> Screen.Viewer.createRoute(resourceId)
+                    }
+                    navController.navigate(route) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                    }
+                },
             )
         }
 
@@ -116,6 +127,17 @@ fun AppNavGraph(
                 onOpenViewer = { path, page ->
                     navController.navigate(Screen.SequenceViewer.createRoute(resourceId, path, page))
                 },
+                onNavigateToMode = { mode ->
+                    val route = when (resolveResourceDestination(mode)) {
+                        ResourceDestination.CHAPTER_LIST -> Screen.ChapterList.createRoute(resourceId)
+                        ResourceDestination.FLAT_GRID -> Screen.FlatGrid.createRoute(resourceId)
+                        ResourceDestination.GALLERY -> Screen.Gallery.createRoute(resourceId)
+                        ResourceDestination.VIEWER -> Screen.Viewer.createRoute(resourceId)
+                    }
+                    navController.navigate(route) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                    }
+                },
             )
         }
         composable(Screen.Gallery.route) { backStackEntry ->
@@ -126,6 +148,17 @@ fun AppNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onOpenViewer = { path, page ->
                     navController.navigate(Screen.SequenceViewer.createRoute(resourceId, path, page))
+                },
+                onNavigateToMode = { mode ->
+                    val route = when (resolveResourceDestination(mode)) {
+                        ResourceDestination.CHAPTER_LIST -> Screen.ChapterList.createRoute(resourceId)
+                        ResourceDestination.FLAT_GRID -> Screen.FlatGrid.createRoute(resourceId)
+                        ResourceDestination.GALLERY -> Screen.Gallery.createRoute(resourceId)
+                        ResourceDestination.VIEWER -> Screen.Viewer.createRoute(resourceId)
+                    }
+                    navController.navigate(route) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                    }
                 },
             )
         }

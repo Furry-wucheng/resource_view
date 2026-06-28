@@ -1,5 +1,7 @@
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,17 +18,17 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
+import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.domain.model.Chapter
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.OrgModeSwitcher
@@ -46,6 +48,7 @@ fun ChapterListScreen(
     resourceId: String,
     onNavigateBack: () -> Unit,
     onNavigateToViewer: (String, String) -> Unit,
+    onNavigateToMode: (OrganizationMode) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ChapterListViewModel = koinViewModel { parametersOf(resourceId) },
 ) {
@@ -136,8 +139,12 @@ fun ChapterListScreen(
                                 state = state,
                                 resourceId = resourceId,
                                 onNavigateToViewer = onNavigateToViewer,
-                                onChangeOrgMode = { viewModel.changeOrganizationMode(it) },
+                                onChangeOrgMode = { mode ->
+                                    viewModel.changeOrganizationMode(mode)
+                                    onNavigateToMode(mode)
+                                },
                                 onToggleViewMode = { viewModel.toggleViewMode() },
+                                viewModel = viewModel,
                             )
                         } else {
                             // 窄屏布局：标准纵向
@@ -145,7 +152,11 @@ fun ChapterListScreen(
                                 state = state,
                                 resourceId = resourceId,
                                 onNavigateToViewer = onNavigateToViewer,
-                                onChangeOrgMode = { viewModel.changeOrganizationMode(it) },
+                                onChangeOrgMode = { mode ->
+                                    viewModel.changeOrganizationMode(mode)
+                                    onNavigateToMode(mode)
+                                },
+                                viewModel = viewModel,
                             )
                         }
                     }
@@ -163,7 +174,8 @@ private fun NarrowChapterLayout(
     state: ChapterListUiState.Success,
     resourceId: String,
     onNavigateToViewer: (String, String) -> Unit,
-    onChangeOrgMode: (dev.wucheng.resource_viewer.data.local.converter.OrganizationMode) -> Unit,
+    onChangeOrgMode: (OrganizationMode) -> Unit,
+    viewModel: ChapterListViewModel,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // 组织模式切换器
@@ -180,6 +192,7 @@ private fun NarrowChapterLayout(
                 state = state,
                 resourceId = resourceId,
                 onNavigateToViewer = onNavigateToViewer,
+                viewModel = viewModel,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -194,8 +207,9 @@ private fun WideChapterLayout(
     state: ChapterListUiState.Success,
     resourceId: String,
     onNavigateToViewer: (String, String) -> Unit,
-    onChangeOrgMode: (dev.wucheng.resource_viewer.data.local.converter.OrganizationMode) -> Unit,
+    onChangeOrgMode: (OrganizationMode) -> Unit,
     onToggleViewMode: () -> Unit,
+    viewModel: ChapterListViewModel,
 ) {
     Row(modifier = Modifier.fillMaxSize()) {
         // 左侧封面面板
@@ -218,13 +232,10 @@ private fun WideChapterLayout(
                 contentAlignment = Alignment.Center,
             ) {
                 if (coverPath != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(coverPath)
-                            .build(),
-                        contentDescription = state.resourceName,
+                    ChapterCoverImage(
+                        coverPath = coverPath,
+                        viewModel = viewModel,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
                     )
                 } else {
                     Icon(
@@ -276,6 +287,7 @@ private fun WideChapterLayout(
                 state = state,
                 resourceId = resourceId,
                 onNavigateToViewer = onNavigateToViewer,
+                viewModel = viewModel,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -315,6 +327,7 @@ private fun ChapterContent(
     state: ChapterListUiState.Success,
     resourceId: String,
     onNavigateToViewer: (String, String) -> Unit,
+    viewModel: ChapterListViewModel,
     modifier: Modifier = Modifier,
 ) {
     when (state.viewMode) {
@@ -331,6 +344,7 @@ private fun ChapterContent(
                     ChapterItem(
                         chapter = chapter,
                         onClick = { onNavigateToViewer(resourceId, chapter.relativePath) },
+                        viewModel = viewModel,
                     )
                 }
 
@@ -369,6 +383,7 @@ private fun ChapterContent(
                     ChapterGridItem(
                         chapter = chapter,
                         onClick = { onNavigateToViewer(resourceId, chapter.relativePath) },
+                        viewModel = viewModel,
                     )
                 }
 
@@ -403,6 +418,7 @@ private fun ChapterContent(
 private fun ChapterItem(
     chapter: Chapter,
     onClick: () -> Unit,
+    viewModel: ChapterListViewModel,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -427,13 +443,10 @@ private fun ChapterItem(
                 contentAlignment = Alignment.Center,
             ) {
                 if (chapter.coverPath != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(chapter.coverPath)
-                            .build(),
-                        contentDescription = chapter.name,
+                    ChapterCoverImage(
+                        coverPath = chapter.coverPath,
+                        viewModel = viewModel,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
                     )
                 } else {
                     Icon(
@@ -524,6 +537,7 @@ private fun LooseFileItem(
 private fun ChapterGridItem(
     chapter: Chapter,
     onClick: () -> Unit,
+    viewModel: ChapterListViewModel,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -542,13 +556,10 @@ private fun ChapterGridItem(
                 contentAlignment = Alignment.Center,
             ) {
                 if (chapter.coverPath != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(chapter.coverPath)
-                            .build(),
-                        contentDescription = chapter.name,
+                    ChapterCoverImage(
+                        coverPath = chapter.coverPath,
+                        viewModel = viewModel,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
                     )
                 } else {
                     Icon(
@@ -612,6 +623,41 @@ private fun LooseFileGridItem(
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/**
+ * 章节封面缩略图组件。
+ * 通过 FileEntryThumbnailLoader 从 FileSource 加载，有缓存 fallback 图标。
+ */
+@Composable
+private fun ChapterCoverImage(
+    coverPath: String,
+    viewModel: ChapterListViewModel,
+    modifier: Modifier = Modifier,
+) {
+    val bitmap by produceState<Bitmap?>(null, coverPath) {
+        value = viewModel.loadChapterCover(coverPath)
+    }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap!!.asImageBitmap(),
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Box(
+            modifier = modifier.background(Color(0xFF1565C0)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Folder,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = Color.White.copy(alpha = 0.72f),
             )
         }
     }

@@ -1,5 +1,6 @@
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
@@ -10,14 +11,20 @@ import dev.wucheng.resource_viewer.domain.model.Chapter
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 import dev.wucheng.resource_viewer.shared.organization.ChapterGalleryStrategy
 import dev.wucheng.resource_viewer.shared.organization.ChapterStrategy
 import dev.wucheng.resource_viewer.shared.organization.OrganizationStrategy
+import dev.wucheng.resource_viewer.shared.thumbnail.FileBrowserThumbnailDiskCache
+import dev.wucheng.resource_viewer.shared.thumbnail.FileEntryThumbnailLoader
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailSearchPolicy
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailTaskPool
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import dev.wucheng.resource_viewer.shared.media.MediaFormats
 
 enum class ChapterViewMode { LIST, GRID }
 
@@ -51,6 +58,7 @@ class ChapterListViewModel(
     private val resourceId: String,
     private val resourceRepository: ResourceRepository,
     private val filesystemRepository: FilesystemRepository,
+    private val thumbnailDiskCache: FileBrowserThumbnailDiskCache? = null,
 ) : ViewModel() {
 
     /** UI 状态 */
@@ -60,6 +68,14 @@ class ChapterListViewModel(
     /** 资源信息 */
     private var resource: Resource? = null
     private var fileSource: FileSource? = null
+
+    /** 缩略图加载 */
+    private var thumbnailLoader: FileEntryThumbnailLoader? = null
+    private var thumbnailPool = ThumbnailTaskPool(4)
+    private val thumbnailCache = object : LinkedHashMap<String, Bitmap>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?): Boolean = size > 32
+    }
+    private val thumbnailMisses = mutableSetOf<String>()
 
     /**
      * 加载章节列表。
@@ -82,6 +98,9 @@ class ChapterListViewModel(
                         is Result.Ok -> {
                             val fs = fsResult.value
                             fileSource = fs
+                            thumbnailLoader = FileEntryThumbnailLoader(fs)
+                            thumbnailCache.clear()
+                            thumbnailMisses.clear()
 
                             try {
                                 val strategy = getStrategy(res)
@@ -158,6 +177,44 @@ class ChapterListViewModel(
         if (current is ChapterListUiState.Success) {
             val newMode = if (current.viewMode == ChapterViewMode.LIST) ChapterViewMode.GRID else ChapterViewMode.LIST
             _uiState.value = current.copy(viewMode = newMode)
+        }
+    }
+
+    /**
+     * 加载章节封面缩略图。
+     * 通过 FileEntryThumbnailLoader 从 FileSource 加载，复用磁盘缓存。
+     */
+    suspend fun loadChapterCover(path: String): Bitmap? {
+        synchronized(thumbnailCache) { thumbnailCache[path] }?.let { return it }
+        if (synchronized(thumbnailMisses) { path in thumbnailMisses }) return null
+        val loader = thumbnailLoader ?: return null
+        return try {
+            thumbnailPool.run {
+                val entry = FileEntry(
+                    path.substringAfterLast("/"),
+                    path,
+                    false,
+                    0,
+                    0L,
+                    path.substringAfterLast(".", ""),
+                )
+                val cached = thumbnailDiskCache?.get(resourceId, entry, ThumbnailSearchPolicy.DIRECT_CHILD)
+                val bitmap = if (cached?.isCached == true) {
+                    cached.bitmap
+                } else {
+                    loader.load(entry, policy = ThumbnailSearchPolicy.DIRECT_CHILD)?.also {
+                        thumbnailDiskCache?.put(resourceId, entry, ThumbnailSearchPolicy.DIRECT_CHILD, it)
+                    }
+                }
+                if (bitmap == null) {
+                    synchronized(thumbnailMisses) { thumbnailMisses += path }
+                } else {
+                    synchronized(thumbnailCache) { thumbnailCache[path] = bitmap }
+                }
+                bitmap
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 }
