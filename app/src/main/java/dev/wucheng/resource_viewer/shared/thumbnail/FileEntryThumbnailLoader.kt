@@ -90,7 +90,7 @@ class FileEntryThumbnailLoader(private val fileSource: FileSource) {
     }
 }
 
-private class FileSourceMediaDataSource(
+internal class FileSourceMediaDataSource(
     private val source: FileSource,
     private val path: String,
     private val length: Long,

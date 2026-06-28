@@ -104,6 +104,11 @@
 | `shared/thumbnail/FileEntryThumbnailLoader.kt` | fix | D-002 |
 | `shared/thumbnail/FileBrowserThumbnailDiskCache.kt` | fix | D-002 |
 | `shared/thumbnail/ThumbnailTaskPool.kt` | fix | D-002 |
+| `shared/thumbnail/FileEntryThumbnailLoader.kt` | home-grid-style-thumbnail-perf | D-004 |
+| `shared/thumbnail/ImageThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | — |
+| `shared/thumbnail/VideoThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | D-003 |
+| `ui/components/ResourceGridItem.kt` | home-grid-style-thumbnail-perf | D-001, D-002 |
+| `domain/usecase/BatchAddResourcesUseCase.kt` | home-grid-style-thumbnail-perf | D-005 |
 
 ### M25 — 设置页面
 
@@ -162,6 +167,10 @@
 | 视频手势处理方案 | M19 | D-004 |
 | ExoPlayer 生命周期管理 | M19 | D-005 |
 | VideoThumbnailGenerator 实现 | M19 | D-006 |
+| ResourceGridItem 与文件浏览器对齐 | home-grid-style-thumbnail-perf | D-001 |
+| Coil 3 本地文件路径加载修复 | home-grid-style-thumbnail-perf | D-002 |
+| 视频缩略图分块读取替代全量读取 | home-grid-style-thumbnail-perf | D-003 |
+| 缩略图生成异常日志可见性 | home-grid-style-thumbnail-perf | D-005 |
 
 ### M20 — Gallery + FlatGrid 策略
 
@@ -319,6 +328,20 @@
 | 目录树布局位置 (content 内部) | file-browser-ux | D-003 |
 | 排序方式与 UI (DropdownMenu) | file-browser-ux | D-004 |
 | 文件夹角标显示逻辑 | file-browser-ux | D-005 |
+
+### home-grid-style-thumbnail-perf — 主页样式统一 + 缩略图修复 + 视频缩略图性能优化
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `ui/components/ResourceGridItem.kt` | home-grid-style-thumbnail-perf | D-001, D-002 |
+| `shared/thumbnail/VideoThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | D-003 |
+| `shared/thumbnail/FileEntryThumbnailLoader.kt` | home-grid-style-thumbnail-perf | D-004 |
+| `domain/usecase/BatchAddResourcesUseCase.kt` | home-grid-style-thumbnail-perf | D-005 |
+| 主页网格视觉与文件浏览器对齐 | home-grid-style-thumbnail-perf | D-001 |
+| Coil 3 本地文件加载修复 | home-grid-style-thumbnail-perf | D-002 |
+| 视频缩略图分块读取 | home-grid-style-thumbnail-perf | D-003 |
+| FileSourceMediaDataSource 可见性提升 | home-grid-style-thumbnail-perf | D-004 |
+| 缩略图异常日志可见性 | home-grid-style-thumbnail-perf | D-005 |
 
 ---
 

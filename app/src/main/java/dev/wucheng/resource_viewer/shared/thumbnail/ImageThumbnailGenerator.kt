@@ -2,10 +2,9 @@ package dev.wucheng.resource_viewer.shared.thumbnail
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
-import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.domain.model.FileEntry
+import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import java.io.File
 import java.io.FileOutputStream
@@ -22,8 +21,6 @@ class ImageThumbnailGenerator(
     private val context: Context,
     private val thumbnailDiskCache: FileBrowserThumbnailDiskCache? = null,
 ) : ThumbnailGenerator {
-    /** 缩略图最大尺寸（px） */
-    private val maxThumbnailSize = 320
 
     /**
      * 是否可处理该资源类型。
@@ -73,7 +70,7 @@ class ImageThumbnailGenerator(
             }
 
             // 4. 生成新的缩略图
-            val bitmap = loader.load(entry, maxThumbnailSize, ThumbnailSearchPolicy.RESOURCE_COVER) ?: return null
+            val bitmap = loader.load(entry, MAX_THUMBNAIL_SIZE, ThumbnailSearchPolicy.RESOURCE_COVER) ?: return null
             saveBitmap(bitmap, outputFile)
 
             // 5. 写入 FileBrowserThumbnailDiskCache
@@ -87,35 +84,6 @@ class ImageThumbnailGenerator(
         }
     }
 
-    /**
-     * 解码并缩放图片。
-     */
-    private fun decodeAndScale(imageBytes: ByteArray): Bitmap? {
-        // 先获取尺寸
-        val options = BitmapFactory.Options().apply {
-            inJustDecodeBounds = true
-        }
-        BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
-
-        // 计算采样率
-        val width = options.outWidth
-        val height = options.outHeight
-        var inSampleSize = 1
-        while (width / inSampleSize > maxThumbnailSize * 2 || height / inSampleSize > maxThumbnailSize * 2) {
-            inSampleSize *= 2
-        }
-
-        // 解码
-        options.apply {
-            inJustDecodeBounds = false
-            inSampleSize = inSampleSize
-        }
-        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
-    }
-
-    /**
-     * 获取输出文件路径。
-     */
     private fun getOutputFile(cacheDir: File, resourceId: String): File {
         if (!cacheDir.exists()) {
             cacheDir.mkdirs()
@@ -123,13 +91,14 @@ class ImageThumbnailGenerator(
         return File(cacheDir, "thumb_${resourceId}.jpg")
     }
 
-    /**
-     * 保存 Bitmap 到文件。
-     */
     private fun saveBitmap(bitmap: Bitmap, file: File) {
         FileOutputStream(file).use { out ->
             bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
         }
         bitmap.recycle()
+    }
+
+    private companion object {
+        const val MAX_THUMBNAIL_SIZE = 320
     }
 }
