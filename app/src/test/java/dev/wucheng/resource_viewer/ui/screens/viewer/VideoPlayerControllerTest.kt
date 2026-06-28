@@ -13,53 +13,44 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * VideoPlayerViewModel 单元测试。
+ * VideoPlayerController 单元测试。
  * 使用 MockK mock ExoPlayer 进行纯 JVM 测试。
  *
- * 注意：此实现遵循 doc/mvp/M19-video-player.md 中的 M19.1 子任务。
+ * 核心验证：释放（release）后不再操作底层 MediaCodec，避免 NO_MEMORY 的连锁错误。
  */
-class VideoPlayerViewModelTest {
+class VideoPlayerControllerTest {
 
     private lateinit var mockPlayer: ExoPlayer
-    private lateinit var viewModel: VideoPlayerViewModel
+    private lateinit var controller: VideoPlayerController
 
     @Before
     fun setup() {
         mockPlayer = mockk(relaxed = true)
-        viewModel = VideoPlayerViewModel(mockPlayer)
+        controller = VideoPlayerController(mockPlayer)
 
-        // Mock android.net.Uri for JVM unit tests
         mockkStatic(Uri::class)
         every { Uri.parse(any()) } returns mockk(relaxed = true)
     }
 
     @After
     fun teardown() {
-        viewModel.release()
+        controller.release()
         unmockkStatic(Uri::class)
     }
 
-    // ===== RED: 加载本地视频 =====
-
     @Test
     fun `should set media item when loadMedia called with local source`() {
-        // Given
         val localSource = VideoMediaSource.LocalFile("/storage/emulated/0/video.mp4")
 
-        // When
-        viewModel.loadMedia(localSource)
+        controller.loadMedia(localSource)
 
-        // Then
         verify { mockPlayer.setMediaItem(any<MediaItem>()) }
         verify { mockPlayer.prepare() }
         verify { mockPlayer.playWhenReady = true }
     }
 
-    // ===== RED: 加载 SMB 视频 =====
-
     @Test
     fun `should set media source when loadMedia called with SMB source`() {
-        // Given
         val mockDataSourceFactory = mockk<DataSource.Factory>(relaxed = true)
         val smbSource = VideoMediaSource.SmbFile(
             dataSourceFactory = mockDataSourceFactory,
@@ -67,126 +58,111 @@ class VideoPlayerViewModelTest {
             fileSize = 1024L * 1024,
         )
 
-        // When
-        viewModel.loadMedia(smbSource)
+        controller.loadMedia(smbSource)
 
-        // Then
         verify { mockPlayer.setMediaSource(any()) }
         verify { mockPlayer.prepare() }
         verify { mockPlayer.playWhenReady = true }
     }
 
-    // ===== RED: 播放/暂停切换 =====
-
     @Test
     fun `should play when togglePlayPause and player is not playing`() {
-        // Given
         every { mockPlayer.isPlaying } returns false
 
-        // When
-        viewModel.togglePlayPause()
+        controller.togglePlayPause()
 
-        // Then
         verify { mockPlayer.play() }
     }
 
     @Test
     fun `should pause when togglePlayPause and player is playing`() {
-        // Given
         every { mockPlayer.isPlaying } returns true
 
-        // When
-        viewModel.togglePlayPause()
+        controller.togglePlayPause()
 
-        // Then
         verify { mockPlayer.pause() }
     }
 
-    // ===== RED: 播放速度 =====
-
     @Test
     fun `should set playback speed when setPlaybackSpeed called`() {
-        // When
-        viewModel.setPlaybackSpeed(2.0f)
+        controller.setPlaybackSpeed(2.0f)
 
-        // Then
         verify { mockPlayer.setPlaybackSpeed(2.0f) }
-        assertEquals(2.0f, viewModel.playbackSpeed.value, 0.01f)
+        assertEquals(2.0f, controller.playbackSpeed.value, 0.01f)
     }
 
     @Test
     fun `should restore normal speed when restoreNormalSpeed called`() {
-        // When
-        viewModel.restoreNormalSpeed()
+        controller.restoreNormalSpeed()
 
-        // Then
         verify { mockPlayer.setPlaybackSpeed(1.0f) }
-        assertEquals(1.0f, viewModel.playbackSpeed.value, 0.01f)
+        assertEquals(1.0f, controller.playbackSpeed.value, 0.01f)
     }
-
-    // ===== RED: 释放资源 =====
 
     @Test
     fun `should release player when release called`() {
-        // When
-        viewModel.release()
+        controller.release()
 
-        // Then
         verify { mockPlayer.release() }
     }
 
-    // ===== RED: 状态暴露 =====
-
     @Test
     fun `should expose isPlaying state from player`() {
-        // Given
         every { mockPlayer.isPlaying } returns true
 
-        // When
-        viewModel.togglePlayPause()
+        controller.togglePlayPause()
 
-        // Then
-        assertTrue(viewModel.isPlaying.value)
+        assertTrue(controller.isPlaying.value)
     }
 
     @Test
     fun `should expose playback speed after set`() {
-        // When
-        viewModel.setPlaybackSpeed(1.5f)
+        controller.setPlaybackSpeed(1.5f)
 
-        // Then
-        assertEquals(1.5f, viewModel.playbackSpeed.value, 0.01f)
+        assertEquals(1.5f, controller.playbackSpeed.value, 0.01f)
     }
-
-    // ===== RED: 跳转 =====
 
     @Test
     fun `should seek to position when seekTo called`() {
-        // When
-        viewModel.seekTo(30000L)
+        controller.seekTo(30000L)
 
-        // Then
         verify { mockPlayer.seekTo(30000L) }
-        assertEquals(30000L, viewModel.currentPositionMs.value)
+        assertEquals(30000L, controller.currentPositionMs.value)
     }
-
-    // ===== RED: 更新播放状态 =====
 
     @Test
     fun `should update playback state from player`() {
-        // Given
         every { mockPlayer.isPlaying } returns true
         every { mockPlayer.currentPosition } returns 5000L
         every { mockPlayer.duration } returns 120000L
         every { mockPlayer.playbackParameters } returns PlaybackParameters(1.5f)
 
-        // When
-        viewModel.updatePlaybackState()
+        controller.updatePlaybackState()
 
-        // Then
-        assertTrue(viewModel.isPlaying.value)
-        assertEquals(5000L, viewModel.currentPositionMs.value)
-        assertEquals(120000L, viewModel.durationMs.value)
-        assertEquals(1.5f, viewModel.playbackSpeed.value, 0.01f)
+        assertTrue(controller.isPlaying.value)
+        assertEquals(5000L, controller.currentPositionMs.value)
+        assertEquals(120000L, controller.durationMs.value)
+        assertEquals(1.5f, controller.playbackSpeed.value, 0.01f)
+    }
+
+    @Test
+    fun `should not operate player after release`() {
+        controller.release()
+        clearMocks(mockPlayer)
+
+        // 释放后再次调用 loadMedia 不应操作 player
+        val localSource = VideoMediaSource.LocalFile("/storage/emulated/0/video.mp4")
+        controller.loadMedia(localSource)
+        verify(exactly = 0) { mockPlayer.setMediaItem(any()) }
+        verify(exactly = 0) { mockPlayer.prepare() }
+
+        // togglePlayPause 不应操作 player
+        controller.togglePlayPause()
+        verify(exactly = 0) { mockPlayer.play() }
+        verify(exactly = 0) { mockPlayer.pause() }
+
+        // seekTo 不应操作 player
+        controller.seekTo(10000L)
+        verify(exactly = 0) { mockPlayer.seekTo(any()) }
     }
 }

@@ -2,7 +2,6 @@
 
 package dev.wucheng.resource_viewer.di
 
-import androidx.media3.exoplayer.ExoPlayer
 import dev.wucheng.resource_viewer.ui.screens.home.HomeViewModel
 import dev.wucheng.resource_viewer.ui.screens.settings.SettingsViewModel
 import dev.wucheng.resource_viewer.ui.screens.sources.FileBrowserViewModel
@@ -11,7 +10,6 @@ import dev.wucheng.resource_viewer.ui.screens.tags.TagViewModel
 import dev.wucheng.resource_viewer.ui.screens.viewer.ChapterListViewModel
 import dev.wucheng.resource_viewer.ui.screens.viewer.ContentGridMode
 import dev.wucheng.resource_viewer.ui.screens.viewer.ContentGridViewModel
-import dev.wucheng.resource_viewer.ui.screens.viewer.VideoPlayerViewModel
 import dev.wucheng.resource_viewer.ui.screens.viewer.ViewerViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -42,10 +40,7 @@ val viewModelModule = module {
         ContentGridViewModel(resourceId, mode, get(), get(), get(), get())
     }
 
-    // M19: VideoPlayerViewModel — 每次创建新实例（含独立 ExoPlayer）
-    viewModel<VideoPlayerViewModel> {
-        val context = get<android.content.Context>()
-        val player = ExoPlayer.Builder(context).build()
-        VideoPlayerViewModel(player)
-    }
+    // VideoPlayerController 不再通过 Koin viewModel 管理，
+    // 其生命周期由 Composable (remember + DisposableEffect) 直接控制，
+    // 确保视频页离开底层 MediaCodec 立即释放，防止 DecoderInitializationException: NO_MEMORY。
 }
