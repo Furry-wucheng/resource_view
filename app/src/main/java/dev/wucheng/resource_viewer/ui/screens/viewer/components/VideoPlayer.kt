@@ -30,7 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import dev.wucheng.resource_viewer.R
-import dev.wucheng.resource_viewer.ui.screens.viewer.VideoPlayerViewModel
+import dev.wucheng.resource_viewer.ui.screens.viewer.VideoPlayerController
 import kotlin.math.round
 
 private val PanelBg = Color.Black.copy(alpha = 0.65f)
@@ -39,15 +39,15 @@ private val BottomBarShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp
 @OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayer(
-    viewModel: VideoPlayerViewModel,
+    controller: VideoPlayerController,
     toolbarVisible: Boolean,
     onToggleToolbar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
-    val currentPositionMs by viewModel.currentPositionMs.collectAsStateWithLifecycle()
-    val durationMs by viewModel.durationMs.collectAsStateWithLifecycle()
+    val isPlaying by controller.isPlaying.collectAsStateWithLifecycle()
+    val currentPositionMs by controller.currentPositionMs.collectAsStateWithLifecycle()
+    val durationMs by controller.durationMs.collectAsStateWithLifecycle()
 
     var isLongPressing by remember { mutableStateOf(false) }
     var currentSpeed by remember { mutableFloatStateOf(2f) }
@@ -59,7 +59,7 @@ fun VideoPlayer(
     LaunchedEffect(Unit) {
         while (true) {
             kotlinx.coroutines.delay(200)
-            viewModel.updatePlaybackState()
+            controller.updatePlaybackState()
         }
     }
 
@@ -72,7 +72,7 @@ fun VideoPlayer(
                 val playerView = view.findViewById<PlayerView>(R.id.custom_player_view)
 
                 playerView.apply {
-                    player = viewModel.exoPlayer
+                    player = controller.exoPlayer
                     useController = false
 
                     val gestureDetector = GestureDetector(
@@ -84,7 +84,7 @@ fun VideoPlayer(
                             }
 
                             override fun onDoubleTap(e: MotionEvent): Boolean {
-                                viewModel.togglePlayPause()
+                                controller.togglePlayPause()
                                 return true
                             }
 
@@ -92,7 +92,7 @@ fun VideoPlayer(
                                 isLongPressing = true
                                 longPressStartY = e.y
                                 currentSpeed = 2.0f
-                                viewModel.setPlaybackSpeed(currentSpeed)
+                                controller.setPlaybackSpeed(currentSpeed)
                             }
                         },
                     )
@@ -105,7 +105,7 @@ fun VideoPlayer(
                             val speedDelta = (deltaY / 100f) * 0.25f
                             val newSpeed = (2.0f + speedDelta).coerceIn(1f, 3f)
                             currentSpeed = round(newSpeed / 0.25f) * 0.25f
-                            viewModel.setPlaybackSpeed(currentSpeed)
+                            controller.setPlaybackSpeed(currentSpeed)
                         }
 
                         if (event.action == MotionEvent.ACTION_UP ||
@@ -113,7 +113,7 @@ fun VideoPlayer(
                         ) {
                             if (isLongPressing) {
                                 isLongPressing = false
-                                viewModel.restoreNormalSpeed()
+                                controller.restoreNormalSpeed()
                             }
                         }
                         true
@@ -164,7 +164,7 @@ fun VideoPlayer(
                         },
                         onDragEnd = {
                             if (isDragging) {
-                                viewModel.seekTo(dragTargetMs.coerceIn(0L, durationMs))
+                                controller.seekTo(dragTargetMs.coerceIn(0L, durationMs))
                                 isDragging = false
                             }
                         },
@@ -272,7 +272,7 @@ fun VideoPlayer(
         }
 
         DisposableEffect(Unit) {
-            onDispose { viewModel.restoreNormalSpeed() }
+            onDispose { controller.restoreNormalSpeed() }
         }
     }
 }

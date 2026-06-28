@@ -1,6 +1,5 @@
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
-import androidx.lifecycle.ViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -11,20 +10,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * 视频播放器 ViewModel。
- * 管理 ExoPlayer 实例，提供播放控制和状态暴露。
+ * 视频播放器控制器。
+ * 持有 ExoPlayer 实例，提供播放控制和状态暴露。
  *
- * 接收外部注入的 [ExoPlayer] 实例（由 Koin 创建），
- * 保证可测试性（单元测试中注入 mock）。
- *
- * 注意：此实现遵循 doc/mvp/M19-video-player.md 中的 M19.1 子任务。
+ * 与 [VideoPlayerViewModel] 的区别：
+ * - 不继承 ViewModel，生命周期由 Composable 通过 [remember] + [DisposableEffect] 显式管理；
+ * - 离开视频页面时调用方必须 [release]，底层 MediaCodec 立即释放，防止 NO_MEMORY。
  */
 @androidx.media3.common.util.UnstableApi
-class VideoPlayerViewModel(
+class VideoPlayerController(
     private val player: ExoPlayer,
-) : ViewModel() {
+) {
     /** ExoPlayer 实例，供 PlayerView 绑定 */
     val exoPlayer: ExoPlayer get() = player
+
     /** 是否正在播放 */
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
@@ -41,6 +40,8 @@ class VideoPlayerViewModel(
     private val _durationMs = MutableStateFlow(0L)
     val durationMs: StateFlow<Long> = _durationMs.asStateFlow()
 
+    private var isReleased = false
+
     /**
      * 加载视频资源。
      * 根据 [VideoMediaSource] 类型设置不同的 MediaSource。
@@ -49,6 +50,7 @@ class VideoPlayerViewModel(
      * - [VideoMediaSource.SmbFile]: 使用调用方提供的 [DataSource.Factory] 构建 ProgressiveMediaSource
      */
     fun loadMedia(source: VideoMediaSource) {
+        if (isReleased) return
         when (source) {
             is VideoMediaSource.LocalFile -> {
                 val mediaItem = MediaItem.fromUri(source.path)
@@ -68,6 +70,7 @@ class VideoPlayerViewModel(
      * 切换播放/暂停。
      */
     fun togglePlayPause() {
+        if (isReleased) return
         if (player.isPlaying) {
             player.pause()
         } else {
@@ -77,6 +80,7 @@ class VideoPlayerViewModel(
     }
 
     fun pause() {
+        if (isReleased) return
         player.pause()
         _isPlaying.value = false
     }
@@ -86,6 +90,7 @@ class VideoPlayerViewModel(
      * @param speed 播放速度倍率 (0.5 ~ 3.0)
      */
     fun setPlaybackSpeed(speed: Float) {
+        if (isReleased) return
         player.setPlaybackSpeed(speed)
         _playbackSpeed.value = speed
         _isPlaying.value = player.isPlaying
@@ -103,6 +108,7 @@ class VideoPlayerViewModel(
      * @param positionMs 目标位置 (ms)
      */
     fun seekTo(positionMs: Long) {
+        if (isReleased) return
         player.seekTo(positionMs)
         _currentPositionMs.value = positionMs
     }
@@ -112,6 +118,7 @@ class VideoPlayerViewModel(
      * 由外部定时调用或监听 Player.Listener。
      */
     fun updatePlaybackState() {
+        if (isReleased) return
         _isPlaying.value = player.isPlaying
         _currentPositionMs.value = player.currentPosition
         _durationMs.value = player.duration.coerceAtLeast(0)
@@ -120,13 +127,11 @@ class VideoPlayerViewModel(
 
     /**
      * 释放 ExoPlayer 资源。
+     * 释放后所有操作均会被忽略，防止对已释放的 MediaCodec 二次调用。
      */
     fun release() {
+        if (isReleased) return
+        isReleased = true
         player.release()
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        release()
     }
 }

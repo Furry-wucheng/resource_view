@@ -37,6 +37,7 @@ import coil3.request.ImageRequest
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
 import dev.wucheng.resource_viewer.data.local.converter.PageDirection
 import dev.wucheng.resource_viewer.data.local.converter.DoublePageMode
+import androidx.media3.exoplayer.ExoPlayer
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.SlideBar
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.VideoPlayer
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.ViewerToolbar
@@ -358,19 +359,22 @@ private fun VideoPageContent(
     onToggleToolbar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val playerKey = remember(videoItem.videoSource) { "video:${videoItem.videoSource.hashCode()}" }
-    val videoPlayerViewModel: VideoPlayerViewModel = koinViewModel(key = playerKey)
-
-    LaunchedEffect(videoItem) {
-        videoPlayerViewModel.loadMedia(videoItem.videoSource)
+    val context = LocalContext.current
+    val controller = remember(videoItem.videoSource) {
+        val player = ExoPlayer.Builder(context).build()
+        VideoPlayerController(player)
     }
 
-    DisposableEffect(videoPlayerViewModel) {
-        onDispose { videoPlayerViewModel.pause() }
+    LaunchedEffect(videoItem) {
+        controller.loadMedia(videoItem.videoSource)
+    }
+
+    DisposableEffect(videoItem.videoSource) {
+        onDispose { controller.release() }
     }
 
     VideoPlayer(
-        viewModel = videoPlayerViewModel,
+        controller = controller,
         toolbarVisible = toolbarVisible,
         onToggleToolbar = onToggleToolbar,
         modifier = modifier,
