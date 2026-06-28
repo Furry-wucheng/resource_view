@@ -132,6 +132,27 @@ class MixedFolderProvider(
         return bitmapLoader.load(entry, targetWidth, targetHeight)
     }
 
+    /**
+     * 获取指定图片页的文件扩展名。
+     */
+    fun getPageExtension(index: Int): String {
+        val files = getImageFileList()
+        require(index in 0 until files.size) { "Image index $index out of range [0, ${files.size})" }
+        return files[index].substringAfterLast('.', "").lowercase()
+    }
+
+    /**
+     * 获取指定图片页的文件 URI。
+     * 用于 Coil 加载动画图片（GIF/animated WebP）。
+     */
+    suspend fun getPageUri(index: Int): android.net.Uri {
+        val files = getImageFileList()
+        require(index in 0 until files.size) { "Image index $index out of range [0, ${files.size})" }
+        val filePath = files[index]
+        val entry = getMixedEntries().first { it.relativePath == filePath }
+        return android.net.Uri.fromFile(bitmapLoader.ensureLocalFile(entry))
+    }
+
     override fun dispose() {
         // No-op
     }

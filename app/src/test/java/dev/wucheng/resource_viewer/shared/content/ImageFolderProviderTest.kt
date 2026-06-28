@@ -227,6 +227,36 @@ class ImageFolderProviderTest {
         provider.getPageUri(0)
     }
 
+    @Test
+    fun `should return Uri pointing to cached file for remote source`() = runTest {
+        // Arrange: Uri.fromFile 在纯 JVM Android stub 中返回 null，需 mock
+        mockkStatic(android.net.Uri::class)
+        val mockUri = mockk<android.net.Uri>()
+        every { mockUri.path } returns "/cache/test.gif"
+        every { android.net.Uri.fromFile(any()) } returns mockUri
+
+        val imageFiles = listOf(createFileEntry("animation.gif", false))
+        coEvery { mockFileSource.listDirectory(testRelativePath) } returns imageFiles
+        coEvery { mockFileSource.stat("$testRelativePath/animation.gif") } returns createFileEntry("animation.gif", false)
+        every { mockFileSource.sourceId } returns "test-source"
+        coEvery { mockFileSource.openInputStream(any()) } returns ByteArrayInputStream("GIF87a".toByteArray())
+
+        val cacheDir = java.io.File.createTempFile("cache", "").apply { delete() }
+        val provider = ImageFolderProvider(mockFileSource, testRelativePath, pageCacheDirectory = cacheDir)
+
+        try {
+            // Act
+            val uri = provider.getPageUri(0)
+
+            // Assert
+            assertNotNull(uri)
+            assertTrue(uri.path?.endsWith(".gif") == true)
+        } finally {
+            unmockkStatic(android.net.Uri::class)
+            cacheDir.deleteRecursively()
+        }
+    }
+
     private fun createFileEntry(name: String, isDirectory: Boolean): FileEntry {
         return FileEntry(
             name = name,

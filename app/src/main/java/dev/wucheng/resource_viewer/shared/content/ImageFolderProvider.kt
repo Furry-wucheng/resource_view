@@ -108,11 +108,13 @@ class ImageFolderProvider(
      * @param index 页码（0-based）
      * @return 文件 URI
      */
-    fun getPageUri(index: Int): Uri {
+    suspend fun getPageUri(index: Int): Uri {
         val files = getImageFiles()
         require(index in 0 until files.size) { "Page index $index out of range [0, ${files.size})" }
         val filePath = files[index]
-        return Uri.fromFile(File(filePath))
+        val entry = fileSource.stat(filePath)
+            ?: throw IllegalStateException("Image no longer exists: $filePath")
+        return Uri.fromFile(bitmapLoader.ensureLocalFile(entry))
     }
 
     /**

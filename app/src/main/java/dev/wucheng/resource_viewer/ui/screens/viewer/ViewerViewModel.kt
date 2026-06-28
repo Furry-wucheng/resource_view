@@ -607,6 +607,7 @@ class ViewerViewModel(
         return withContext(ioDispatcher) {
             when (provider) {
                 is ImageFolderProvider -> provider.getPageUri(pageIndex)
+                is MixedFolderProvider -> provider.getPageUri(pageIndex)
                 else -> throw UnsupportedOperationException("URI not available for this provider type")
             }
         }

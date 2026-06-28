@@ -175,6 +175,22 @@
 | Coil 3 本地文件路径加载修复 | home-grid-style-thumbnail-perf | D-002 |
 | 视频缩略图分块读取替代全量读取 | home-grid-style-thumbnail-perf | D-003 |
 | 缩略图生成异常日志可见性 | home-grid-style-thumbnail-perf | D-005 |
+| 统一远程文件缓存入口 ensureLocalFile | 2026-06-29-smb-gif-uri-fix | D-001 |
+| 缓存目录统一（去掉 pages 子目录） | 2026-06-29-smb-gif-uri-fix | D-002 |
+| MixedFolderProvider 补充 GIF 支持 | 2026-06-29-smb-gif-uri-fix | D-003 |
+
+### 2026-06-29 — SMB/本地源 GIF 查看无限加载修复
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `shared/filesource/LocalFileSource.kt` | 2026-06-29-smb-gif-uri-fix | D-001 |
+| `shared/content/PageBitmapLoader.kt` | 2026-06-29-smb-gif-uri-fix | D-001, D-002 |
+| `shared/content/ImageFolderProvider.kt` | 2026-06-29-smb-gif-uri-fix | D-001 |
+| `shared/content/MixedFolderProvider.kt` | 2026-06-29-smb-gif-uri-fix | D-003 |
+| `ui/screens/viewer/ViewerViewModel.kt` | 2026-06-29-smb-gif-uri-fix | D-003 |
+| 统一远程文件缓存入口 ensureLocalFile | 2026-06-29-smb-gif-uri-fix | D-001 |
+| 缓存目录统一（去掉 pages 子目录） | 2026-06-29-smb-gif-uri-fix | D-002 |
+| MixedFolderProvider 补充 GIF 支持 | 2026-06-29-smb-gif-uri-fix | D-003 |
 
 ### M20 — Gallery + FlatGrid 策略
 
@@ -342,6 +358,11 @@
 | `shared/thumbnail/FileEntryThumbnailLoader.kt` | home-grid-style-thumbnail-perf | D-004 |
 | `shared/thumbnail/ImageThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | — |
 | `domain/usecase/BatchAddResourcesUseCase.kt` | home-grid-style-thumbnail-perf | D-005 |
+| `shared/filesource/LocalFileSource.kt` | 2026-06-29-smb-gif-uri-fix | D-001 |
+| `shared/content/PageBitmapLoader.kt` | 2026-06-29-smb-gif-uri-fix | D-001, D-002 |
+| `shared/content/ImageFolderProvider.kt` | 2026-06-29-smb-gif-uri-fix | D-001 |
+| `shared/content/MixedFolderProvider.kt` | 2026-06-29-smb-gif-uri-fix | D-003 |
+| `ui/screens/viewer/ViewerViewModel.kt` | 2026-06-29-smb-gif-uri-fix | D-003 |
 | 主页网格视觉与文件浏览器对齐 | home-grid-style-thumbnail-perf | D-001 |
 | Coil 3 本地文件加载修复 | home-grid-style-thumbnail-perf | D-002 |
 | 视频缩略图分块读取 | home-grid-style-thumbnail-perf | D-003 |

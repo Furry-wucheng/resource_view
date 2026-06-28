@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
-import dev.wucheng.resource_viewer.shared.filesource.SmbFileSource
+import dev.wucheng.resource_viewer.shared.filesource.LocalFileSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
@@ -22,16 +22,32 @@ class PageBitmapLoader(
     private val cacheLimitBytes: Long = DEFAULT_CACHE_LIMIT,
 ) {
     suspend fun load(entry: FileEntry, targetWidth: Int, targetHeight: Int): Bitmap = withContext(Dispatchers.IO) {
-        val bitmap = if (fileSource is SmbFileSource && cacheDirectory != null) {
-            decodeFile(cacheSmbFile(entry), targetWidth, targetHeight)
-        } else {
-            decodeStreams(entry.relativePath, targetWidth, targetHeight)
+        val bitmap = when {
+            fileSource is LocalFileSource -> {
+                decodeFile(fileSource.resolveAbsoluteFile(entry.relativePath), targetWidth, targetHeight)
+            }
+            cacheDirectory != null -> {
+                decodeFile(cacheFileInternal(entry), targetWidth, targetHeight)
+            }
+            else -> {
+                decodeStreams(entry.relativePath, targetWidth, targetHeight)
+            }
         }
         bitmap ?: throw IOException("Failed to decode image: ${entry.relativePath}")
     }
 
-    private suspend fun cacheSmbFile(entry: FileEntry): File = cacheMutex.withLock {
-        val directory = cacheDirectory!!.resolve("image_cache/pages").apply { mkdirs() }
+    suspend fun ensureLocalFile(entry: FileEntry): File = withContext(Dispatchers.IO) {
+        when (fileSource) {
+            is LocalFileSource -> fileSource.resolveAbsoluteFile(entry.relativePath)
+            else -> {
+                requireNotNull(cacheDirectory) { "Cache directory required for non-local file sources" }
+                cacheFileInternal(entry)
+            }
+        }
+    }
+
+    private suspend fun cacheFileInternal(entry: FileEntry): File = cacheMutex.withLock {
+        val directory = cacheDirectory!!.resolve("image_cache").apply { mkdirs() }
         val target = directory.resolve("${cacheKey(entry)}.${entry.extension.ifBlank { "img" }}")
         if (target.isFile && (entry.size <= 0 || target.length() == entry.size)) {
             target.setLastModified(System.currentTimeMillis())
@@ -69,7 +85,7 @@ class PageBitmapLoader(
                 if (attempt == 1) throw error
             }
         }
-        throw lastError ?: IOException("SMB image download failed")
+        throw lastError ?: IOException("File download failed")
     }
 
     private fun decodeFile(file: File, width: Int, height: Int): Bitmap? {

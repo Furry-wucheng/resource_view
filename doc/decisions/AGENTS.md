@@ -42,3 +42,4 @@
 | batchadd-viewer-thumbnail-video-fix | 批量添加性能优化 + 查看器缩略图补全 + 视频支持 + 模式即时切换 | 8 | ✅ | opencode | 2026-06-29 |
 | fix | 文件浏览、混合查看器、缩略图、标签与 SMB 回归修复 | 4 | ✅ | claude | 2026-06-27 |
 | cache-refactor | 缓存管理重构 — 独立容量控制 + 预加载优化 + 缩略图复用 | 7 | ✅ | opencode | 2026-06-27 |
+| 2026-06-29-smb-gif-uri-fix | SMB/本地源 GIF 查看无限加载修复 | 3 | ✅ | opencode | 2026-06-29 |

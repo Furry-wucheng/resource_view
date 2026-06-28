@@ -74,6 +74,8 @@ class LocalFileSource(
         // Local files do not hold shared connection state.
     }
 
+    internal fun resolveAbsoluteFile(relativePath: String): File = resolve(relativePath)
+
     private fun resolveExistingFile(relativePath: String): File {
         val file = resolve(relativePath)
         require(file.exists() && file.isFile) { "File does not exist: $relativePath" }
