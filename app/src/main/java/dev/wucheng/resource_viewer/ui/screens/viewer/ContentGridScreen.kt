@@ -1,17 +1,18 @@
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
@@ -78,6 +79,11 @@ fun ContentGridScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(state.entries, key = { it.relativePath }) { entry ->
+                        val hasFolderBadge by produceState(false, entry.relativePath) {
+                            if (entry.isDirectory) {
+                                value = viewModel.loadEntryThumbnail(entry) != null
+                            }
+                        }
                         FileThumbnailCard(
                             entry = entry,
                             loadThumbnail = { viewModel.loadEntryThumbnail(it) },
@@ -92,6 +98,9 @@ fun ContentGridScreen(
                                     if (index >= 0) onOpenViewer(state.currentPath, index)
                                 }
                             },
+                            bottomEndBadge = if (hasFolderBadge) {
+                                @Composable { Icon(Icons.Default.Folder, "文件夹", Modifier.size(18.dp), tint = Color(0xFFFFC107)) }
+                            } else null,
                         )
                     }
                 }
