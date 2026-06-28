@@ -37,9 +37,9 @@ val viewModelModule = module {
             appConfigDao = get(),
         )
     }
-    viewModel { (resourceId: String) -> ChapterListViewModel(resourceId, get(), get(), get()) }
+    viewModel { (resourceId: String) -> ChapterListViewModel(resourceId, get(), get(), get(), get()) }
     viewModel { (resourceId: String, mode: ContentGridMode) ->
-        ContentGridViewModel(resourceId, mode, get(), get(), get())
+        ContentGridViewModel(resourceId, mode, get(), get(), get(), get())
     }
 
     // M19: VideoPlayerViewModel — 每次创建新实例（含独立 ExoPlayer）

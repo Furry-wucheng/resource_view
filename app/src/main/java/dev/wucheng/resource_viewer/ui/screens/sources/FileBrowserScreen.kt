@@ -76,6 +76,9 @@ import dev.wucheng.resource_viewer.data.local.datastore.FileSortMode
 import dev.wucheng.resource_viewer.data.local.datastore.FileViewMode
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.domain.model.FileEntry
+import dev.wucheng.resource_viewer.ui.components.FileThumbnailCard
+import dev.wucheng.resource_viewer.ui.components.fileTypeColor
+import dev.wucheng.resource_viewer.ui.components.fileTypeIcon
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -306,23 +309,48 @@ private fun FileContentArea(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(uiState.entries, key = { it.relativePath }) { entry ->
-                        FileEntryGridItem(
+                        val isMultiSelect = uiState.isMultiSelectMode
+                        val selected = entry.relativePath in uiState.selectedPaths
+                        val hasThumbnail by produceState(false, entry.relativePath) {
+                            value = viewModel.loadThumbnail(entry) != null
+                        }
+                        FileThumbnailCard(
                             entry = entry,
-                            isMultiSelect = uiState.isMultiSelectMode,
-                            selected = entry.relativePath in uiState.selectedPaths,
-                            onClick = {
-                                if (uiState.isMultiSelectMode) viewModel.toggleSelection(entry.relativePath)
-                                else if (entry.isDirectory) viewModel.openDirectory(entry.relativePath)
-                                else onOpenFile(uiState.source?.id ?: "", entry.relativePath)
-                            },
+                            loadThumbnail = { viewModel.loadThumbnail(it) },
+                            selected = selected && isMultiSelect,
                             onLongClick = {
-                                if (!uiState.isMultiSelectMode) {
+                                if (!isMultiSelect) {
                                     viewModel.enterMultiSelect()
                                     viewModel.toggleSelection(entry.relativePath)
                                 }
                             },
-                            onToggleSelect = { viewModel.toggleSelection(entry.relativePath) },
-                            viewModel = viewModel,
+                            trailingIcon = {
+                                if (isMultiSelect) {
+                                    Icon(
+                                        if (selected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                        contentDescription = if (selected) "取消选择" else "选择",
+                                        tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.clickable { viewModel.toggleSelection(entry.relativePath) },
+                                    )
+                                }
+                            },
+                            bottomEndBadge = {
+                                if (entry.isDirectory && hasThumbnail) {
+                                    Icon(
+                                        Icons.Default.Folder,
+                                        contentDescription = "文件夹",
+                                        tint = Color(0xFFFFC107),
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            },
+                            modifier = Modifier.clickable(
+                                onClick = {
+                                    if (isMultiSelect) viewModel.toggleSelection(entry.relativePath)
+                                    else if (entry.isDirectory) viewModel.openDirectory(entry.relativePath)
+                                    else onOpenFile(uiState.source?.id ?: "", entry.relativePath)
+                                }
+                            ),
                         )
                     }
                 }
@@ -391,69 +419,6 @@ private fun FileEntryRow(
     )
 }
 
-// ===== 网格项 =====
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun FileEntryGridItem(
-    entry: FileEntry,
-    isMultiSelect: Boolean,
-    selected: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onToggleSelect: () -> Unit,
-    viewModel: FileBrowserViewModel,
-) {
-    val bitmap by produceState<android.graphics.Bitmap?>(null, entry.relativePath) {
-        value = viewModel.loadThumbnail(entry)
-    }
-    val hasThumbnail = bitmap != null
-
-    Card(
-        modifier = Modifier.fillMaxWidth().aspectRatio(3f / 4f).combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected && isMultiSelect) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceVariant,
-        ),
-    ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            // 缩略图
-            if (hasThumbnail) {
-                Image(bitmap!!.asImageBitmap(), entry.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            } else {
-                Box(Modifier.fillMaxSize().background(fileTypeColor(entry)), contentAlignment = Alignment.Center) {
-                    Icon(fileIcon(entry), null, Modifier.size(32.dp), tint = Color.White.copy(alpha = 0.72f))
-                }
-            }
-            Box(
-                modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.88f))))
-                    .padding(start = 6.dp, end = 6.dp, top = 40.dp, bottom = 8.dp),
-                contentAlignment = Alignment.BottomCenter,
-            ) {
-                Text(text = entry.name, color = Color.White, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            // 文件夹角标：只有有缩略图的文件夹才显示
-            if (entry.isDirectory && hasThumbnail) {
-                Icon(
-                    imageVector = Icons.Default.Folder,
-                    contentDescription = "文件夹",
-                    tint = Color(0xFFFFC107),
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).size(18.dp),
-                )
-            }
-            if (isMultiSelect && selected) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "已选择",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(22.dp),
-                )
-            }
-        }
-    }
-}
-
 @Composable
 private fun FileThumbnail(entry: FileEntry, viewModel: FileBrowserViewModel, modifier: Modifier = Modifier.fillMaxSize()) {
     val bitmap by produceState<android.graphics.Bitmap?>(null, entry.relativePath) { value = viewModel.loadThumbnail(entry) }
@@ -461,25 +426,9 @@ private fun FileThumbnail(entry: FileEntry, viewModel: FileBrowserViewModel, mod
         Image(bitmap!!.asImageBitmap(), entry.name, modifier, contentScale = ContentScale.Crop)
     } else {
         Box(modifier.background(fileTypeColor(entry)), contentAlignment = Alignment.Center) {
-            Icon(fileIcon(entry), null, Modifier.size(32.dp), tint = Color.White.copy(alpha = 0.72f))
+            Icon(fileTypeIcon(entry), null, Modifier.size(32.dp), tint = Color.White.copy(alpha = 0.72f))
         }
     }
-}
-
-// ===== 工具函数 =====
-
-private fun fileTypeColor(entry: FileEntry): Color = when {
-    entry.isDirectory -> Color(0xFF1565C0)
-    entry.extension.lowercase() in setOf("mp4", "mkv", "avi", "mov", "webm") -> Color(0xFF2E7D32)
-    entry.extension.lowercase() == "pdf" -> Color(0xFFC62828)
-    else -> Color(0xFF757575)
-}
-
-private fun fileIcon(entry: FileEntry): ImageVector = when {
-    entry.isDirectory -> Icons.Default.Folder
-    entry.extension.lowercase() in setOf("mp4", "mkv", "avi", "mov", "webm") -> Icons.Default.Movie
-    entry.extension.lowercase() == "pdf" -> Icons.Default.PictureAsPdf
-    else -> Icons.Default.Folder
 }
 
 private fun formatFileSize(bytes: Long): String = when {
