@@ -334,14 +334,22 @@
 | 代码组件 / 决策主题 | Stage | 决策 ID |
 |---------------------|-------|---------|
 | `ui/components/ResourceGridItem.kt` | home-grid-style-thumbnail-perf | D-001, D-002 |
-| `shared/thumbnail/VideoThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | D-003 |
+| `ui/screens/home/HomeViewModel.kt` | home-grid-style-thumbnail-perf | D-009 |
+| `di/ViewModelModule.kt` | home-grid-style-thumbnail-perf | D-009 |
+| `domain/usecase/BatchAddResourcesUseCase.kt` | home-grid-style-thumbnail-perf | D-005, D-006, D-007, D-008 |
+| `ui/screens/sources/FileBrowserViewModel.kt` | home-grid-style-thumbnail-perf | D-008 |
 | `shared/thumbnail/FileEntryThumbnailLoader.kt` | home-grid-style-thumbnail-perf | D-004 |
-| `domain/usecase/BatchAddResourcesUseCase.kt` | home-grid-style-thumbnail-perf | D-005 |
+| `shared/thumbnail/ImageThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | — |
+| `shared/thumbnail/VideoThumbnailGenerator.kt` | home-grid-style-thumbnail-perf | D-003 |
 | 主页网格视觉与文件浏览器对齐 | home-grid-style-thumbnail-perf | D-001 |
 | Coil 3 本地文件加载修复 | home-grid-style-thumbnail-perf | D-002 |
 | 视频缩略图分块读取 | home-grid-style-thumbnail-perf | D-003 |
 | FileSourceMediaDataSource 可见性提升 | home-grid-style-thumbnail-perf | D-004 |
 | 缩略图异常日志可见性 | home-grid-style-thumbnail-perf | D-005 |
+| stat() 并行化 | home-grid-style-thumbnail-perf | D-006 |
+| 批量添加跳过组织模式深度检测 | home-grid-style-thumbnail-perf | D-007 |
+| 缩略图异步生成不阻塞主流程 | home-grid-style-thumbnail-perf | D-008 |
+| 首页缩略图缺失检测与后台补全 | home-grid-style-thumbnail-perf | D-009 |
 
 ---
 

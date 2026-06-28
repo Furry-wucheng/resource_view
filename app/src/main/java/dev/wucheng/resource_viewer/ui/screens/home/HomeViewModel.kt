@@ -1,34 +1,51 @@
 package dev.wucheng.resource_viewer.ui.screens.home
 
+import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.wucheng.resource_viewer.data.local.AppDatabase
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.data.local.dao.ResourceTagDao
 import dev.wucheng.resource_viewer.data.local.entity.ResourceTagEntity
+import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.TagRepository
+import dev.wucheng.resource_viewer.data.repository.ThumbnailRepository
+import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.domain.model.Tag
+import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailTaskPool
 import dev.wucheng.resource_viewer.ui.base.UiState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 
 /**
  * 首页 ViewModel。
  * 管理资源列表、标签筛选、UI 状态和资源详情编辑。
+ * 首次加载时自动检测缺失缩略图并后台生成。
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
     private val resourceRepository: ResourceRepository,
     private val tagRepository: TagRepository,
     private val resourceTagDao: ResourceTagDao,
+    private val thumbnailRepository: ThumbnailRepository? = null,
+    private val filesystemRepository: FilesystemRepository? = null,
+    private val database: AppDatabase? = null,
+    private val context: Context? = null,
 ) : ViewModel() {
     enum class ResourceSort { ADDED_DESC, ADDED_ASC, NAME_ASC, NAME_DESC }
 
@@ -106,10 +123,6 @@ class HomeViewModel(
         _isLoadingMore.value = false
     }
 
-    companion object {
-        private const val PAGE_SIZE = 20
-    }
-
     fun setSearchQuery(query: String) { _searchQuery.value = query }
     fun setSort(sort: ResourceSort) { _sort.value = sort }
     fun enterMultiSelectMode() { _isMultiSelect.value = true }
@@ -185,6 +198,9 @@ class HomeViewModel(
                 }
             }
         }
+
+        // 后台检测并生成缺失的缩略图
+        generateMissingThumbnails()
     }
 
     /**
@@ -274,5 +290,74 @@ class HomeViewModel(
             // 关闭弹窗
             closeResourceDetail()
         }
+    }
+
+    /**
+     * 检测资源中缺失缩略图的条目，在后台并发生成。
+     * 非阻塞，完成后通过 Room Flow 自动刷新 UI。
+     */
+    private fun generateMissingThumbnails() {
+        val thumbRepo = thumbnailRepository ?: return
+        val fsRepo = filesystemRepository ?: return
+        val db = database ?: return
+        val ctx = context ?: return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val resources = resourceRepository.getVisibleResources().first()
+                val missing = resources.filter { it.thumbnailPath.isNullOrBlank() }
+                if (missing.isEmpty()) return@launch
+
+                val config = db.appConfigDao().getConfig().first()
+                val concurrency = config?.thumbnailConcurrency ?: 4
+                val pool = ThumbnailTaskPool(concurrency)
+                val cacheDir = ctx.cacheDir.resolve("thumbnails/resources")
+                cacheDir.mkdirs()
+
+                coroutineScope {
+                    missing.map { resource ->
+                        async {
+                            pool.run {
+                                try {
+                                    when (val fsResult = fsRepo.getFileSource(resource.sourceId)) {
+                                        is Result.Ok -> {
+                                            when (val genResult = thumbRepo.generateThumbnail(
+                                                resource,
+                                                fsResult.value,
+                                                cacheDir,
+                                            )) {
+                                                is Result.Ok -> {
+                                                    genResult.value?.let { thumbFile ->
+                                                        resourceRepository.updateThumbnail(
+                                                            resource.id,
+                                                            thumbFile.absolutePath,
+                                                        )
+                                                    }
+                                                }
+                                                is Result.Err -> {
+                                                    Log.e(TAG, "Thumbnail failed for ${resource.name}: ${genResult.error}")
+                                                }
+                                            }
+                                        }
+                                        is Result.Err -> {
+                                            Log.e(TAG, "FileSource failed for ${resource.sourceId}: ${fsResult.error}")
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Thumbnail exception for ${resource.name}", e)
+                                }
+                            }
+                        }
+                    }.awaitAll()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "generateMissingThumbnails failed", e)
+            }
+        }
+    }
+
+    companion object {
+        private const val TAG = "HomeViewModel"
+        private const val PAGE_SIZE = 20
     }
 }

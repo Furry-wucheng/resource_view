@@ -47,10 +47,14 @@
 |------|------|------|
 | `ui/components/ResourceGridItem.kt` | ✏️ 重写 | Card 卡片、3:4 比例、类型图标 fallback、渐变遮罩、Coil File 对象修复、保留收藏星标、去掉标签圆点 |
 | `shared/thumbnail/VideoThumbnailGenerator.kt` | ✏️ 重写 | FileSourceMediaDataSource 分块读取，移除 readFile 全量读取 |
-| `domain/usecase/BatchAddResourcesUseCase.kt` | ✏️ 修改 | 缩略图异常添加 Log.e 日志 |
+| `domain/usecase/BatchAddResourcesUseCase.kt` | ✏️ 修改 | stat() 并行化、跳过深度组织检测、异步缩略图、异常日志 |
 | `shared/thumbnail/ImageThumbnailGenerator.kt` | ✏️ 清理 | 移除未使用的 decodeAndScale 死代码，提取 MAX_THUMBNAIL_SIZE const |
 | `shared/thumbnail/FileEntryThumbnailLoader.kt` | ✏️ 修改 | FileSourceMediaDataSource private → internal |
 | `shared/thumbnail/VideoThumbnailGeneratorTest.kt` | ✏️ 更新 | 验证不再调用 readFile、验证缓存复用 |
+| `ui/screens/home/HomeViewModel.kt` | ✏️ 修改 | 新增 generateMissingThumbnails() 后台补全缩略图 |
+| `di/ViewModelModule.kt` | ✏️ 修改 | HomeViewModel 注入 ThumbnailRepository / FilesystemRepository / AppDatabase / Context |
+| `ui/screens/sources/FileBrowserViewModel.kt` | ✏️ 修改 | confirmBatchAdd 传入 viewModelScope 启用异步缩略图 |
+| `.../FileBrowserViewModelTest.kt` | ✏️ 修改 | mock 适配新增 thumbnailScope 参数 |
 
 > 操作图例: 🆕 新增 · ✏️ 修改 · 🗑️ 删除
 
@@ -58,3 +62,31 @@
 
 - [ ] ImageThumbnailGenerator 仍为 `context: Context` 参数但实际未使用（可后续清理）
 - [ ] `ARCHIVE` 类型尚未注册缩略图生成器（当前显示灰色 fallback 图标，P2 阶段处理）
+
+---
+
+## 第二轮优化 (2026-06-29, opencode)
+
+### D-006: BatchAddResourcesUseCase stat() 并行化
+- **背景**: 串行 `for (path in paths)` 对 SMB 源每条 `stat()` 都是一次网络往返，添加 50 个资源需要 50 次串行网络调用
+- **选择**: Phase 1 使用 `coroutineScope { paths.map { async { fileSource.stat(path) } }.awaitAll() }` 并行获取元数据；Phase 2 串行创建实体避免 SMB 共享连接并发问题
+- **备选**: 整体并行（stat + createEntity）→ 放弃，`DetectOrganizationModeUseCase` 涉及 `listDirectory()` 在共享 SMB 连接上可能冲突
+- **影响文件**: `domain/usecase/BatchAddResourcesUseCase.kt:60-75`
+
+### D-007: 批量添加跳过组织模式深度检测
+- **背景**: `DetectOrganizationModeUseCase` 对每个文件夹调用 `listDirectory()` 最深 3 层，在 SMB 上每条路径扩大为 2~N+1 次网络往返
+- **选择**: 批量添加时（`organizationMode == null`），文件夹默认使用 `OrganizationMode.FLATGRID`，跳过深度检测。用户后续可在资源详情弹窗手动调整
+- **备选**: 缓存检测结果 → 放弃，批量添加通常是一次性操作，缓存性价比低
+- **影响文件**: `domain/usecase/BatchAddResourcesUseCase.kt:165-178`
+
+### D-008: 缩略图异步生成不阻塞主流程
+- **背景**: `generateThumbnails()` 使用 `coroutineScope { awaitAll() }` 阻塞等待所有缩略图完成才返回，用户等待数分钟看不到任何反馈
+- **选择**: 新增 `thumbnailScope: CoroutineScope?` 参数。非 null 时用 `scope.launch(Dispatchers.IO)` fire-and-forget，资源立即显示；null 时保持同步行为向后兼容
+- **备选**: 默认异步去掉同步路径 → 放弃，测试场景需要同步等待
+- **影响文件**: `domain/usecase/BatchAddResourcesUseCase.kt:82-109`, `ui/screens/sources/FileBrowserViewModel.kt:205-233`
+
+### D-009: HomeViewModel 缺失缩略图后台补全
+- **背景**: 用户可能在不同时机添加资源（通过文件浏览器批量添加、或缩略图生成失败），回到主页时部分资源无缩略图显示 fallback 图标
+- **选择**: `HomeViewModel.init` 中非阻塞调用 `generateMissingThumbnails()`。收集 `thumbnailPath == null` 的资源，通过 `ThumbnailRepository` 和 `ThumbnailTaskPool` 并发生成，完成后 Room Flow 自动刷新 UI。依赖通过 Koin 可选注入（null 时跳过）
+- **备选**: 在 `HomeScreen` 的 `LaunchedEffect` 中触发 → 放弃，ViewModel init 更早触发且不会因 recomposition 重复执行
+- **影响文件**: `ui/screens/home/HomeViewModel.kt:186-265`, `di/ViewModelModule.kt:26`

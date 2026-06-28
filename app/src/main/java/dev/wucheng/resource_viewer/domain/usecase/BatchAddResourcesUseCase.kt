@@ -3,28 +3,36 @@ package dev.wucheng.resource_viewer.domain.usecase
 import android.content.Context
 import android.util.Log
 import dev.wucheng.resource_viewer.data.local.AppDatabase
+import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.local.entity.ResourceEntity
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.ThumbnailRepository
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.error.ScanResult
+import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import dev.wucheng.resource_viewer.shared.media.MediaFormats
 import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailTaskPool
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
 
 /**
  * 批量添加资源用例。
  *
- * 接收 ResourcePicker 勾选的路径列表 → 每条路径创建 Resource → 批量插入。
- * 插入后为每个资源并发生成缩略图，遵循设置中的 thumbnailConcurrency 配置。
+ * 流程：
+ * 1. 并行 stat() 获取所有路径元数据
+ * 2. 创建 ResourceEntity（批量添加时跳过组织模式深度检测，默认 FLATGRID）
+ * 3. 批量插入 DB + 关联标签
+ * 4. 立即返回 ScanResult，缩略图在后台异步生成
  *
  * 注意：此实现遵循 doc/share/06-error-handling.md 中的 ScanResult 定义。
  */
@@ -41,59 +49,77 @@ class BatchAddResourcesUseCase(
      * @param fileSource 文件源
      * @param source 数据源配置
      * @param paths 要添加的相对路径列表
-     * @param organizationMode 可选的组织模式覆盖（null 表示自动检测）
+     * @param organizationMode 可选的组织模式覆盖（非 null 时直接使用，跳过自动检测）
      * @param tagIds 可选的标签 ID 列表
+     * @param thumbnailScope 缩略图生成协程作用域（非 null 时缩略图异步生成不阻塞返回）
      * @return ScanResult 包含成功/跳过/失败统计
      */
     suspend operator fun invoke(
         fileSource: FileSource,
         source: Source,
         paths: List<String>,
-        organizationMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode? = null,
+        organizationMode: OrganizationMode? = null,
         tagIds: List<String> = emptyList(),
+        thumbnailScope: CoroutineScope? = null,
     ): Result<ScanResult> {
         var successCount = 0
         var skipCount = 0
-        val failures = mutableListOf<Pair<String, dev.wucheng.resource_viewer.domain.error.DomainError>>()
+        val failures = mutableListOf<Pair<String, DomainError>>()
         val batch = mutableListOf<ResourceEntity>()
 
-        for (path in paths) {
-            try {
-                val entry = fileSource.stat(path)
-                if (entry == null) {
-                    skipCount++
-                    continue
+        // Phase 1: 并行 stat() 获取元数据
+        data class StatResult(val path: String, val entry: dev.wucheng.resource_viewer.domain.model.FileEntry?, val error: Throwable?)
+        val statResults = coroutineScope {
+            paths.map { path ->
+                async {
+                    try {
+                        StatResult(path, fileSource.stat(path), null)
+                    } catch (e: Exception) {
+                        StatResult(path, null, e)
+                    }
                 }
+            }.awaitAll()
+        }
 
-                val entity = createResourceEntity(fileSource, source, entry, organizationMode)
-                if (entity != null) {
-                    batch.add(entity)
-                    successCount++
-                } else {
-                    skipCount++
-                }
-            } catch (e: Exception) {
-                failures.add(
-                    path to dev.wucheng.resource_viewer.domain.error.DomainError.DatabaseError(
-                        "Failed to process path: $path",
-                        e,
-                    )
-                )
+        // Phase 2: 创建实体（串行以避免 SMB 等共享连接的并发冲突）
+        val isBatchAdd = organizationMode == null
+        for (result in statResults) {
+            if (result.error != null) {
+                failures.add(result.path to DomainError.DatabaseError("Failed to stat: ${result.path}", result.error))
+                continue
+            }
+            val entry = result.entry
+            if (entry == null) {
+                skipCount++
+                continue
+            }
+
+            val entity = createResourceEntity(fileSource, source, entry, organizationMode, isBatchAdd)
+            if (entity != null) {
+                batch.add(entity)
+                successCount++
+            } else {
+                skipCount++
             }
         }
 
-        // Batch insert
+        // Phase 3: 批量插入
         if (batch.isNotEmpty()) {
             when (val insertResult = resourceRepository.insertAll(batch)) {
                 is Result.Ok -> {
-                    // 关联标签
                     if (tagIds.isNotEmpty()) {
                         for (entity in batch) {
                             resourceRepository.setResourceTags(entity.id, tagIds)
                         }
                     }
-                    // 生成缩略图
-                    generateThumbnails(batch, fileSource)
+                    // Phase 4: 缩略图生成（异步，不阻塞返回）
+                    if (thumbnailScope != null) {
+                        thumbnailScope.launch(Dispatchers.IO) {
+                            generateThumbnails(batch, fileSource)
+                        }
+                    } else {
+                        generateThumbnails(batch, fileSource)
+                    }
                 }
                 is Result.Err -> {
                     batch.forEach { entity ->
@@ -160,12 +186,19 @@ class BatchAddResourcesUseCase(
 
     /**
      * 根据文件条目创建 ResourceEntity。
+     *
+     * @param fileSource 文件源
+     * @param source 数据源配置
+     * @param entry 文件条目
+     * @param overrideOrgMode 显式指定的组织模式（非 null 时直接使用）
+     * @param isBatchAdd 是否批量添加（批量添加时跳过深度组织检测以提升性能）
      */
     private suspend fun createResourceEntity(
         fileSource: FileSource,
         source: Source,
         entry: dev.wucheng.resource_viewer.domain.model.FileEntry,
-        overrideOrgMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode? = null,
+        overrideOrgMode: OrganizationMode? = null,
+        isBatchAdd: Boolean = false,
     ): ResourceEntity? {
         val type = when {
             entry.isDirectory -> ResourceType.FOLDER
@@ -175,10 +208,11 @@ class BatchAddResourcesUseCase(
             else -> return null
         }
 
-        val organizationMode = overrideOrgMode ?: if (type == ResourceType.FOLDER) {
-            detectOrganizationModeUseCase(fileSource, entry.relativePath)
-        } else {
-            null
+        val organizationMode = when {
+            overrideOrgMode != null -> overrideOrgMode
+            isBatchAdd && type == ResourceType.FOLDER -> OrganizationMode.FLATGRID
+            type == ResourceType.FOLDER -> detectOrganizationModeUseCase(fileSource, entry.relativePath)
+            else -> null
         }
 
         return ResourceEntity(

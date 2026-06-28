@@ -149,7 +149,7 @@ class FileBrowserViewModelTest {
         coEvery { filesystemRepository.getSource("source-1") } returns Result.Ok(source)
         coEvery { filesystemRepository.getFileSource("source-1") } returns Result.Ok(fileSource)
         coEvery { filesystemRepository.listDirectory(source, "") } returns Result.Ok(entries)
-        coEvery { batchAddResourcesUseCase(fileSource, source, listOf("book.pdf"), any(), any()) } returns
+        coEvery { batchAddResourcesUseCase(fileSource, source, listOf("book.pdf"), any(), any(), any()) } returns
             Result.Ok(ScanResult(successCount = 1, skipCount = 0, failures = emptyList()))
 
         viewModel.load()
@@ -158,7 +158,7 @@ class FileBrowserViewModelTest {
         viewModel.showBatchAddDialog()
         viewModel.confirmBatchAdd(null, emptyList())
 
-        coVerify { batchAddResourcesUseCase(fileSource, source, listOf("book.pdf"), any(), any()) }
+        coVerify { batchAddResourcesUseCase(fileSource, source, listOf("book.pdf"), any(), any(), any()) }
         assertEquals(1, viewModel.uiState.value.lastAddResult?.successCount)
         assertTrue(viewModel.uiState.value.selectedPaths.isEmpty())
     }

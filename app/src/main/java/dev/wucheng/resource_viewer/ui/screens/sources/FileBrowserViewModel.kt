@@ -214,7 +214,7 @@ class FileBrowserViewModel(
         hideBatchAddDialog()
         viewModelScope.launch {
             _uiState.update { it.copy(isAdding = true, error = null, lastAddResult = null) }
-            when (val result = batchAddResourcesUseCase(fs, source, selected, organizationMode, tagIds)) {
+            when (val result = batchAddResourcesUseCase(fs, source, selected, organizationMode, tagIds, viewModelScope)) {
                 is Result.Ok -> {
                     _uiState.update {
                         it.copy(

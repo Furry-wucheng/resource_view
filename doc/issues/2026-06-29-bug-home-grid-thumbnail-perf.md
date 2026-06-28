@@ -49,7 +49,11 @@
 |------|------|------|
 | `ui/components/ResourceGridItem.kt` | ✏️ 重写 | Card 卡片、3:4 比例、类型图标 fallback、渐变遮罩、Coil `File` 修复、保留收藏星标、去掉标签圆点 |
 | `shared/thumbnail/VideoThumbnailGenerator.kt` | ✏️ 重写 | 改用 `FileSourceMediaDataSource` 分块读取，不再全量 `readFile` |
-| `domain/usecase/BatchAddResourcesUseCase.kt` | ✏️ 修改 | 缩略图异常添加 `Log.e` 日志，不再静默吞掉 |
+| `domain/usecase/BatchAddResourcesUseCase.kt` | ✏️ 修改 | 缩略图异常添加 `Log.e` 日志；`stat()` 并行化；跳过深度组织检测；`thumbnailScope` 参数支持异步缩略图 |
 | `shared/thumbnail/ImageThumbnailGenerator.kt` | ✏️ 清理 | 移除未使用的 `decodeAndScale` 死代码 |
 | `shared/thumbnail/FileEntryThumbnailLoader.kt` | ✏️ 修改 | `FileSourceMediaDataSource` 改为 `internal` 可见 |
 | `shared/thumbnail/VideoThumbnailGeneratorTest.kt` | ✏️ 更新 | 验证不再调用 `readFile`，验证缓存复用 |
+| `ui/screens/home/HomeViewModel.kt` | ✏️ 修改 | 新增 `generateMissingThumbnails()` 后台检测并补全缺失缩略图 |
+| `di/ViewModelModule.kt` | ✏️ 修改 | HomeViewModel 注入 `ThumbnailRepository`、`FilesystemRepository`、`AppDatabase`、`Context` |
+| `ui/screens/sources/FileBrowserViewModel.kt` | ✏️ 修改 | `confirmBatchAdd` 传入 `viewModelScope` 启用异步缩略图 |
+| `.../FileBrowserViewModelTest.kt` | ✏️ 修改 | mock 适配新增 `thumbnailScope` 参数 |
