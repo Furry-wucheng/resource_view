@@ -26,6 +26,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -411,5 +412,95 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(HomeViewModel.ResourceSort.ADDED_ASC, viewModel.sort.value)
+    }
+
+    // === 批量添加标签测试 ===
+
+    @Test
+    fun `should show batch tag dialog when openBatchTagDialog called`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
+        every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
+        advanceUntilIdle()
+
+        viewModel.openBatchTagDialog()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.showBatchTagDialog.value)
+        assertEquals(emptySet<String>(), viewModel.batchTagSelectedIds.value)
+    }
+
+    @Test
+    fun `should hide batch tag dialog when hideBatchTagDialog called`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
+        every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
+        advanceUntilIdle()
+
+        viewModel.openBatchTagDialog()
+        viewModel.hideBatchTagDialog()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.showBatchTagDialog.value)
+    }
+
+    @Test
+    fun `should toggle batch tag selection`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
+        every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
+        advanceUntilIdle()
+
+        viewModel.openBatchTagDialog()
+        viewModel.toggleBatchTag("tag1")
+        assertEquals(setOf("tag1"), viewModel.batchTagSelectedIds.value)
+
+        viewModel.toggleBatchTag("tag1")
+        assertEquals(emptySet<String>(), viewModel.batchTagSelectedIds.value)
+    }
+
+    @Test
+    fun `batchAddTags should apply tags to selected resources`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
+        every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
+        coEvery { mockResourceTagDao.deleteByResourceId(any()) } just Runs
+        coEvery { mockResourceTagDao.insertAll(any()) } just Runs
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
+        advanceUntilIdle()
+
+        viewModel.enterMultiSelectMode()
+        viewModel.toggleResourceSelection("res1")
+        viewModel.toggleResourceSelection("res2")
+        viewModel.openBatchTagDialog()
+        viewModel.toggleBatchTag("tag2")
+
+        viewModel.batchAddTags()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.showBatchTagDialog.value)
+        coVerify { mockResourceTagDao.deleteByResourceId("res1") }
+        coVerify { mockResourceTagDao.deleteByResourceId("res2") }
+        coVerify { mockResourceTagDao.insertAll(any()) }
+    }
+
+    @Test
+    fun `deleteDetailResource should delete and close detail`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
+        every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
+        coEvery { mockResourceRepo.deleteById(any()) } returns dev.wucheng.resource_viewer.domain.error.Result.Ok(Unit)
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
+        advanceUntilIdle()
+
+        viewModel.openResourceDetail(testResource1)
+        viewModel.deleteDetailResource()
+        advanceUntilIdle()
+
+        coVerify { mockResourceRepo.deleteById("res1") }
+        assertEquals(null, viewModel.detailResource.value)
     }
 }

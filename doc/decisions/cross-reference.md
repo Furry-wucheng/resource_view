@@ -52,7 +52,7 @@
 | `shared/organization/GalleryStrategy.kt` | M20, batchadd-viewer-thumbnail-video-fix | D-007 |
 | `shared/organization/ChapterStrategy.kt` | M21, batchadd-viewer-thumbnail-video-fix | D-007 |
 | `shared/organization/ChapterGalleryStrategy.kt` | M21, batchadd-viewer-thumbnail-video-fix | D-007 |
-| `ui/screens/viewer/ChapterListScreen.kt` | M21, batchadd-viewer-thumbnail-video-fix | D-005, D-006, D-008 |
+| `ui/screens/viewer/ChapterListScreen.kt` | M21, batchadd-viewer-thumbnail-video-fix, ux-batch-fixes | D-005, D-006, D-008, D-004 |
 | `ui/screens/viewer/ContentGridScreen.kt` | batchadd-viewer-thumbnail-video-fix | D-005, D-006, D-008 |
 | `ui/screens/viewer/ChapterListViewModel.kt` | batchadd-viewer-thumbnail-video-fix | D-005 |
 | `ui/screens/viewer/ContentGridViewModel.kt` | batchadd-viewer-thumbnail-video-fix | D-005 |
@@ -63,7 +63,7 @@
 | `ui/screens/viewer/VideoPlayerViewModel.kt` | M19 | D-001, D-005 |
 | `ui/screens/viewer/VideoPlayerViewModelTest.kt` | M19 | — |
 | `ui/screens/viewer/components/VideoPlayer.kt` | M19 | D-004 |
-| `ui/screens/home/HomeScreen.kt` | M05 → M23 | D-003 |
+| `ui/screens/home/HomeScreen.kt` | M05 → M23, ux-batch-fixes | D-003, D-001 |
 | `ui/screens/home/HomeViewModel.kt` | M23, batchadd-viewer-thumbnail-video-fix | D-004 |
 | `ui/components/FilterBar.kt` | M23 | D-002 |
 | `ui/components/ResourceGridItem.kt` | M23 | — |
@@ -71,8 +71,8 @@
 | `ui/screens/sources/SourceListViewModel.kt` | M17 → M30 | — |
 | `ui/screens/sources/FileBrowserScreen.kt` | M13 | — |
 | `ui/screens/sources/FileBrowserViewModel.kt` | M13, batchadd-viewer-thumbnail-video-fix | D-003 |
-| `ui/screens/viewer/ViewerScreen.kt` | M14 → M19 → M22 | D-003, D-004 |
-| `ui/screens/viewer/ViewerViewModel.kt` | M14 → M19 | D-003 |
+| `ui/screens/viewer/ViewerScreen.kt` | M14 → M19 → M22, ux-batch-fixes | D-003, D-004, D-002 |
+| `ui/screens/viewer/ViewerViewModel.kt` | M14 → M19, ux-batch-fixes | D-003, D-002 |
 | `ui/screens/viewer/components/SlideBar.kt` | M14 | D-005 |
 | `ui/screens/viewer/components/ViewerToolbar.kt` | M14 | — |
 | `ui/screens/viewer/ChapterListScreen.kt` | M21 | — |
@@ -84,7 +84,7 @@
 | `ui/screens/settings/SettingsViewModel.kt` | M25 | — |
 | `ui/components/FilterBar.kt` | M16 | — |
 | `ui/components/ResourceGridItem.kt` | M23 | — |
-| `ui/components/ResourcePickerDialog.kt` | M24 | — |
+| `ui/components/ResourcePickerDialog.kt` | M24, ux-batch-fixes | D-003 |
 | `ui/components/ErrorView.kt` | M26 | — |
 | `ui/components/EmptyState.kt` | M05 | — |
 | `ui/components/AppShell.kt` | M04 → M30 | — |
@@ -437,6 +437,23 @@
 | `ui/screens/home/HomeViewModel.kt` | 2026-06-29-sort-persistence-natural-order | D-001, D-002 |
 | `ui/screens/sources/FileBrowserViewModel.kt` | 2026-06-29-sort-persistence-natural-order | D-002 |
 | 排序持久化与自然排序修复 | 2026-06-29-sort-persistence-natural-order | D-001, D-002 |
+
+### ux-batch-fixes — 五项UX缺陷修复
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `ui/components/ResourcePickerDialog.kt` | ux-batch-fixes | D-003 |
+| `ui/components/ResourceDetailSheet.kt` | ux-batch-fixes | D-005 |
+| `ui/screens/home/HomeScreen.kt` | ux-batch-fixes | D-001 |
+| `ui/screens/home/HomeViewModel.kt` | ux-batch-fixes | D-001 |
+| `ui/screens/viewer/ViewerViewModel.kt` | ux-batch-fixes | D-002 |
+| `ui/screens/viewer/ViewerScreen.kt` | ux-batch-fixes | D-002 |
+| `ui/screens/viewer/ChapterListScreen.kt` | ux-batch-fixes | D-004 |
+| 批量标签独立 BatchTagDialog | ux-batch-fixes | D-001 |
+| 跨章节导航 reloadChapterContent | ux-batch-fixes | D-002 |
+| 已入库节点隐藏复选框 | ux-batch-fixes | D-003 |
+| 散落文件统一走 FileViewer | ux-batch-fixes | D-004 |
+| 详情弹窗删除确认 AlertDialog | ux-batch-fixes | D-005 |
 
 > ⚠️ 各 stage 完成后，Agent 需在此文件中新增自己 stage 涉及的组件行和决策主题行。
 > 已有行的决策 ID 列留空（`—`），待对应 stage 完成后由 Agent 填写。

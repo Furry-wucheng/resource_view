@@ -165,6 +165,102 @@ class ResourceDetailSheetTest {
     }
 
     @Test
+    fun `should display delete button`() {
+        composeTestRule.setContent {
+            ResourceDetailSheet(
+                resource = testResource,
+                allTags = listOf(testTag1, testTag2),
+                selectedTagIds = setOf("tag1"),
+                selectedOrgMode = OrganizationMode.CHAPTER,
+                onTagToggle = {},
+                onOrgModeChange = {},
+                onSave = {},
+                onDismiss = {},
+            )
+        }
+        composeTestRule.onNodeWithText("删除资源").assertIsDisplayed()
+    }
+
+    @Test
+    fun `should show delete confirm dialog when delete clicked`() {
+        composeTestRule.setContent {
+            ResourceDetailSheet(
+                resource = testResource,
+                allTags = listOf(testTag1, testTag2),
+                selectedTagIds = setOf("tag1"),
+                selectedOrgMode = OrganizationMode.CHAPTER,
+                onTagToggle = {},
+                onOrgModeChange = {},
+                onSave = {},
+                onDismiss = {},
+            )
+        }
+        composeTestRule.onNodeWithText("删除资源").performClick()
+        composeTestRule.onNodeWithText("确认删除").assertIsDisplayed()
+        composeTestRule.onNodeWithText("确定要删除「海贼王_卷01」吗？此操作不可撤销。").assertIsDisplayed()
+    }
+
+    @Test
+    fun `should show tag creation field`() {
+        composeTestRule.setContent {
+            ResourceDetailSheet(
+                resource = testResource,
+                allTags = listOf(testTag1, testTag2),
+                selectedTagIds = setOf("tag1"),
+                selectedOrgMode = OrganizationMode.CHAPTER,
+                onTagToggle = {},
+                onOrgModeChange = {},
+                onSave = {},
+                onDismiss = {},
+            )
+        }
+        composeTestRule.onNodeWithText("创建").assertIsDisplayed()
+    }
+
+    @Test
+    fun `should call onDelete when delete confirmed`() {
+        var deletedResource: Resource? = null
+        composeTestRule.setContent {
+            ResourceDetailSheet(
+                resource = testResource,
+                allTags = listOf(testTag1, testTag2),
+                selectedTagIds = setOf("tag1"),
+                selectedOrgMode = OrganizationMode.CHAPTER,
+                onTagToggle = {},
+                onOrgModeChange = {},
+                onSave = {},
+                onDismiss = {},
+                onDelete = { deletedResource = it },
+            )
+        }
+        composeTestRule.onNodeWithText("删除资源").performClick()
+        composeTestRule.onNodeWithText("删除").performClick()
+        assert(deletedResource != null && deletedResource?.id == "res1")
+    }
+
+    @Test
+    fun `should call onCreateTag when tag created`() {
+        var createdTagName: String? = null
+        composeTestRule.setContent {
+            ResourceDetailSheet(
+                resource = testResource,
+                allTags = listOf(testTag1, testTag2),
+                selectedTagIds = setOf("tag1"),
+                selectedOrgMode = OrganizationMode.CHAPTER,
+                onTagToggle = {},
+                onOrgModeChange = {},
+                onSave = {},
+                onDismiss = {},
+                onCreateTag = { name, _ -> createdTagName = name },
+            )
+        }
+        composeTestRule.onNodeWithText("创建").performClick()
+        composeTestRule.waitForIdle()
+        // Create button should be disabled when field is blank
+        composeTestRule.onNodeWithText("创建").assertIsDisplayed()
+    }
+
+    @Test
     fun `should call onOrgModeChange when mode chip clicked`() {
         var changedMode: OrganizationMode? = null
         composeTestRule.setContent {

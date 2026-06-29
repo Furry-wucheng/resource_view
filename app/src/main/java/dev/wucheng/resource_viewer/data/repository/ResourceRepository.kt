@@ -33,7 +33,7 @@ class ResourceRepository(
      */
     fun getVisibleResources(): Flow<List<Resource>> {
         return combine(
-            resourceDao.getVisibleResourceItems(),
+            resourceDao.getAvailableResourceItems(),
             tagDao.getAllResourceTagsWithTags(),
         ) { resources, tagRows ->
             resources.toDomainList(tagRows)

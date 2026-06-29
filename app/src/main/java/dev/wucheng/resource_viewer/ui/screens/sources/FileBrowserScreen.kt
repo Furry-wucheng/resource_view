@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
+import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
@@ -77,6 +78,9 @@ import dev.wucheng.resource_viewer.data.local.datastore.FileViewMode
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.ui.components.FileThumbnailCard
+import dev.wucheng.resource_viewer.ui.components.ResourcePickerDialog
+import dev.wucheng.resource_viewer.ui.components.ResourcePickerMode
+import dev.wucheng.resource_viewer.ui.components.ResourcePickerViewModel
 import dev.wucheng.resource_viewer.ui.components.fileTypeColor
 import dev.wucheng.resource_viewer.ui.components.fileTypeIcon
 import org.koin.androidx.compose.koinViewModel
@@ -95,22 +99,22 @@ fun FileBrowserScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showSortMenu by remember { mutableStateOf(false) }
-    // 目录树显示状态，根据设置初始化
     var showDirectoryTree by remember { mutableStateOf(uiState.showDirectoryTree) }
+
+    val showFlexibleAddDialog by viewModel.showFlexibleAddDialog.collectAsState()
+    val flexibleAddRootPath by viewModel.flexibleAddRootPath.collectAsState()
+    val flexibleAddResult by viewModel.flexibleAddResult.collectAsState()
+    val showFlexibleTagsDialog by viewModel.showFlexibleTagsDialog.collectAsState()
 
     LaunchedEffect(sourceId) { viewModel.load() }
     LaunchedEffect(uiState.showDirectoryTree) { showDirectoryTree = uiState.showDirectoryTree }
 
-    // 返回键：多选模式独立处理，避免状态突变导致 fallthrough
-    BackHandler(enabled = uiState.isMultiSelectMode) {
-        viewModel.exitMultiSelect()
-    }
+    BackHandler(enabled = uiState.isMultiSelectMode) { viewModel.exitMultiSelect() }
     BackHandler(enabled = !uiState.isMultiSelectMode) {
         if (!viewModel.goUp()) onNavigateBack()
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // 顶栏
         TopAppBar(
             title = { Text(uiState.source?.name ?: "文件浏览") },
             navigationIcon = {
@@ -128,19 +132,16 @@ fun FileBrowserScreen(
                         Text("退出")
                     }
                 } else {
-                    // 目录树按钮
                     if (uiState.showDirectoryTree) {
                         IconButton(onClick = { showDirectoryTree = !showDirectoryTree }) {
                             Icon(
-                                Icons.Default.Menu,
-                                contentDescription = "目录树",
+                                Icons.Default.Menu, contentDescription = "目录树",
                                 tint = if (showDirectoryTree) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
 
-                    // 视图切换
                     IconButton(onClick = {
                         viewModel.setViewMode(
                             if (uiState.viewMode == FileViewMode.LIST) FileViewMode.GRID else FileViewMode.LIST
@@ -152,7 +153,14 @@ fun FileBrowserScreen(
                         )
                     }
 
-                    // 排序菜单
+                    IconButton(onClick = { viewModel.initiateFlexibleAdd() }) {
+                        Icon(
+                            Icons.Default.CallSplit,
+                            contentDescription = "拆分资源",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+
                     Box {
                         IconButton(onClick = { showSortMenu = true }) {
                             Icon(Icons.Default.Sort, contentDescription = "排序")
@@ -187,9 +195,7 @@ fun FileBrowserScreen(
             },
         )
 
-        // 内容区：目录树 + 文件列表
         Row(modifier = Modifier.weight(1f)) {
-            // 目录树面板（在 content 内部）
             if (showDirectoryTree) {
                 Box(
                     modifier = Modifier
@@ -208,17 +214,14 @@ fun FileBrowserScreen(
                 }
             }
 
-            // 文件列表
             Box(modifier = Modifier.weight(1f)) {
                 Column {
-                    // 面包屑导航
                     BreadcrumbBar(
                         pathSegments = uiState.pathSegments,
                         sourceName = uiState.source?.name ?: "",
                         onNavigateToSegment = { viewModel.navigateToSegment(it) },
                         onNavigateToRoot = { viewModel.openDirectory("") },
                     )
-                    // 文件内容
                     FileContentArea(
                         uiState = uiState,
                         viewModel = viewModel,
@@ -228,18 +231,13 @@ fun FileBrowserScreen(
             }
         }
 
-        // 底部栏（多选模式）
         if (uiState.isMultiSelectMode) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "已选 ${uiState.selectedPaths.size} 项",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                Text("已选 ${uiState.selectedPaths.size} 项", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                 Button(
                     onClick = { viewModel.showBatchAddDialog() },
                     enabled = uiState.selectedPaths.isNotEmpty() && !uiState.isAdding,
@@ -253,7 +251,6 @@ fun FileBrowserScreen(
             }
         }
 
-        // 批量添加弹窗
         if (uiState.showBatchAddDialog) {
             BatchAddResourcesDialog(
                 selectedCount = uiState.selectedPaths.size,
@@ -264,9 +261,58 @@ fun FileBrowserScreen(
             )
         }
     }
-}
 
-// ===== 文件内容区域 =====
+    // Flexible BatchAdd ResourcePicker Dialog
+    if (showFlexibleAddDialog) {
+        val pickerViewModel: ResourcePickerViewModel = koinViewModel()
+        val pickerTreeNodes by pickerViewModel.treeNodes.collectAsState()
+        val pickerUiState by pickerViewModel.uiState.collectAsState()
+        val pickerSelectedCount by pickerViewModel.selectedCount.collectAsState()
+        val pickerRootName by pickerViewModel.rootName.collectAsState()
+
+        LaunchedEffect(flexibleAddRootPath) {
+            pickerViewModel.loadTree(sourceId, flexibleAddRootPath)
+        }
+
+        ResourcePickerDialog(
+            rootName = pickerRootName.ifBlank { uiState.source?.name ?: "" },
+            treeNodes = pickerTreeNodes,
+            selectedCount = pickerSelectedCount,
+            uiState = pickerUiState,
+            mode = ResourcePickerMode.BATCH_ADD,
+            onToggleExpand = { pickerViewModel.toggleExpand(it) },
+            onToggleCheck = { pickerViewModel.toggleCheck(it) },
+            onSelectAllChildren = { pickerViewModel.selectAllChildren(it) },
+            onSelectAllRoot = { pickerViewModel.selectAllRootNodes() },
+            onConfirm = {
+                val entries = pickerViewModel.getSelectedEntries()
+                if (entries.isNotEmpty()) viewModel.onFlexibleEntriesSelected(entries)
+            },
+            onDismiss = { viewModel.dismissFlexibleAdd() },
+        )
+    }
+
+    // Flexible add org mode + tags dialog
+    if (showFlexibleTagsDialog) {
+        val flexibleAllTags by viewModel.flexibleAllTags.collectAsState()
+        val flexiblePendingCount by viewModel.flexiblePendingCount.collectAsState()
+        BatchAddResourcesDialog(
+            selectedCount = flexiblePendingCount,
+            allTags = flexibleAllTags,
+            onConfirm = { orgMode, tagIds -> viewModel.executeFlexibleAdd(orgMode, tagIds) },
+            onCreateTag = { name, onCreated -> viewModel.createTag(name, onCreated) },
+            onDismiss = { viewModel.onFlexibleTagsCancelled() },
+        )
+    }
+
+    // Flexible add result
+    flexibleAddResult?.let { msg ->
+        Snackbar(
+            modifier = Modifier.padding(16.dp),
+            action = { TextButton(onClick = { viewModel.dismissFlexibleAddResult() }) { Text("关闭") } },
+        ) { Text(msg) }
+    }
+}
 
 @Composable
 private fun FileContentArea(
@@ -345,10 +391,8 @@ private fun FileContentArea(
                             bottomEndBadge = {
                                 if (entry.isDirectory && hasThumbnail) {
                                     Icon(
-                                        Icons.Default.Folder,
-                                        contentDescription = "文件夹",
-                                        tint = Color(0xFFFFC107),
-                                        modifier = Modifier.size(18.dp),
+                                        Icons.Default.Folder, contentDescription = "文件夹",
+                                        tint = Color(0xFFFFC107), modifier = Modifier.size(18.dp),
                                     )
                                 }
                             },
@@ -377,8 +421,6 @@ private fun FileContentArea(
         }
     }
 }
-
-// ===== 文件列表行 =====
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -439,8 +481,6 @@ private fun formatFileSize(bytes: Long): String = when {
     else -> "${"%.2f".format(bytes / (1024.0 * 1024.0 * 1024.0))} GB"
 }
 
-// ===== 面包屑导航 =====
-
 @Composable
 private fun BreadcrumbBar(
     pathSegments: List<String>,
@@ -455,7 +495,6 @@ private fun BreadcrumbBar(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 根目录
         Text(
             text = sourceName.ifBlank { "/" },
             style = MaterialTheme.typography.labelMedium,
@@ -465,7 +504,6 @@ private fun BreadcrumbBar(
                 .clickable { onNavigateToRoot() }
                 .padding(horizontal = 4.dp, vertical = 2.dp),
         )
-        // 路径段
         pathSegments.forEachIndexed { index, segment ->
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.NavigateNext,

@@ -9,6 +9,7 @@ import dev.wucheng.resource_viewer.data.local.datastore.FileSortMode
 import dev.wucheng.resource_viewer.data.local.datastore.FileViewMode
 import dev.wucheng.resource_viewer.data.local.entity.TagEntity
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
+import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.error.ScanResult
 import dev.wucheng.resource_viewer.domain.model.FileEntry
@@ -19,6 +20,7 @@ import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailLoadManager
 import dev.wucheng.resource_viewer.shared.util.NaturalOrderComparator
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,9 +57,30 @@ class FileBrowserViewModel(
     private val appConfigDao: AppConfigDao? = null,
     private val thumbnailLoadManager: ThumbnailLoadManager,
     private val prefsStore: FileBrowserPrefsStore,
+    private val resourceRepository: ResourceRepository? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(FileBrowserUiState())
     val uiState: StateFlow<FileBrowserUiState> = _uiState.asStateFlow()
+
+    private val _showFlexibleAddDialog = MutableStateFlow(false)
+    val showFlexibleAddDialog: StateFlow<Boolean> = _showFlexibleAddDialog.asStateFlow()
+
+    private val _flexibleAddRootPath = MutableStateFlow("")
+    val flexibleAddRootPath: StateFlow<String> = _flexibleAddRootPath.asStateFlow()
+
+    private val _flexibleAddResult = MutableStateFlow<String?>(null)
+    val flexibleAddResult: StateFlow<String?> = _flexibleAddResult.asStateFlow()
+
+    private val _showFlexibleTagsDialog = MutableStateFlow(false)
+    val showFlexibleTagsDialog: StateFlow<Boolean> = _showFlexibleTagsDialog.asStateFlow()
+
+    private val _flexibleAllTags = MutableStateFlow<List<Tag>>(emptyList())
+    val flexibleAllTags: StateFlow<List<Tag>> = _flexibleAllTags.asStateFlow()
+
+    private val _flexiblePendingCount = MutableStateFlow(0)
+    val flexiblePendingCount: StateFlow<Int> = _flexiblePendingCount.asStateFlow()
+
+    private var flexiblePendingEntries: List<FileEntry> = emptyList()
 
     private var fileSource: FileSource? = null
     private val inFlightThumbnails = mutableMapOf<String, Deferred<Bitmap?>>()
@@ -84,7 +107,17 @@ class FileBrowserViewModel(
                             fileSource = fsResult.value
                             thumbnailLoadManager.setFileSource(fsResult.value)
                             val showDirectoryTree = config?.showDirectoryTree ?: true
-                            _uiState.update { it.copy(source = source, showDirectoryTree = showDirectoryTree) }
+
+                            val importedPaths = resourceRepository?.let {
+                                try {
+                                    val allResources = it.getVisibleResources().first()
+                                    allResources.filter { r -> r.sourceId == sourceId }.map { r -> r.relativePath }.toSet()
+                                } catch (e: Exception) {
+                                    emptySet()
+                                }
+                            } ?: emptySet()
+
+                            _uiState.update { it.copy(source = source, showDirectoryTree = showDirectoryTree, importedPaths = importedPaths) }
                             loadDirectory("")
                         }
                         is Result.Err -> {
@@ -205,6 +238,74 @@ class FileBrowserViewModel(
         _uiState.update { it.copy(error = null, lastAddResult = null) }
     }
 
+    fun getResourceEntryForPath(relativePath: String): dev.wucheng.resource_viewer.domain.model.Resource? {
+        val repo = resourceRepository ?: return null
+        return kotlinx.coroutines.runBlocking {
+            val allResources = repo.getVisibleResources().first()
+            allResources.find { it.sourceId == sourceId && it.relativePath == relativePath }
+        }
+    }
+
+    // === 灵活添加资源 ===
+
+    fun initiateFlexibleAdd() {
+        _flexibleAddRootPath.value = _uiState.value.currentPath
+        _flexibleAddResult.value = null
+        _showFlexibleAddDialog.value = true
+    }
+
+    fun dismissFlexibleAdd() {
+        _showFlexibleAddDialog.value = false
+    }
+
+    fun onFlexibleEntriesSelected(entries: List<FileEntry>) {
+        if (entries.isEmpty()) return
+        flexiblePendingEntries = entries
+        _flexiblePendingCount.value = entries.size
+        _showFlexibleAddDialog.value = false
+        viewModelScope.launch {
+            _flexibleAllTags.value = tagRepository.getAllTagsOnce()
+        }
+        _showFlexibleTagsDialog.value = true
+    }
+
+    fun onFlexibleTagsCancelled() {
+        _showFlexibleTagsDialog.value = false
+        _showFlexibleAddDialog.value = true
+    }
+
+    fun executeFlexibleAdd(
+        selectedOrgMode: dev.wucheng.resource_viewer.data.local.converter.OrganizationMode?,
+        tagIds: List<String>,
+    ) {
+        val source = _uiState.value.source ?: return
+        val fs = fileSource ?: return
+        val entries = flexiblePendingEntries
+        if (entries.isEmpty()) return
+
+        val paths = entries.map { it.relativePath }
+        _showFlexibleTagsDialog.value = false
+
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(isAdding = true, error = null) }
+            when (val result = batchAddResourcesUseCase(fs, source, paths, selectedOrgMode, tagIds, viewModelScope)) {
+                is Result.Ok -> {
+                    _flexibleAddResult.value = "成功添加 ${result.value.successCount} 个资源" +
+                        if (result.value.skipCount > 0) "，跳过 ${result.value.skipCount} 个" else ""
+                    dismissFlexibleAdd()
+                }
+                is Result.Err -> {
+                    _flexibleAddResult.value = "添加失败：${result.error.message}"
+                }
+            }
+            _uiState.update { it.copy(isAdding = false) }
+        }
+    }
+
+    fun dismissFlexibleAddResult() {
+        _flexibleAddResult.value = null
+    }
+
     fun setViewMode(mode: FileViewMode) {
         _uiState.update { it.copy(viewMode = mode) }
         saveCurrentPrefs()
@@ -248,9 +349,6 @@ class FileBrowserViewModel(
                 inFlightThumbnails.remove(entry.relativePath)
             }
         }
-    }
-
-    companion object {
     }
 
     private fun loadDirectory(path: String) {

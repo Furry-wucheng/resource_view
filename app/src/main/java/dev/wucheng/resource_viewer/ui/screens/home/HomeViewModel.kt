@@ -14,8 +14,10 @@ import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.TagRepository
 import dev.wucheng.resource_viewer.data.repository.ThumbnailRepository
 import dev.wucheng.resource_viewer.domain.error.Result
+import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.domain.model.Tag
+import dev.wucheng.resource_viewer.domain.usecase.SplitResourceUseCase
 import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailTaskPool
 import dev.wucheng.resource_viewer.shared.util.NaturalOrderComparator
 import dev.wucheng.resource_viewer.ui.base.UiState
@@ -49,6 +51,7 @@ class HomeViewModel(
     private val filesystemRepository: FilesystemRepository? = null,
     private val database: AppDatabase? = null,
     private val context: Context? = null,
+    private val splitResourceUseCase: SplitResourceUseCase? = null,
 ) : ViewModel() {
     enum class ResourceSort { ADDED_DESC, ADDED_ASC, NAME_ASC, NAME_DESC }
 
@@ -152,6 +155,39 @@ class HomeViewModel(
         }
     }
 
+    fun openBatchTagDialog() {
+        _showBatchTagDialog.value = true
+        _batchTagSelectedIds.value = emptySet()
+    }
+
+    fun hideBatchTagDialog() {
+        _showBatchTagDialog.value = false
+    }
+
+    fun toggleBatchTag(tagId: String) {
+        val current = _batchTagSelectedIds.value.toMutableSet()
+        if (current.contains(tagId)) current.remove(tagId) else current.add(tagId)
+        _batchTagSelectedIds.value = current
+    }
+
+    fun batchAddTags() {
+        val resourceIds = _selectedResourceIds.value.toList()
+        val tagIds = _batchTagSelectedIds.value.toList()
+        if (resourceIds.isEmpty() || tagIds.isEmpty()) return
+
+        viewModelScope.launch {
+            resourceIds.forEach { resourceId ->
+                resourceTagDao.deleteByResourceId(resourceId)
+                val entities = tagIds.map { tagId ->
+                    ResourceTagEntity(resourceId = resourceId, tagId = tagId)
+                }
+                resourceTagDao.insertAll(entities)
+            }
+            _showBatchTagDialog.value = false
+            exitMultiSelectMode()
+        }
+    }
+
     /**
      * 切换资源收藏状态。
      */
@@ -186,6 +222,32 @@ class HomeViewModel(
      */
     private val _detailOrgMode = MutableStateFlow(OrganizationMode.CHAPTER)
     val detailOrgMode: StateFlow<OrganizationMode> = _detailOrgMode.asStateFlow()
+
+    // === 拆分资源状态 ===
+
+    private val _isSplitDialogVisible = MutableStateFlow(false)
+    val isSplitDialogVisible: StateFlow<Boolean> = _isSplitDialogVisible.asStateFlow()
+
+    private val _showBatchTagDialog = MutableStateFlow(false)
+    val showBatchTagDialog: StateFlow<Boolean> = _showBatchTagDialog.asStateFlow()
+
+    private val _batchTagSelectedIds = MutableStateFlow<Set<String>>(emptySet())
+    val batchTagSelectedIds: StateFlow<Set<String>> = _batchTagSelectedIds.asStateFlow()
+
+    private val _splitDialogResource = MutableStateFlow<Resource?>(null)
+    val splitDialogResource: StateFlow<Resource?> = _splitDialogResource.asStateFlow()
+
+    private val _showSplitTagsDialog = MutableStateFlow(false)
+    val showSplitTagsDialog: StateFlow<Boolean> = _showSplitTagsDialog.asStateFlow()
+
+    private val _splitPendingEntries = MutableStateFlow<List<dev.wucheng.resource_viewer.domain.model.FileEntry>>(emptyList())
+    private val _splitPendingDelete = MutableStateFlow(false)
+
+    private val _isSplitting = MutableStateFlow(false)
+    val isSplitting: StateFlow<Boolean> = _isSplitting.asStateFlow()
+
+    private val _splitResultMessage = MutableStateFlow<String?>(null)
+    val splitResultMessage: StateFlow<String?> = _splitResultMessage.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -291,9 +353,7 @@ class HomeViewModel(
             resourceRepository.updateOrganizationMode(resource.id, newOrgMode)
 
             // 更新标签关联
-            // 先删除旧的
             resourceTagDao.deleteByResourceId(resource.id)
-            // 再插入新的
             val newTags = newTagIds.map { tagId ->
                 ResourceTagEntity(
                     resourceId = resource.id,
@@ -304,14 +364,143 @@ class HomeViewModel(
                 resourceTagDao.insertAll(newTags)
             }
 
-            // 关闭弹窗
+            closeResourceDetail()
+        }
+    }
+
+    // === 拆分资源方法 ===
+
+    fun initiateResourceSplit(resource: Resource) {
+        _splitDialogResource.value = resource
+        _isSplitDialogVisible.value = true
+        _splitResultMessage.value = null
+    }
+
+    fun dismissSplitDialog() {
+        _isSplitDialogVisible.value = false
+        _splitDialogResource.value = null
+    }
+
+    /**
+     * ResourcePicker 确认后 → 保存条目，弹出组织模式/标签选择。
+     */
+    fun onSplitEntriesSelected(entries: List<FileEntry>, deleteOriginal: Boolean) {
+        if (entries.isEmpty()) return
+        _splitPendingEntries.value = entries
+        _splitPendingDelete.value = deleteOriginal
+        _isSplitDialogVisible.value = false
+        _showSplitTagsDialog.value = true
+    }
+
+    /**
+     * 取消标签/组织模式选择，回到 ResourcePicker。
+     */
+    fun onSplitTagsCancelled() {
+        _showSplitTagsDialog.value = false
+        _isSplitDialogVisible.value = true
+    }
+
+    /**
+     * 标签/组织模式确认 → 执行拆分。
+     */
+    fun executeSplit(selectedOrgMode: OrganizationMode?, tagIds: List<String>) {
+        val resource = _splitDialogResource.value ?: return
+        val entries = _splitPendingEntries.value
+        val deleteOriginal = _splitPendingDelete.value
+        val fsRepo = filesystemRepository ?: return
+        val useCase = splitResourceUseCase ?: return
+
+        if (entries.isEmpty()) return
+        _showSplitTagsDialog.value = false
+
+        viewModelScope.launch(Dispatchers.IO) {
+            _isSplitting.value = true
+            _splitResultMessage.value = null
+
+            val fileSourceResult = fsRepo.getFileSource(resource.sourceId)
+            when (fileSourceResult) {
+                is Result.Ok -> {
+                    val fileSource = fileSourceResult.value
+                    when (val result = useCase(
+                        parentResource = resource,
+                        selectedItems = entries,
+                        fileSource = fileSource,
+                        deleteOriginal = deleteOriginal,
+                        organizationMode = selectedOrgMode,
+                        tagIds = tagIds,
+                        thumbnailScope = viewModelScope,
+                    )) {
+                        is Result.Ok -> {
+                            val scanResult = result.value
+                            _splitResultMessage.value = if (scanResult.failures.isNotEmpty()) {
+                                "拆分 ${scanResult.successCount} 个，失败 ${scanResult.failures.size} 个"
+                            } else {
+                                "成功拆分出 ${scanResult.successCount} 个子资源"
+                            }
+                            dismissSplitDialog()
+                        }
+                        is Result.Err -> {
+                            _splitResultMessage.value = "拆分失败：${result.error.message}"
+                        }
+                    }
+                }
+                is Result.Err -> {
+                    _splitResultMessage.value = "无法获取文件源：${fileSourceResult.error.message}"
+                }
+            }
+
+            _isSplitting.value = false
+        }
+    }
+
+    /**
+     * 清除拆分结果消息。
+     */
+    fun dismissSplitResult() {
+        _splitResultMessage.value = null
+    }
+
+    /**
+     * 创建新标签（供 BatchAddResourcesDialog 使用）。
+     */
+    fun createTag(name: String, onCreated: (String) -> Unit = {}) {
+        val cleanName = name.trim()
+        if (cleanName.isEmpty() || cleanName.length > 20) return
+        viewModelScope.launch {
+            val entity = dev.wucheng.resource_viewer.data.local.entity.TagEntity(
+                java.util.UUID.randomUUID().toString(), cleanName, "#6750A4"
+            )
+            when (tagRepository.insert(entity)) {
+                is Result.Ok -> onCreated(entity.id)
+                is Result.Err -> {}
+            }
+        }
+    }
+
+    // === 删除单个资源 ===
+
+    /**
+     * 删除单个资源（区别于批量删除）。
+     */
+    fun deleteSingleResource(resource: Resource) {
+        viewModelScope.launch {
+            resourceRepository.deleteById(resource.id)
+        }
+    }
+
+    /**
+     * 从详情弹窗中删除当前查看的资源。
+     */
+    fun deleteDetailResource() {
+        val resource = _detailResource.value ?: return
+        viewModelScope.launch {
+            resourceRepository.deleteById(resource.id)
             closeResourceDetail()
         }
     }
 
     /**
      * 检测资源中缺失缩略图的条目，在后台并发生成。
-     * 非阻塞，完成后通过 Room Flow 自动刷新 UI。
      */
     private fun generateMissingThumbnails() {
         val thumbRepo = thumbnailRepository ?: return

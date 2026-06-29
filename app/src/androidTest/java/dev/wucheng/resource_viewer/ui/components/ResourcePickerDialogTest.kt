@@ -1,5 +1,6 @@
 package dev.wucheng.resource_viewer.ui.components
 
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -150,6 +151,32 @@ class ResourcePickerDialogTest {
             )
         }
         composeTestRule.onNodeWithText("加载失败").assertIsDisplayed()
+    }
+
+    @Test
+    fun `should show import badge but hide checkbox for imported node`() {
+        val importedNode = TreeFileNode(
+            name = "已入库文件夹",
+            relativePath = "/root/imported",
+            isDirectory = true,
+            isImported = true,
+        )
+        composeTestRule.setContent {
+            ResourcePickerDialog(
+                rootName = "全部漫画",
+                treeNodes = listOf(importedNode),
+                selectedCount = 0,
+                uiState = ResourcePickerUiState.Ready,
+                onToggleExpand = {},
+                onToggleCheck = {},
+                onSelectAllChildren = {},
+                onConfirm = {},
+                onDismiss = {},
+            )
+        }
+        composeTestRule.onNodeWithText("已入库文件夹").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("已入库").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("勾选 已入库文件夹").assertDoesNotExist()
     }
 
     @Test

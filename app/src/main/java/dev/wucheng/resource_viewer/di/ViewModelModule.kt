@@ -3,6 +3,7 @@
 package dev.wucheng.resource_viewer.di
 
 import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailLoadManager
+import dev.wucheng.resource_viewer.ui.components.ResourcePickerViewModel
 import dev.wucheng.resource_viewer.ui.screens.home.HomeViewModel
 import dev.wucheng.resource_viewer.ui.screens.settings.SettingsViewModel
 import dev.wucheng.resource_viewer.ui.screens.sources.FileBrowserViewModel
@@ -18,11 +19,12 @@ import org.koin.dsl.module
 val viewModelModule = module {
     viewModel { SettingsViewModel(get(), get(), get(), get(), get()) }
     viewModel { TagViewModel(get()) }
-    viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { SourceListViewModel(get(), get(), get(), get()) }
     viewModel { (sourceId: String) ->
-        FileBrowserViewModel(sourceId, get(), get(), get(), get(), get(), get())
+        FileBrowserViewModel(sourceId, get(), get(), get(), get(), get(), get(), get())
     }
+    viewModel { ResourcePickerViewModel(get(), get(), get()) }
     viewModel { (resourceId: String, contentPath: String, initialPage: Int) ->
         ViewerViewModel(
             resourceId = resourceId,

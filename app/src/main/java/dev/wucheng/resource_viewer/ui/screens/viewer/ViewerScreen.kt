@@ -183,14 +183,15 @@ fun ViewerScreenContent(
                         }
                     }
 
-                    // 跨章节导航：检测是否到达最后一页
-                    LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
-                        if (!pagerState.isScrollInProgress && viewModel.canNavigateChapter()) {
+                    // 跨章节导航：检测是否到达章节边界
+                    LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress, pagerState.currentPageOffsetFraction) {
+                        if (!pagerState.isScrollInProgress
+                            && pagerState.currentPageOffsetFraction == 0f
+                            && viewModel.canNavigateChapter()
+                        ) {
                             if (pagerState.currentPage >= visualPageCount - 1) {
-                                // 到达最后一页，尝试导航到下一章
                                 viewModel.navigateToNextChapter()
                             } else if (pagerState.currentPage == 0) {
-                                // 到达第一页，尝试导航到上一章
                                 viewModel.navigateToPrevChapter()
                             }
                         }

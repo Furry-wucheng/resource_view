@@ -18,16 +18,29 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CallSplit
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,6 +88,7 @@ private fun ResourceType.displayText(): String = when (this) {
  * @param selectedOrgMode 当前选中的组织模式
  * @param onTagToggle 标签勾选切换回调
  * @param onOrgModeChange 组织模式切换回调
+ * @param onSplitResource 拆分资源回调
  * @param onSave 保存回调
  * @param onDismiss 取消回调
  * @param modifier Modifier
@@ -90,6 +104,9 @@ fun ResourceDetailSheet(
     onOrgModeChange: (OrganizationMode) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
+    onSplitResource: (Resource) -> Unit = {},
+    onDelete: (Resource) -> Unit = {},
+    onCreateTag: (String, (String) -> Unit) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val sheetState = rememberModalBottomSheetState()
@@ -180,6 +197,64 @@ fun ResourceDetailSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // 拆分资源按钮
+            if (resource.type == ResourceType.FOLDER) {
+                FilledTonalButton(
+                    onClick = {
+                        onDismiss()
+                        onSplitResource(resource)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.CallSplit, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("拆分资源")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // 删除资源按钮
+            var showDeleteConfirm by remember { mutableStateOf(false) }
+            Button(
+                onClick = { showDeleteConfirm = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("删除资源")
+            }
+
+            if (showDeleteConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteConfirm = false },
+                    title = { Text("确认删除") },
+                    text = { Text("确定要删除「${resource.name}」吗？此操作不可撤销。") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteConfirm = false
+                                onDismiss()
+                                onDelete(resource)
+                            },
+                        ) {
+                            Text("删除", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteConfirm = false }) {
+                            Text("取消")
+                        }
+                    },
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // 标签
             Text(
                 text = "标签",
@@ -187,6 +262,33 @@ fun ResourceDetailSheet(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 快捷新建标签
+            var newTagName by remember { mutableStateOf("") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = newTagName,
+                    onValueChange = { newTagName = it.take(20) },
+                    label = { Text("新建标签") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    enabled = newTagName.isNotBlank(),
+                    onClick = {
+                        onCreateTag(newTagName) { id -> onTagToggle(id) }
+                        newTagName = ""
+                    },
+                ) {
+                    Text("创建")
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 

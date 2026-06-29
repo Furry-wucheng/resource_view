@@ -31,7 +31,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.domain.model.Chapter
 import dev.wucheng.resource_viewer.domain.model.FileEntry
-import dev.wucheng.resource_viewer.shared.media.MediaFormats
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.OrgModeSwitcher
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -371,11 +370,7 @@ private fun ChapterContent(
                         LooseFileItem(
                             file = file,
                             onClick = {
-                                if (MediaFormats.isVideo(file.extension)) {
-                                    onOpenVideo(state.sourceId, file.relativePath)
-                                } else {
-                                    onNavigateToViewer(resourceId, file.relativePath)
-                                }
+                                onOpenVideo(state.sourceId, file.relativePath)
                             },
                         )
                     }
@@ -416,11 +411,7 @@ private fun ChapterContent(
                         LooseFileGridItem(
                             file = file,
                             onClick = {
-                                if (MediaFormats.isVideo(file.extension)) {
-                                    onOpenVideo(state.sourceId, file.relativePath)
-                                } else {
-                                    onNavigateToViewer(resourceId, file.relativePath)
-                                }
+                                onOpenVideo(state.sourceId, file.relativePath)
                             },
                         )
                     }

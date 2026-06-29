@@ -26,6 +26,7 @@ import dev.wucheng.resource_viewer.shared.content.MixedFolderProvider
 import dev.wucheng.resource_viewer.shared.content.PdfContentProvider
 import dev.wucheng.resource_viewer.shared.media.MediaFormats
 import dev.wucheng.resource_viewer.shared.filesource.DocumentTreeFileSource
+import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import dev.wucheng.resource_viewer.shared.organization.ChapterGalleryStrategy
 import dev.wucheng.resource_viewer.shared.organization.ChapterStrategy
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -130,7 +131,14 @@ class ViewerViewModel(
     /** 页面缓存容量（从配置读取） */
     private var pageCacheLimitBytes: Long = 500L * 1024 * 1024
 
-    /**
+    /** 缓存的资源引用（用于跨章节导航） */
+    private var currentResource: dev.wucheng.resource_viewer.domain.model.Resource? = null
+
+    /** 缓存的 FileSource 引用 */
+    private var cachedFileSource: FileSource? = null
+
+    /** 是否正在导航章节（防止重复触发） */
+    private val _isNavigatingChapter = MutableStateFlow(false)    /**
      * 从文件浏览器直接加载文件（不需要 resourceId）。
      * 根据文件扩展名判断类型，创建对应的 ContentProvider。
      */
@@ -444,9 +452,11 @@ class ViewerViewModel(
      * 对于文件夹类资源，使用 MixedFolderProvider 支持图片+视频无缝浏览。
      */
     private suspend fun loadContentProviderResource(resource: dev.wucheng.resource_viewer.domain.model.Resource) {
+        currentResource = resource
         when (val fsResult = filesystemRepository.getFileSource(resource.sourceId)) {
             is Result.Ok -> {
                 val fileSource = fsResult.value
+                cachedFileSource = fileSource
                 try {
                     if (resource.type == ResourceType.PDF) {
                         val provider = withContext(ioDispatcher) {
@@ -712,7 +722,7 @@ class ViewerViewModel(
     }
 
     /**
-     * 导航到下一章。
+     * 导航到下一章（仅 CHAPTER / CHAPTER_GALLERY 模式触发）。
      * @return 下一章名称，如果没有下一章返回 null
      */
     fun navigateToNextChapter(): String? {
@@ -721,11 +731,12 @@ class ViewerViewModel(
         if (chapterList.isEmpty() || currentIndex < 0 || currentIndex >= chapterList.size - 1) {
             return null
         }
+        if (_isNavigatingChapter.value) return null
         val nextChapter = chapterList[currentIndex + 1]
         _currentChapterIndex.value = currentIndex + 1
-        _chapterHint.value = "下一章: ${nextChapter.name}"
-        // 清除提示
         viewModelScope.launch {
+            reloadChapterContent(nextChapter.relativePath, startPage = 0)
+            _chapterHint.value = "下一章: ${nextChapter.name}"
             kotlinx.coroutines.delay(2000)
             _chapterHint.value = null
         }
@@ -733,7 +744,7 @@ class ViewerViewModel(
     }
 
     /**
-     * 导航到上一章。
+     * 导航到上一章（仅 CHAPTER / CHAPTER_GALLERY 模式触发）。
      * @return 上一章名称，如果没有上一章返回 null
      */
     fun navigateToPrevChapter(): String? {
@@ -742,11 +753,12 @@ class ViewerViewModel(
         if (chapterList.isEmpty() || currentIndex <= 0) {
             return null
         }
+        if (_isNavigatingChapter.value) return null
         val prevChapter = chapterList[currentIndex - 1]
         _currentChapterIndex.value = currentIndex - 1
-        _chapterHint.value = "上一章: ${prevChapter.name}"
-        // 清除提示
         viewModelScope.launch {
+            reloadChapterContent(prevChapter.relativePath, startPage = Int.MAX_VALUE)
+            _chapterHint.value = "上一章: ${prevChapter.name}"
             kotlinx.coroutines.delay(2000)
             _chapterHint.value = null
         }
@@ -755,9 +767,90 @@ class ViewerViewModel(
 
     /**
      * 检查是否可以跨章节导航。
+     * 仅在 CHAPTER / CHAPTER_GALLERY 模式下才可能返回 true。
      */
     fun canNavigateChapter(): Boolean {
-        return _crossChapter.value && _chapters.value.isNotEmpty()
+        return _crossChapter.value && _chapters.value.isNotEmpty() && !_isNavigatingChapter.value
+    }
+
+    /**
+     * 重新加载指定章节的内容。
+     * 仅用于 CHAPTER / CHAPTER_GALLERY 模式下的跨章节切换。
+     */
+    private suspend fun reloadChapterContent(chapterPath: String, startPage: Int) {
+        val resource = currentResource ?: return
+        if (_isNavigatingChapter.value) return
+        _isNavigatingChapter.value = true
+
+        try {
+            // 取消旧的预取并释放旧的 ContentProvider
+            prefetchJob?.cancel()
+            contentProvider?.dispose()
+            contentProvider = null
+            pageLoader = null
+
+            val fileSource = cachedFileSource
+                ?: when (val fsResult = filesystemRepository.getFileSource(resource.sourceId)) {
+                    is Result.Ok -> fsResult.value
+                    is Result.Err -> {
+                        _chapterHint.value = "无法获取文件源"
+                        return
+                    }
+                }
+
+            val isRecursive = resource.organizationMode in setOf(
+                OrganizationMode.CHAPTER_GALLERY
+            )
+            val videoFactory = when (val srcResult = filesystemRepository.getSource(resource.sourceId)) {
+                is Result.Ok -> {
+                    val source = srcResult.value
+                    if (source != null && source.type == SourceType.SMB) {
+                        val password = filesystemRepository.getPassword(source.id) ?: ""
+                        SmbDataSourceFactory(source, password)
+                    } else null
+                }
+                is Result.Err -> null
+            }
+
+            val provider = withContext(ioDispatcher) {
+                MixedFolderProvider(
+                    fileSource = fileSource,
+                    relativePath = chapterPath,
+                    sourceId = resource.sourceId,
+                    videoDataSourceFactory = videoFactory,
+                    recursive = isRecursive,
+                    pageCacheDirectory = context.cacheDir,
+                    pageCacheLimitBytes = pageCacheLimitBytes,
+                )
+            }
+            val viewerItems = provider.buildViewerItems()
+
+            if (viewerItems.isEmpty()) {
+                _chapterHint.value = "章节无内容"
+                return
+            }
+
+            contentProvider = provider
+            pageLoader = PageLoader(
+                maxCacheSize = PAGE_CACHE_BYTES,
+                sizeOf = { bitmap -> bitmap.allocationByteCount.toLong() },
+                load = { request ->
+                    provider.loadPage(request.pageIndex, request.targetWidth, request.targetHeight)
+                },
+            )
+
+            val resolvedPage = startPage.coerceIn(0, (viewerItems.size - 1).coerceAtLeast(0))
+            _totalPages.value = viewerItems.size
+            _currentPage.value = resolvedPage
+            _uiState.value = ViewerUiState.Success(
+                items = viewerItems,
+                resourceName = resource.name,
+            )
+        } catch (e: Exception) {
+            _chapterHint.value = "加载失败"
+        } finally {
+            _isNavigatingChapter.value = false
+        }
     }
 
     /**

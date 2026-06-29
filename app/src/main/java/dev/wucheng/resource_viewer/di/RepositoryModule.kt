@@ -13,6 +13,7 @@ import dev.wucheng.resource_viewer.shared.thumbnail.FileBrowserThumbnailDiskCach
 import dev.wucheng.resource_viewer.shared.thumbnail.ImageThumbnailGenerator
 import dev.wucheng.resource_viewer.shared.thumbnail.PdfThumbnailGenerator
 import dev.wucheng.resource_viewer.shared.thumbnail.VideoThumbnailGenerator
+import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 /**
@@ -29,7 +30,7 @@ val repositoryModule = module {
     single { DetectOrganizationModeUseCase() }
     single { BatchAddResourcesUseCase(get(), get(), get(), get(), get()) }
     single { ScanResourcesUseCase(get(), get()) }
-    single { SplitResourceUseCase(get()) }
+    single { SplitResourceUseCase(get(), get(), get(), androidContext(), get()) }
     single {
         val diskCache = get<FileBrowserThumbnailDiskCache>()
         ThumbnailRepository(

@@ -1,20 +1,19 @@
 package dev.wucheng.resource_viewer.ui.components
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
+import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.SourceRepository
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.TreeFileNode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import dev.wucheng.resource_viewer.shared.media.MediaFormats
 
-/**
- * ResourcePicker 弹窗的 UI 状态。
- */
 sealed class ResourcePickerUiState {
     data object Idle : ResourcePickerUiState()
     data object Loading : ResourcePickerUiState()
@@ -22,13 +21,10 @@ sealed class ResourcePickerUiState {
     data class Error(val message: String) : ResourcePickerUiState()
 }
 
-/**
- * ResourcePicker 弹窗 ViewModel。
- * 管理树形文件选择状态：加载、展开/折叠、勾选。
- */
 class ResourcePickerViewModel(
     private val filesystemRepository: FilesystemRepository,
     private val sourceRepository: SourceRepository,
+    private val resourceRepository: ResourceRepository,
 ) : ViewModel() {
 
     private val _treeNodes = MutableStateFlow<List<TreeFileNode>>(emptyList())
@@ -44,12 +40,8 @@ class ResourcePickerViewModel(
     val rootName: StateFlow<String> = _rootName.asStateFlow()
 
     private var sourceId: String = ""
+    private var importedPaths: Set<String> = emptySet()
 
-    /**
-     * 加载指定数据源的目录树。
-     * @param sourceId 数据源 ID
-     * @param rootPath 根路径（相对路径）
-     */
     fun loadTree(sourceId: String, rootPath: String) {
         this.sourceId = sourceId
         _uiState.value = ResourcePickerUiState.Loading
@@ -70,6 +62,9 @@ class ResourcePickerViewModel(
 
             _rootName.value = source.name
 
+            importedPaths = loadImportedPaths(sourceId)
+            Log.d(TAG, "loaded importedPaths=${importedPaths.size} for source=$sourceId")
+
             val entriesResult = filesystemRepository.listDirectory(source, rootPath)
             when (entriesResult) {
                 is dev.wucheng.resource_viewer.domain.error.Result.Ok -> {
@@ -85,16 +80,11 @@ class ResourcePickerViewModel(
         }
     }
 
-    /**
-     * 切换目录节点的展开/折叠状态。
-     * 如果子节点尚未加载，则加载子目录内容。
-     */
     fun toggleExpand(relativePath: String) {
         val nodes = _treeNodes.value.toMutableList()
         updateNodeAtPath(nodes, relativePath) { node ->
             val newExpanded = !node.isExpanded
             if (newExpanded && node.children.isEmpty() && node.isDirectory) {
-                // 需要加载子节点
                 loadChildren(relativePath) { children ->
                     val updated = _treeNodes.value.toMutableList()
                     updateNodeAtPath(updated, relativePath) { n ->
@@ -110,10 +100,6 @@ class ResourcePickerViewModel(
         _treeNodes.value = nodes
     }
 
-    /**
-     * 切换节点的勾选状态。
-     * 勾选不级联——父子独立。
-     */
     fun toggleCheck(relativePath: String) {
         val nodes = _treeNodes.value.toMutableList()
         updateNodeAtPath(nodes, relativePath) { node ->
@@ -123,10 +109,6 @@ class ResourcePickerViewModel(
         recalculateSelectedCount()
     }
 
-    /**
-     * 全选/全取消指定目录的直接子项。
-     * 如果已全部选中则取消，否则全选。
-     */
     fun selectAllChildren(parentPath: String) {
         val nodes = _treeNodes.value.toMutableList()
         updateNodeAtPath(nodes, parentPath) { parent ->
@@ -139,9 +121,13 @@ class ResourcePickerViewModel(
         recalculateSelectedCount()
     }
 
-    /**
-     * 获取所有已勾选的文件条目。
-     */
+    fun selectAllRootNodes() {
+        val nodes = _treeNodes.value
+        val allChecked = nodes.isNotEmpty() && nodes.all { it.isChecked }
+        _treeNodes.value = nodes.map { it.copy(isChecked = !allChecked) }
+        recalculateSelectedCount()
+    }
+
     fun getSelectedEntries(): List<FileEntry> {
         return _treeNodes.value.flatMap { it.checkedLeafNodes }.map { node ->
             FileEntry(
@@ -173,33 +159,33 @@ class ResourcePickerViewModel(
         }
     }
 
-    /**
-     * 从 FileEntry 列表构建树节点列表。
-     * 智能识别：纯图片文件夹 → 不可展开；混合内容 → 可展开。
-     */
+    private suspend fun loadImportedPaths(sId: String): Set<String> {
+        return try {
+            resourceRepository.getVisibleResources().first()
+                .filter { it.sourceId == sId }
+                .map { it.relativePath }
+                .toSet()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load imported paths", e)
+            emptySet()
+        }
+    }
+
     private fun buildTreeNodes(entries: List<FileEntry>, parentPath: String): List<TreeFileNode> {
         return entries
-            .filter { it.isDirectory || isRecognizedFile(it.extension) }
+            .filter { it.isDirectory }
             .map { entry ->
                 val fullPath = if (parentPath.isEmpty()) entry.name else "$parentPath/${entry.name}"
                 TreeFileNode(
                     name = entry.name,
                     relativePath = fullPath,
                     isDirectory = entry.isDirectory,
-                    isExpandable = entry.isDirectory, // 默认可展开，加载子节点后判断
-                    fileCount = if (entry.isDirectory) null else null,
+                    isExpandable = true,
+                    isImported = importedPaths.contains(fullPath),
                 )
             }
     }
 
-    private fun isRecognizedFile(extension: String): Boolean {
-        val ext = extension.lowercase()
-        return MediaFormats.isPreviewable(ext) || ext in setOf("pdf", "zip", "rar", "7z")
-    }
-
-    /**
-     * 递归更新指定路径的节点。
-     */
     private fun updateNodeAtPath(
         nodes: MutableList<TreeFileNode>,
         targetPath: String,
@@ -221,5 +207,9 @@ class ResourcePickerViewModel(
 
     private fun recalculateSelectedCount() {
         _selectedCount.value = _treeNodes.value.sumOf { it.checkedLeafNodes.size }
+    }
+
+    private companion object {
+        const val TAG = "ResourcePickerVM"
     }
 }

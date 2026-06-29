@@ -2,15 +2,18 @@ package dev.wucheng.resource_viewer.ui.components
 
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
+import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.SourceRepository
 import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Source
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -29,6 +32,7 @@ class ResourcePickerViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var mockFilesystemRepo: FilesystemRepository
     private lateinit var mockSourceRepo: SourceRepository
+    private lateinit var mockResourceRepo: ResourceRepository
 
     private val testSource = Source(
         id = "src-1",
@@ -44,6 +48,8 @@ class ResourcePickerViewModelTest {
         Dispatchers.setMain(testDispatcher)
         mockFilesystemRepo = mockk()
         mockSourceRepo = mockk()
+        mockResourceRepo = mockk()
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(emptyList())
     }
 
     @After
@@ -65,32 +71,33 @@ class ResourcePickerViewModelTest {
         }
     }
 
+    private fun createViewModel() = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo, mockResourceRepo)
+
     @Test
     fun `should load tree from filesystem repository`() = runTest {
         val entries = listOf(
             FileEntry("folder1", "folder1", isDirectory = true, size = 0, modifiedAt = 0),
-            FileEntry("file1.jpg", "file1.jpg", isDirectory = false, size = 100, modifiedAt = 0, extension = "jpg"),
+            FileEntry("folder2", "folder2", isDirectory = true, size = 0, modifiedAt = 0),
         )
         setupMocks(rootEntries = entries)
 
-        val viewModel = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo)
+        val viewModel = createViewModel()
         viewModel.loadTree("src-1", "/root")
         advanceUntilIdle()
 
         val tree = viewModel.treeNodes.value
         assertEquals(2, tree.size)
         assertEquals("folder1", tree[0].name)
-        assertEquals("file1.jpg", tree[1].name)
-        // Paths include parent path
+        assertEquals("folder2", tree[1].name)
         assertEquals("/root/folder1", tree[0].relativePath)
-        assertEquals("/root/file1.jpg", tree[1].relativePath)
+        assertEquals("/root/folder2", tree[1].relativePath)
     }
 
     @Test
     fun `should emit error state when source not found`() = runTest {
         coEvery { mockSourceRepo.getSourceById("src-1") } returns Result.Ok(null)
 
-        val viewModel = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo)
+        val viewModel = createViewModel()
         viewModel.loadTree("src-1", "/root")
         advanceUntilIdle()
 
@@ -103,7 +110,7 @@ class ResourcePickerViewModelTest {
             DomainError.DatabaseError("fail")
         )
 
-        val viewModel = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo)
+        val viewModel = createViewModel()
         viewModel.loadTree("src-1", "/root")
         advanceUntilIdle()
 
@@ -117,12 +124,12 @@ class ResourcePickerViewModelTest {
         )
         val subEntries = mapOf(
             "/root/folder1" to listOf(
-                FileEntry("sub.jpg", "sub.jpg", isDirectory = false, size = 100, modifiedAt = 0, extension = "jpg"),
+                FileEntry("subdir", "subdir", isDirectory = true, size = 0, modifiedAt = 0),
             ),
         )
         setupMocks(rootEntries = entries, subEntries = subEntries)
 
-        val viewModel = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo)
+        val viewModel = createViewModel()
         viewModel.loadTree("src-1", "/root")
         advanceUntilIdle()
 
@@ -138,17 +145,17 @@ class ResourcePickerViewModelTest {
     @Test
     fun `should toggle check state for node`() = runTest {
         val entries = listOf(
-            FileEntry("file1.jpg", "file1.jpg", isDirectory = false, size = 100, modifiedAt = 0, extension = "jpg"),
+            FileEntry("folder1", "folder1", isDirectory = true, size = 0, modifiedAt = 0),
         )
         setupMocks(rootEntries = entries)
 
-        val viewModel = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo)
+        val viewModel = createViewModel()
         viewModel.loadTree("src-1", "/root")
         advanceUntilIdle()
 
         assertFalse(viewModel.treeNodes.value[0].isChecked)
 
-        viewModel.toggleCheck("/root/file1.jpg")
+        viewModel.toggleCheck("/root/folder1")
         advanceUntilIdle()
 
         assertTrue(viewModel.treeNodes.value[0].isChecked)
@@ -162,13 +169,13 @@ class ResourcePickerViewModelTest {
         )
         val subEntries = mapOf(
             "/root/folder1" to listOf(
-                FileEntry("a.jpg", "a.jpg", isDirectory = false, size = 100, modifiedAt = 0, extension = "jpg"),
-                FileEntry("b.jpg", "b.jpg", isDirectory = false, size = 100, modifiedAt = 0, extension = "jpg"),
+                FileEntry("sub1", "sub1", isDirectory = true, size = 0, modifiedAt = 0),
+                FileEntry("sub2", "sub2", isDirectory = true, size = 0, modifiedAt = 0),
             ),
         )
         setupMocks(rootEntries = entries, subEntries = subEntries)
 
-        val viewModel = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo)
+        val viewModel = createViewModel()
         viewModel.loadTree("src-1", "/root")
         advanceUntilIdle()
 
@@ -191,13 +198,13 @@ class ResourcePickerViewModelTest {
         )
         val subEntries = mapOf(
             "/root/folder1" to listOf(
-                FileEntry("a.jpg", "a.jpg", isDirectory = false, size = 100, modifiedAt = 0, extension = "jpg"),
-                FileEntry("b.jpg", "b.jpg", isDirectory = false, size = 100, modifiedAt = 0, extension = "jpg"),
+                FileEntry("sub1", "sub1", isDirectory = true, size = 0, modifiedAt = 0),
+                FileEntry("sub2", "sub2", isDirectory = true, size = 0, modifiedAt = 0),
             ),
         )
         setupMocks(rootEntries = entries, subEntries = subEntries)
 
-        val viewModel = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo)
+        val viewModel = createViewModel()
         viewModel.loadTree("src-1", "/root")
         advanceUntilIdle()
 
@@ -216,28 +223,28 @@ class ResourcePickerViewModelTest {
     @Test
     fun `should get selected file entries`() = runTest {
         val entries = listOf(
-            FileEntry("file1.jpg", "file1.jpg", isDirectory = false, size = 100, modifiedAt = 0, extension = "jpg"),
-            FileEntry("file2.jpg", "file2.jpg", isDirectory = false, size = 200, modifiedAt = 0, extension = "jpg"),
+            FileEntry("chapter1", "chapter1", isDirectory = true, size = 0, modifiedAt = 0),
+            FileEntry("chapter2", "chapter2", isDirectory = true, size = 0, modifiedAt = 0),
         )
         setupMocks(rootEntries = entries)
 
-        val viewModel = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo)
+        val viewModel = createViewModel()
         viewModel.loadTree("src-1", "/root")
         advanceUntilIdle()
 
-        viewModel.toggleCheck("/root/file1.jpg")
+        viewModel.toggleCheck("/root/chapter1")
         advanceUntilIdle()
 
         val selected = viewModel.getSelectedEntries()
         assertEquals(1, selected.size)
-        assertEquals("/root/file1.jpg", selected[0].relativePath)
+        assertEquals("/root/chapter1", selected[0].relativePath)
     }
 
     @Test
     fun `should set root name from source name`() = runTest {
         setupMocks(rootEntries = emptyList())
 
-        val viewModel = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo)
+        val viewModel = createViewModel()
         viewModel.loadTree("src-1", "/root")
         advanceUntilIdle()
 
@@ -245,21 +252,20 @@ class ResourcePickerViewModelTest {
     }
 
     @Test
-    fun `should filter out unrecognized file types`() = runTest {
+    fun `should only include directories`() = runTest {
         val entries = listOf(
             FileEntry("photo.jpg", "photo.jpg", isDirectory = false, size = 100, modifiedAt = 0, extension = "jpg"),
-            FileEntry("readme.txt", "readme.txt", isDirectory = false, size = 50, modifiedAt = 0, extension = "txt"),
             FileEntry("video.mp4", "video.mp4", isDirectory = false, size = 500, modifiedAt = 0, extension = "mp4"),
+            FileEntry("myfolder", "myfolder", isDirectory = true, size = 0, modifiedAt = 0),
         )
         setupMocks(rootEntries = entries)
 
-        val viewModel = ResourcePickerViewModel(mockFilesystemRepo, mockSourceRepo)
+        val viewModel = createViewModel()
         viewModel.loadTree("src-1", "/root")
         advanceUntilIdle()
 
         val tree = viewModel.treeNodes.value
-        assertEquals(2, tree.size)
-        assertEquals("photo.jpg", tree[0].name)
-        assertEquals("video.mp4", tree[1].name)
+        assertEquals(1, tree.size)
+        assertEquals("myfolder", tree[0].name)
     }
 }

@@ -59,7 +59,7 @@ class TreeFileNodeTest {
     }
 
     @Test
-    fun `checkedLeafNodes should not return checked expandable directory`() {
+    fun `checkedLeafNodes should return checked expandable directory`() {
         val node = TreeFileNode(
             name = "root",
             relativePath = "",
@@ -75,7 +75,8 @@ class TreeFileNodeTest {
             ),
         )
         val checked = node.checkedLeafNodes
-        assertTrue(checked.isEmpty())
+        assertEquals(1, checked.size)
+        assertEquals("folder", checked[0].name)
     }
 
     @Test
