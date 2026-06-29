@@ -17,6 +17,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import dev.wucheng.resource_viewer.data.remote.smb.SmbConnectionMonitor
 import dev.wucheng.resource_viewer.ui.base.FatalErrorHolder
 import dev.wucheng.resource_viewer.ui.components.AppShell
 import dev.wucheng.resource_viewer.ui.components.ErrorView
@@ -24,6 +27,8 @@ import dev.wucheng.resource_viewer.ui.components.ErrorViewLevel
 import dev.wucheng.resource_viewer.ui.theme.ResourceViewerThemeWithSettings
 
 class MainActivity : ComponentActivity() {
+
+    private var smbMonitor: SmbConnectionMonitor? = null
 
     // M12: 权限请求回调
     private var onPermissionResult: ((Boolean) -> Unit)? = null
@@ -39,6 +44,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        initSmbConnectionMonitor()
 
         // 直接请求权限
         if (!checkPermissions()) {
@@ -71,6 +78,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        smbMonitor?.stop(ProcessLifecycleOwner.get())
+        super.onDestroy()
+    }
+
+    private fun initSmbConnectionMonitor() {
+        smbMonitor = SmbConnectionMonitor(
+            scope = ProcessLifecycleOwner.get().lifecycleScope
+        )
+        smbMonitor?.start(ProcessLifecycleOwner.get())
     }
 
     /**

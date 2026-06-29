@@ -64,4 +64,9 @@ object FileSourceFactory {
         }
         cache.clear()
     }
+
+    /** 获取当前缓存中的所有 SMB 文件源（用于连接监控探活） */
+    fun getCachedSmbSources(): List<SmbFileSource> {
+        return cache.values.filterIsInstance<SmbFileSource>()
+    }
 }

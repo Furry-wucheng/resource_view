@@ -407,6 +407,18 @@
 | fileTypeColor/fileTypeIcon 公共化 | refactor-unified-thumbnail | D-003 |
 | 并发数统一读 AppConfigDao | refactor-unified-thumbnail | D-004 |
 
+### 2026-06-30 — SMB 连接掉线监测与前台探活修复
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `data/remote/smb/SmbConnectionMonitor.kt` | 2026-06-30-smb-connection-keepalive | D-001, D-002 |
+| `data/remote/smb/SmbConnectionMonitorTest.kt` | 2026-06-30-smb-connection-keepalive | — |
+| `shared/filesource/FileSourceFactory.kt` | 2026-06-30-smb-connection-keepalive | D-003 |
+| `MainActivity.kt` | 2026-06-30-smb-connection-keepalive | D-002 |
+| SMB 前台探活 vs TCP Keep-Alive vs TTL | 2026-06-30-smb-connection-keepalive | D-001 |
+| ProcessLifecycleOwner 生命周期绑定 | 2026-06-30-smb-connection-keepalive | D-002 |
+| FileSourceFactory 聚合追加只读查询 | 2026-06-30-smb-connection-keepalive | D-003 |
+
 ### 2026-06-29 — 视频NO_MEMORY修复 + 查看器无缝切换 + 缩略图缓存统一
 
 | 代码组件 / 决策主题 | Stage | 决策 ID |
