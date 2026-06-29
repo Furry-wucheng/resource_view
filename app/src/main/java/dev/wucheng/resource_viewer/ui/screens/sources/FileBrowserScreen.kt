@@ -101,13 +101,12 @@ fun FileBrowserScreen(
     LaunchedEffect(sourceId) { viewModel.load() }
     LaunchedEffect(uiState.showDirectoryTree) { showDirectoryTree = uiState.showDirectoryTree }
 
-    // 返回键：多选退出 -> 上一层目录 -> 页面返回
-    BackHandler {
-        when {
-            uiState.isMultiSelectMode -> viewModel.exitMultiSelect()
-            viewModel.goUp() -> {} // 已导航到上一层
-            else -> onNavigateBack() // 已在根目录，返回上一页
-        }
+    // 返回键：多选模式独立处理，避免状态突变导致 fallthrough
+    BackHandler(enabled = uiState.isMultiSelectMode) {
+        viewModel.exitMultiSelect()
+    }
+    BackHandler(enabled = !uiState.isMultiSelectMode) {
+        if (!viewModel.goUp()) onNavigateBack()
     }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -121,6 +120,10 @@ fun FileBrowserScreen(
             },
             actions = {
                 if (uiState.isMultiSelectMode) {
+                    val allSelected = uiState.selectedPaths.size == uiState.entries.size && uiState.entries.isNotEmpty()
+                    TextButton(onClick = { if (allSelected) viewModel.deselectAll() else viewModel.selectAll() }) {
+                        Text(if (allSelected) "取消" else "全选")
+                    }
                     TextButton(onClick = { viewModel.exitMultiSelect() }) {
                         Text("退出")
                     }
