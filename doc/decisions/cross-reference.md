@@ -438,5 +438,13 @@
 | `ui/screens/sources/FileBrowserViewModel.kt` | 2026-06-29-sort-persistence-natural-order | D-002 |
 | 排序持久化与自然排序修复 | 2026-06-29-sort-persistence-natural-order | D-001, D-002 |
 
+### filebrowser-scroll-position — 文件浏览器目录滚动位置记忆
+
+| 代码组件 / 决策主题 | Stage | 决策 ID |
+|---------------------|-------|---------|
+| `ui/screens/sources/FileBrowserViewModel.kt` | filebrowser-scroll-position | D-001 |
+| `ui/screens/sources/FileBrowserScreen.kt` | filebrowser-scroll-position | D-001 |
+| 滚动位置缓存策略 — 内存 Map vs 持久化 vs 独立路由 | filebrowser-scroll-position | D-001 |
+
 > ⚠️ 各 stage 完成后，Agent 需在此文件中新增自己 stage 涉及的组件行和决策主题行。
 > 已有行的决策 ID 列留空（`—`），待对应 stage 完成后由 Agent 填写。

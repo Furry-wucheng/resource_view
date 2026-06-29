@@ -62,6 +62,15 @@ class FileBrowserViewModel(
     private var fileSource: FileSource? = null
     private val inFlightThumbnails = mutableMapOf<String, Deferred<Bitmap?>>()
 
+    /** 内存滚动位置缓存：path -> (firstVisibleItemIndex, firstVisibleItemScrollOffset) */
+    private val scrollPositions = mutableMapOf<String, Pair<Int, Int>>()
+
+    fun saveScrollPosition(path: String, index: Int, offset: Int) {
+        scrollPositions[path] = index to offset
+    }
+
+    fun getScrollPosition(path: String): Pair<Int, Int>? = scrollPositions[path]
+
     fun load() {
         if (_uiState.value.source != null) {
             loadDirectory(_uiState.value.currentPath)

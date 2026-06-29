@@ -22,10 +22,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -98,6 +102,41 @@ fun FileBrowserScreen(
     // 目录树显示状态，根据设置初始化
     var showDirectoryTree by remember { mutableStateOf(uiState.showDirectoryTree) }
 
+    // 显式滚动状态，用于跨目录恢复位置
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+
+    // 保存当前目录滚动位置
+    val saveScrollPosition: () -> Unit = {
+        val path = uiState.currentPath
+        when (uiState.viewMode) {
+            FileViewMode.LIST -> viewModel.saveScrollPosition(
+                path, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset
+            )
+            FileViewMode.GRID -> viewModel.saveScrollPosition(
+                path, gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset
+            )
+        }
+    }
+
+    // 统一的目录切换：先保存当前位置，再跳转
+    val performOpenDirectory: (String) -> Unit = { path ->
+        saveScrollPosition()
+        viewModel.openDirectory(path)
+    }
+    val performGoUp: () -> Boolean = {
+        saveScrollPosition()
+        viewModel.goUp()
+    }
+    val performNavigateToSegment: (Int) -> Unit = { index ->
+        saveScrollPosition()
+        viewModel.navigateToSegment(index)
+    }
+    val performNavigateToRoot: () -> Unit = {
+        saveScrollPosition()
+        viewModel.openDirectory("")
+    }
+
     LaunchedEffect(sourceId) { viewModel.load() }
     LaunchedEffect(uiState.showDirectoryTree) { showDirectoryTree = uiState.showDirectoryTree }
 
@@ -106,7 +145,7 @@ fun FileBrowserScreen(
         viewModel.exitMultiSelect()
     }
     BackHandler(enabled = !uiState.isMultiSelectMode) {
-        if (!viewModel.goUp()) onNavigateBack()
+        if (!performGoUp()) onNavigateBack()
     }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -202,7 +241,7 @@ fun FileBrowserScreen(
                             source = source,
                             filesystemRepository = filesystemRepository,
                             currentPath = uiState.currentPath,
-                            onDirectoryTap = { path -> viewModel.openDirectory(path) },
+                            onDirectoryTap = performOpenDirectory,
                         )
                     }
                 }
@@ -215,14 +254,17 @@ fun FileBrowserScreen(
                     BreadcrumbBar(
                         pathSegments = uiState.pathSegments,
                         sourceName = uiState.source?.name ?: "",
-                        onNavigateToSegment = { viewModel.navigateToSegment(it) },
-                        onNavigateToRoot = { viewModel.openDirectory("") },
+                        onNavigateToSegment = performNavigateToSegment,
+                        onNavigateToRoot = performNavigateToRoot,
                     )
                     // 文件内容
                     FileContentArea(
                         uiState = uiState,
                         viewModel = viewModel,
                         onOpenFile = onOpenFile,
+                        listState = listState,
+                        gridState = gridState,
+                        onOpenDirectory = performOpenDirectory,
                     )
                 }
             }
@@ -272,12 +314,25 @@ fun FileBrowserScreen(
 private fun FileContentArea(
     uiState: FileBrowserUiState,
     viewModel: FileBrowserViewModel,
-    onOpenFile: (sourceId: String, filePath: String) -> Unit,
+    onOpenFile: (String, String) -> Unit,
+    listState: LazyListState,
+    gridState: LazyGridState,
+    onOpenDirectory: (String) -> Unit,
 ) {
+    // 恢复滚动位置
+    LaunchedEffect(uiState.currentPath, uiState.viewMode) {
+        val (index, offset) = viewModel.getScrollPosition(uiState.currentPath) ?: (0 to 0)
+        when (uiState.viewMode) {
+            FileViewMode.LIST -> listState.scrollToItem(index, offset)
+            FileViewMode.GRID -> gridState.scrollToItem(index, offset)
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         when (uiState.viewMode) {
             FileViewMode.LIST -> {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 8.dp),
                 ) {
@@ -288,7 +343,7 @@ private fun FileContentArea(
                             selected = entry.relativePath in uiState.selectedPaths,
                             onClick = {
                                 if (uiState.isMultiSelectMode) viewModel.toggleSelection(entry.relativePath)
-                                else if (entry.isDirectory) viewModel.openDirectory(entry.relativePath)
+                                else if (entry.isDirectory) onOpenDirectory(entry.relativePath)
                                 else onOpenFile(uiState.source?.id ?: "", entry.relativePath)
                             },
                             onLongClick = {
@@ -305,6 +360,7 @@ private fun FileContentArea(
             }
             FileViewMode.GRID -> {
                 LazyVerticalGrid(
+                    state = gridState,
                     columns = GridCells.Adaptive(minSize = 100.dp),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(8.dp),
@@ -323,7 +379,7 @@ private fun FileContentArea(
                             selected = selected && isMultiSelect,
                             onClick = {
                                 if (isMultiSelect) viewModel.toggleSelection(entry.relativePath)
-                                else if (entry.isDirectory) viewModel.openDirectory(entry.relativePath)
+                                else if (entry.isDirectory) onOpenDirectory(entry.relativePath)
                                 else onOpenFile(uiState.source?.id ?: "", entry.relativePath)
                             },
                             onLongClick = {
