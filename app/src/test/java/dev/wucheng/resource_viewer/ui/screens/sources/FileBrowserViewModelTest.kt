@@ -228,4 +228,18 @@ class FileBrowserViewModelTest {
             viewModel.uiState.value.entries.map { it.name }
         )
     }
+
+    @Test
+    fun `save and get scroll position`() {
+        viewModel.saveScrollPosition("foo/bar", 5, 120)
+        assertEquals(5 to 120, viewModel.getScrollPosition("foo/bar"))
+    }
+
+    @Test
+    fun `scroll position map is independent per path`() {
+        viewModel.saveScrollPosition("a", 1, 10)
+        viewModel.saveScrollPosition("b", 3, 30)
+        assertEquals(1 to 10, viewModel.getScrollPosition("a"))
+        assertEquals(3 to 30, viewModel.getScrollPosition("b"))
+    }
 }

@@ -47,3 +47,4 @@
 | 2026-06-29-video-thumbnail-cache-fix | 视频NO_MEMORY修复 + 查看器无缝切换 + 缩略图缓存统一 | 8 | ✅ | opencode | 2026-06-29 |
 | ux-batch-fixes | 五项UX缺陷修复 — 批量标签/已入库复选框/跨章导航/详情弹窗/散落文件 | 5 | ✅ | opencode | 2026-06-30 |
 | 2026-06-30-smb-connection-keepalive | SMB 连接掉线监测与前台探活修复 | 3 | ✅ | opencode | 2026-06-30 |
+| filebrowser-scroll-position | 文件浏览器返回父目录时滚动位置记忆 | 1 | ✅ | opencode | 2026-06-30 |
