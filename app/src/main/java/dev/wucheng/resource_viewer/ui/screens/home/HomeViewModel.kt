@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dev.wucheng.resource_viewer.data.local.AppDatabase
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.data.local.dao.ResourceTagDao
+import dev.wucheng.resource_viewer.data.local.datastore.HomePrefsStore
 import dev.wucheng.resource_viewer.data.local.entity.ResourceTagEntity
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
@@ -16,6 +17,7 @@ import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.domain.model.Tag
 import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailTaskPool
+import dev.wucheng.resource_viewer.shared.util.NaturalOrderComparator
 import dev.wucheng.resource_viewer.ui.base.UiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,6 +44,7 @@ class HomeViewModel(
     private val resourceRepository: ResourceRepository,
     private val tagRepository: TagRepository,
     private val resourceTagDao: ResourceTagDao,
+    private val homePrefsStore: HomePrefsStore,
     private val thumbnailRepository: ThumbnailRepository? = null,
     private val filesystemRepository: FilesystemRepository? = null,
     private val database: AppDatabase? = null,
@@ -98,8 +101,8 @@ class HomeViewModel(
         when (sort) {
             ResourceSort.ADDED_DESC -> filtered.sortedByDescending { it.createdAt }
             ResourceSort.ADDED_ASC -> filtered.sortedBy { it.createdAt }
-            ResourceSort.NAME_ASC -> filtered.sortedBy { it.name.lowercase() }
-            ResourceSort.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase() }
+            ResourceSort.NAME_ASC -> filtered.sortedWith(java.util.Comparator.comparing({ r: Resource -> r.name }, NaturalOrderComparator))
+            ResourceSort.NAME_DESC -> filtered.sortedWith(java.util.Comparator.comparing({ r: Resource -> r.name }, NaturalOrderComparator).reversed())
         }
     }
 
@@ -124,7 +127,12 @@ class HomeViewModel(
     }
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
-    fun setSort(sort: ResourceSort) { _sort.value = sort }
+    fun setSort(sort: ResourceSort) {
+        _sort.value = sort
+        viewModelScope.launch {
+            homePrefsStore.saveResourceSort(sort.name)
+        }
+    }
     fun enterMultiSelectMode() { _isMultiSelect.value = true }
     fun exitMultiSelectMode() { _isMultiSelect.value = false; _selectedResourceIds.value = emptySet() }
     fun toggleResourceSelection(id: String) {
@@ -180,6 +188,15 @@ class HomeViewModel(
     val detailOrgMode: StateFlow<OrganizationMode> = _detailOrgMode.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            val saved = homePrefsStore.loadResourceSort()
+            if (saved != null) {
+                try {
+                    _sort.value = ResourceSort.valueOf(saved)
+                } catch (_: IllegalArgumentException) { }
+            }
+        }
+
         // 监听资源变化，自动更新 UI 状态
         combine(resources, _selectedTagIds) { res, _ ->
             if (res.isNotEmpty() || _selectedTagIds.value.isEmpty()) {

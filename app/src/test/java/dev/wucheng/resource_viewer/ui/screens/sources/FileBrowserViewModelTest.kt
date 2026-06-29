@@ -165,4 +165,67 @@ class FileBrowserViewModelTest {
         assertEquals(1, viewModel.uiState.value.lastAddResult?.successCount)
         assertTrue(viewModel.uiState.value.selectedPaths.isEmpty())
     }
+
+    // === 自然排序测试 ===
+
+    @Test
+    fun `should sort entries naturally by name ascending`() = runTest {
+        val entries = listOf(
+            FileEntry("chapter10.pdf", "chapter10.pdf", false, 100, 1L, "pdf"),
+            FileEntry("chapter2.pdf", "chapter2.pdf", false, 100, 1L, "pdf"),
+            FileEntry("chapter1.pdf", "chapter1.pdf", false, 100, 1L, "pdf"),
+            FileEntry("chapter20.pdf", "chapter20.pdf", false, 100, 1L, "pdf"),
+        )
+        coEvery { filesystemRepository.getSource("source-1") } returns Result.Ok(source)
+        coEvery { filesystemRepository.getFileSource("source-1") } returns Result.Ok(fileSource)
+        coEvery { filesystemRepository.listDirectory(source, "") } returns Result.Ok(entries)
+
+        viewModel.load()
+
+        assertEquals(
+            listOf("chapter1.pdf", "chapter2.pdf", "chapter10.pdf", "chapter20.pdf"),
+            viewModel.uiState.value.entries.map { it.name }
+        )
+    }
+
+    @Test
+    fun `should sort entries naturally by name descending`() = runTest {
+        val entries = listOf(
+            FileEntry("chapter10.pdf", "chapter10.pdf", false, 100, 1L, "pdf"),
+            FileEntry("chapter2.pdf", "chapter2.pdf", false, 100, 1L, "pdf"),
+            FileEntry("chapter1.pdf", "chapter1.pdf", false, 100, 1L, "pdf"),
+        )
+        coEvery { filesystemRepository.getSource("source-1") } returns Result.Ok(source)
+        coEvery { filesystemRepository.getFileSource("source-1") } returns Result.Ok(fileSource)
+        coEvery { filesystemRepository.listDirectory(source, "") } returns Result.Ok(entries)
+
+        viewModel.load()
+        viewModel.setSortMode(dev.wucheng.resource_viewer.data.local.datastore.FileSortMode.NAME_DESC)
+
+        assertEquals(
+            listOf("chapter10.pdf", "chapter2.pdf", "chapter1.pdf"),
+            viewModel.uiState.value.entries.map { it.name }
+        )
+    }
+
+    @Test
+    fun `should sort directories before files with natural order`() = runTest {
+        val entries = listOf(
+            FileEntry("sub10", "sub10", true, 0, 1L),
+            FileEntry("file10.pdf", "file10.pdf", false, 100, 1L, "pdf"),
+            FileEntry("sub2", "sub2", true, 0, 1L),
+            FileEntry("file2.pdf", "file2.pdf", false, 100, 1L, "pdf"),
+            FileEntry("file1.pdf", "file1.pdf", false, 100, 1L, "pdf"),
+        )
+        coEvery { filesystemRepository.getSource("source-1") } returns Result.Ok(source)
+        coEvery { filesystemRepository.getFileSource("source-1") } returns Result.Ok(fileSource)
+        coEvery { filesystemRepository.listDirectory(source, "") } returns Result.Ok(entries)
+
+        viewModel.load()
+
+        assertEquals(
+            listOf("sub2", "sub10", "file1.pdf", "file2.pdf", "file10.pdf"),
+            viewModel.uiState.value.entries.map { it.name }
+        )
+    }
 }

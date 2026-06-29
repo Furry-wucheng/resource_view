@@ -17,6 +17,7 @@ import dev.wucheng.resource_viewer.domain.model.Tag
 import dev.wucheng.resource_viewer.domain.usecase.BatchAddResourcesUseCase
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import dev.wucheng.resource_viewer.shared.thumbnail.ThumbnailLoadManager
+import dev.wucheng.resource_viewer.shared.util.NaturalOrderComparator
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -299,8 +300,12 @@ class FileBrowserViewModel(
         return entries.sortedWith(
             compareBy<FileEntry> { !it.isDirectory }.let { comparator ->
                 when (sortMode) {
-                    FileSortMode.NAME_ASC -> comparator.thenBy { it.name.lowercase() }
-                    FileSortMode.NAME_DESC -> comparator.thenByDescending { it.name.lowercase() }
+                    FileSortMode.NAME_ASC -> comparator.thenComparing(
+                        { fe: FileEntry -> fe.name }, NaturalOrderComparator
+                    )
+                    FileSortMode.NAME_DESC -> comparator.thenComparing(
+                        { fe: FileEntry -> fe.name }, NaturalOrderComparator.reversed()
+                    )
                     FileSortMode.MODIFIED_ASC -> comparator.thenBy { it.modifiedAt }
                     FileSortMode.MODIFIED_DESC -> comparator.thenByDescending { it.modifiedAt }
                 }

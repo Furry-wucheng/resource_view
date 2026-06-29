@@ -18,7 +18,7 @@ import org.koin.dsl.module
 val viewModelModule = module {
     viewModel { SettingsViewModel(get(), get(), get(), get(), get()) }
     viewModel { TagViewModel(get()) }
-    viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { SourceListViewModel(get(), get(), get(), get()) }
     viewModel { (sourceId: String) ->
         FileBrowserViewModel(sourceId, get(), get(), get(), get(), get(), get())

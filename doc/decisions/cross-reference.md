@@ -430,5 +430,13 @@
 | 磁盘缓存 key 精简 | 2026-06-29-video-thumbnail-cache-fix | D-007 |
 | 清缓存后自动重生成封面 | 2026-06-29-video-thumbnail-cache-fix | D-008 |
 
+| `shared/util/NaturalOrderComparator.kt` | 2026-06-29-sort-persistence-natural-order | D-002 |
+| `data/local/datastore/HomePrefsStore.kt` | 2026-06-29-sort-persistence-natural-order | D-001 |
+| `di/DataStoreModule.kt` | 2026-06-29-sort-persistence-natural-order | — |
+| `di/ViewModelModule.kt` | 2026-06-29-sort-persistence-natural-order | — |
+| `ui/screens/home/HomeViewModel.kt` | 2026-06-29-sort-persistence-natural-order | D-001, D-002 |
+| `ui/screens/sources/FileBrowserViewModel.kt` | 2026-06-29-sort-persistence-natural-order | D-002 |
+| 排序持久化与自然排序修复 | 2026-06-29-sort-persistence-natural-order | D-001, D-002 |
+
 > ⚠️ 各 stage 完成后，Agent 需在此文件中新增自己 stage 涉及的组件行和决策主题行。
 > 已有行的决策 ID 列留空（`—`），待对应 stage 完成后由 Agent 填写。

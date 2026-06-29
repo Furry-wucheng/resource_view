@@ -3,6 +3,7 @@ package dev.wucheng.resource_viewer.ui.screens.home
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.local.dao.ResourceTagDao
+import dev.wucheng.resource_viewer.data.local.datastore.HomePrefsStore
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.TagRepository
 import dev.wucheng.resource_viewer.domain.model.Resource
@@ -35,6 +36,7 @@ class HomeViewModelTest {
     private lateinit var mockResourceRepo: ResourceRepository
     private lateinit var mockTagRepo: TagRepository
     private lateinit var mockResourceTagDao: ResourceTagDao
+    private lateinit var mockHomePrefsStore: HomePrefsStore
 
     private val testTag1 = Tag(
         id = "tag1",
@@ -95,6 +97,9 @@ class HomeViewModelTest {
         mockResourceRepo = mockk()
         mockTagRepo = mockk()
         mockResourceTagDao = mockk()
+        mockHomePrefsStore = mockk()
+        coEvery { mockHomePrefsStore.loadResourceSort() } returns null
+        coEvery { mockHomePrefsStore.saveResourceSort(any()) } just Runs
     }
 
     @After
@@ -107,7 +112,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         assertEquals(UiState.SUCCESS, viewModel.uiState.value)
@@ -118,7 +123,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         val resources = viewModel.resources.value
@@ -132,7 +137,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         viewModel.selectTag("tag1")
@@ -148,7 +153,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         viewModel.selectTag("tag1")
@@ -164,7 +169,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(emptyList())
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
 
         val job = launch {
             viewModel.tags.collect { /* 触发订阅 */ }
@@ -184,7 +189,7 @@ class HomeViewModelTest {
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
         every { mockResourceRepo.filterByTags(any()) } returns flowOf(listOf(testResource1, testResource2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         // 初始无筛选，显示全部
@@ -202,7 +207,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(emptyList())
         every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         assertEquals(UiState.SUCCESS, viewModel.uiState.value)
@@ -213,7 +218,7 @@ class HomeViewModelTest {
     fun `search query filters resources by name`() = runTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
         every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         viewModel.setSearchQuery("A")
         advanceUntilIdle()
         assertEquals(listOf("漫画A"), viewModel.resources.value.map { it.name })
@@ -223,7 +228,7 @@ class HomeViewModelTest {
     fun `name descending sort reorders visible resources`() = runTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1, testResource2))
         every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         viewModel.setSort(HomeViewModel.ResourceSort.NAME_DESC)
         advanceUntilIdle()
         assertEquals(listOf("漫画B", "漫画A"), viewModel.resources.value.map { it.name })
@@ -236,7 +241,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         viewModel.openResourceDetail(testResource1)
@@ -252,7 +257,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         viewModel.openResourceDetail(testResource1)
@@ -272,7 +277,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         viewModel.openResourceDetail(testResource1)
@@ -287,7 +292,7 @@ class HomeViewModelTest {
         every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource1))
         every { mockTagRepo.getAllTags() } returns flowOf(listOf(testTag1, testTag2))
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         viewModel.openResourceDetail(testResource1)
@@ -308,7 +313,7 @@ class HomeViewModelTest {
         coEvery { mockResourceTagDao.deleteByResourceId(any()) } just Runs
         coEvery { mockResourceTagDao.insertAll(any()) } just Runs
 
-        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao)
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
         advanceUntilIdle()
 
         viewModel.openResourceDetail(testResource1)
@@ -317,5 +322,94 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         coVerify { mockResourceRepo.updateOrganizationMode("res1", OrganizationMode.CHAPTER) }
+    }
+
+    // === 自然排序测试 ===
+
+    private val testResource3 = Resource(
+        id = "res3", sourceId = "src1", sourceName = "本地", name = "漫画10",
+        type = ResourceType.FOLDER, organizationMode = OrganizationMode.GALLERY,
+        relativePath = "/comics/c10", thumbnailPath = null,
+        fileCount = 10, fileSize = 3000L, isAvailable = true,
+        lastScannedAt = null, tags = emptyList(),
+        createdAt = 3000L, updatedAt = 3000L,
+    )
+    private val testResource11 = Resource(
+        id = "res11", sourceId = "src1", sourceName = "本地", name = "漫画2",
+        type = ResourceType.FOLDER, organizationMode = OrganizationMode.GALLERY,
+        relativePath = "/comics/c2", thumbnailPath = null,
+        fileCount = 10, fileSize = 3000L, isAvailable = true,
+        lastScannedAt = null, tags = emptyList(),
+        createdAt = 4000L, updatedAt = 4000L,
+    )
+    private val testResource12 = Resource(
+        id = "res12", sourceId = "src1", sourceName = "本地", name = "漫画1",
+        type = ResourceType.FOLDER, organizationMode = OrganizationMode.GALLERY,
+        relativePath = "/comics/c1", thumbnailPath = null,
+        fileCount = 10, fileSize = 3000L, isAvailable = true,
+        lastScannedAt = null, tags = emptyList(),
+        createdAt = 5000L, updatedAt = 5000L,
+    )
+
+    @Test
+    fun `should sort resources naturally by name ascending`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource3, testResource11, testResource12))
+        every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
+        viewModel.setSort(HomeViewModel.ResourceSort.NAME_ASC)
+        advanceUntilIdle()
+
+        assertEquals(listOf("漫画1", "漫画2", "漫画10"), viewModel.resources.value.map { it.name })
+    }
+
+    @Test
+    fun `should sort resources naturally by name descending`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(listOf(testResource3, testResource11, testResource12))
+        every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
+        viewModel.setSort(HomeViewModel.ResourceSort.NAME_DESC)
+        advanceUntilIdle()
+
+        assertEquals(listOf("漫画10", "漫画2", "漫画1"), viewModel.resources.value.map { it.name })
+    }
+
+    // === 排序持久化测试 ===
+
+    @Test
+    fun `should persist sort mode when setSort called`() = runTest {
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(emptyList())
+        every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
+        viewModel.setSort(HomeViewModel.ResourceSort.NAME_DESC)
+        advanceUntilIdle()
+
+        coVerify { mockHomePrefsStore.saveResourceSort(HomeViewModel.ResourceSort.NAME_DESC.name) }
+    }
+
+    @Test
+    fun `should load saved sort mode on init`() = runTest {
+        coEvery { mockHomePrefsStore.loadResourceSort() } returns "NAME_DESC"
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(emptyList())
+        every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
+        advanceUntilIdle()
+
+        assertEquals(HomeViewModel.ResourceSort.NAME_DESC, viewModel.sort.value)
+    }
+
+    @Test
+    fun `should fall back to default sort when saved value is invalid`() = runTest {
+        coEvery { mockHomePrefsStore.loadResourceSort() } returns "INVALID_SORT"
+        every { mockResourceRepo.getVisibleResources() } returns flowOf(emptyList())
+        every { mockTagRepo.getAllTags() } returns flowOf(emptyList())
+
+        val viewModel = HomeViewModel(mockResourceRepo, mockTagRepo, mockResourceTagDao, mockHomePrefsStore)
+        advanceUntilIdle()
+
+        assertEquals(HomeViewModel.ResourceSort.ADDED_ASC, viewModel.sort.value)
     }
 }
