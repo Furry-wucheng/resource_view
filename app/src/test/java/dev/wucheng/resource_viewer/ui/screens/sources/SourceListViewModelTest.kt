@@ -9,6 +9,7 @@ import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.data.repository.SourceRepository
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.domain.error.Result
+import dev.wucheng.resource_viewer.shared.filesource.FileSourceFactory
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -190,6 +191,55 @@ class SourceListViewModelTest {
         coVerify { mockSourceRepository.insert(any()) }
         verify { mockSourceRepository.putPassword(any(), "pass") }
         assertFalse(viewModel.uiState.value.showAddSmbDialog)
+    }
+
+    @Test
+    fun `updateSmbSource should evict cached file source after saving config`() = runTest {
+        mockkObject(FileSourceFactory)
+        try {
+            // Given
+            every { FileSourceFactory.evict("smb-1") } just Runs
+            val source = Source(
+                id = "smb-1",
+                name = "Old SMB",
+                type = SourceType.SMB,
+                rootPath = "/share",
+                host = "192.168.1.10",
+                port = 445,
+                username = "old-user",
+                passwordStored = true,
+                createdAt = 1000L,
+                updatedAt = 1000L,
+            )
+            every { mockSourceRepository.getPassword("smb-1") } returns "old-pass"
+            coEvery { mockSourceRepository.update(any()) } returns Result.Ok(Unit)
+            every { mockSourceRepository.putPassword("smb-1", "new-pass") } just Runs
+
+            // When
+            viewModel.showEditSmbDialog(source)
+            viewModel.updateSmbForm(
+                host = "192.168.1.20",
+                username = "new-user",
+                password = "new-pass",
+            )
+            viewModel.updateSmbSource()
+
+            // Then
+            coVerify {
+                mockSourceRepository.update(
+                    match {
+                        it.id == "smb-1" &&
+                            it.host == "192.168.1.20" &&
+                            it.username == "new-user"
+                    }
+                )
+            }
+            verify { mockSourceRepository.putPassword("smb-1", "new-pass") }
+            verify { FileSourceFactory.evict("smb-1") }
+            assertFalse(viewModel.uiState.value.showEditSmbDialog)
+        } finally {
+            unmockkObject(FileSourceFactory)
+        }
     }
 
     @Test

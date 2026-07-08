@@ -11,6 +11,7 @@ import dev.wucheng.resource_viewer.data.repository.SourceRepository
 import dev.wucheng.resource_viewer.domain.error.DomainError
 import dev.wucheng.resource_viewer.domain.error.Result
 import dev.wucheng.resource_viewer.domain.model.Source
+import dev.wucheng.resource_viewer.shared.filesource.FileSourceFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -259,6 +260,7 @@ class SourceListViewModel(
                         } else {
                             sourceRepository.removePassword(source.id)
                         }
+                        FileSourceFactory.evict(source.id)
                         hideEditSmbDialog()
                     }
                     is Result.Err -> {
@@ -582,6 +584,7 @@ class SourceListViewModel(
             when (val result = sourceRepository.deleteById(source.id)) {
                 is Result.Ok -> {
                     sourceRepository.removePassword(source.id)
+                    FileSourceFactory.evict(source.id)
                     hideDeleteConfirmDialog()
                 }
                 is Result.Err -> {
@@ -599,6 +602,7 @@ class SourceListViewModel(
             when (val result = sourceRepository.deleteById(sourceId)) {
                 is Result.Ok -> {
                     sourceRepository.removePassword(sourceId)
+                    FileSourceFactory.evict(sourceId)
                 }
                 is Result.Err -> {
                     _uiState.update { it.copy(error = "删除失败") }
