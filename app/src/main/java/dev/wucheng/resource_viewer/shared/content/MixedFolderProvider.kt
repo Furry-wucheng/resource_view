@@ -24,6 +24,7 @@ class MixedFolderProvider(
     private val sourceId: String,
     private val videoDataSourceFactory: DataSource.Factory? = null,
     private val recursive: Boolean = false,
+    private val entryComparator: Comparator<FileEntry> = compareBy { it.relativePath },
     pageCacheDirectory: File? = null,
     pageCacheLimitBytes: Long = 500L * 1024 * 1024,
 ) : ContentProvider {
@@ -65,12 +66,12 @@ class MixedFolderProvider(
     private suspend fun collectMixedEntries(path: String): List<FileEntry> {
         val entries = fileSource.listDirectory(path)
         val supported = entries.filter { !it.isDirectory && isSupported(it.extension) }
-        if (!recursive) return supported.sortedBy { it.relativePath }
+        if (!recursive) return supported.sortedWith(entryComparator)
 
         val nested = entries
             .filter { it.isDirectory }
             .flatMap { collectMixedEntries(it.relativePath) }
-        return (supported + nested).sortedBy { it.relativePath }
+        return (supported + nested).sortedWith(entryComparator)
     }
 
     private fun isSupported(ext: String): Boolean {

@@ -34,6 +34,7 @@ val viewModelModule = module {
             filesystemRepository = get(),
             context = get(),
             appConfigDao = get(),
+            fileBrowserPrefsStore = get(),
         )
     }
     viewModel { (resourceId: String) ->

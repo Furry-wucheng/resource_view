@@ -3,6 +3,9 @@ package dev.wucheng.resource_viewer.ui.screens.viewer
 import android.content.Context
 import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.data.local.converter.SourceType
+import dev.wucheng.resource_viewer.data.local.datastore.FileBrowserPrefsStore
+import dev.wucheng.resource_viewer.data.local.datastore.FileSortMode
+import dev.wucheng.resource_viewer.data.local.datastore.FolderPrefs
 import dev.wucheng.resource_viewer.data.repository.FilesystemRepository
 import dev.wucheng.resource_viewer.data.repository.ResourceRepository
 import dev.wucheng.resource_viewer.domain.error.DomainError
@@ -34,6 +37,7 @@ class ViewerViewModelTest {
     private lateinit var mockFilesystemRepository: FilesystemRepository
     private lateinit var mockFileSource: FileSource
     private lateinit var mockContentProvider: ContentProvider
+    private lateinit var mockPrefsStore: FileBrowserPrefsStore
     private lateinit var viewModel: ViewerViewModel
     private val testDispatcher = StandardTestDispatcher()
 
@@ -64,6 +68,7 @@ class ViewerViewModelTest {
         mockFilesystemRepository = mockk()
         mockFileSource = mockk()
         mockContentProvider = mockk()
+        mockPrefsStore = mockk()
 
         // 设置默认行为
         every { mockContentProvider.pageCount } returns 10
@@ -387,6 +392,61 @@ class ViewerViewModelTest {
         assertTrue("Expected ViewerItem.Video", success.items[0] is ViewerItem.Video)
         val video = success.items[0] as ViewerItem.Video
         assertTrue("Expected SmbFile source", video.videoSource is VideoMediaSource.SmbFile)
+    }
+
+    @Test
+    fun `loadFromSource should preserve current folder sort order`() = runTest {
+        // Arrange
+        val source = Source(
+            id = "source-1",
+            name = "Local Source",
+            type = SourceType.LOCAL,
+            rootPath = "/storage/emulated/0",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+        )
+        val sortedViewerViewModel = ViewerViewModel(
+            resourceId = "__file__",
+            resourceRepository = mockResourceRepository,
+            filesystemRepository = mockFilesystemRepository,
+            context = mockContext,
+            fileBrowserPrefsStore = mockPrefsStore,
+            ioDispatcher = testDispatcher,
+        )
+        coEvery { mockFilesystemRepository.getSource("source-1") } returns Result.Ok(source)
+        coEvery { mockFilesystemRepository.getFileSource("source-1") } returns Result.Ok(mockFileSource)
+        coEvery { mockPrefsStore.loadPrefs("source-1", "folder") } returns FolderPrefs(
+            sortMode = FileSortMode.NAME_DESC,
+        )
+        coEvery { mockFileSource.listDirectory("folder") } returns listOf(
+            dev.wucheng.resource_viewer.domain.model.FileEntry(
+                name = "a.jpg",
+                relativePath = "folder/a.jpg",
+                isDirectory = false,
+                size = 1024,
+                modifiedAt = 1000L,
+                extension = "jpg",
+            ),
+            dev.wucheng.resource_viewer.domain.model.FileEntry(
+                name = "b.jpg",
+                relativePath = "folder/b.jpg",
+                isDirectory = false,
+                size = 1024,
+                modifiedAt = 2000L,
+                extension = "jpg",
+            ),
+        )
+
+        // Act
+        sortedViewerViewModel.loadFromSource("source-1", "folder/a.jpg")
+        advanceUntilIdle()
+
+        // Assert
+        val state = sortedViewerViewModel.uiState.value
+        assertTrue("Expected Success state", state is ViewerUiState.Success)
+        val success = state as ViewerUiState.Success
+        assertEquals(listOf("b.jpg", "a.jpg"), success.items.map { (it as ViewerItem.ImagePage).title })
+        assertEquals(1, sortedViewerViewModel.currentPage.value)
     }
 
     // ===== RED: 测试 PDF 资源加载 =====
