@@ -64,7 +64,7 @@ fun `should store password in secure prefs when provided`() = runTest {
 }
 // → 红色
 
-// GREEN: 最小实现追加密码逻辑
+// GREEN: 最小实现追加密码逻辑/
 // ... 加密码存储代码
 // → 绿色
 

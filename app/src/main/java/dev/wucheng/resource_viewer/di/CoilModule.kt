@@ -23,6 +23,7 @@ val coilModule = module {
         val database = get<AppDatabase>()
         val config = runBlocking { database.appConfigDao().getConfig().first() }
         val loadManager = ThumbnailLoadManager(
+            context = get(),
             diskCache = get(),
             maxConcurrency = config?.thumbnailConcurrency ?: 4,
             maxCacheSize = 64,

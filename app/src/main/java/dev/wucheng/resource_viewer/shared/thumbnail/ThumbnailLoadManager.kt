@@ -1,5 +1,6 @@
 package dev.wucheng.resource_viewer.shared.thumbnail
 
+import android.content.Context
 import android.graphics.Bitmap
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
@@ -15,6 +16,7 @@ import kotlinx.coroutines.CancellationException
  * 3. FileBrowserThumbnailDiskCache（磁盘，Koin 单例）
  */
 class ThumbnailLoadManager(
+    private val context: Context?,
     private val diskCache: FileBrowserThumbnailDiskCache?,
     maxConcurrency: Int = 4,
     maxCacheSize: Int = 64,
@@ -30,7 +32,7 @@ class ThumbnailLoadManager(
     private val misses = mutableSetOf<String>()
 
     fun setFileSource(fileSource: FileSource) {
-        thumbnailLoader = FileEntryThumbnailLoader(fileSource)
+        thumbnailLoader = FileEntryThumbnailLoader(fileSource, context)
     }
 
     fun configureCapacity(cacheLimitMB: Int) {

@@ -103,7 +103,7 @@ class FileBrowserThumbnailDiskCache(context: Context) {
     }
 
     companion object {
-        private const val CACHE_VERSION = "browser_preview_v1"
+        private const val CACHE_VERSION = "browser_preview_v2"
         private const val DEFAULT_CAPACITY_BYTES = 500L * 1024 * 1024
     }
 }

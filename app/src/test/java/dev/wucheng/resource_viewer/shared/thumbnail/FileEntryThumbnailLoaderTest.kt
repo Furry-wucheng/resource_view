@@ -36,6 +36,33 @@ class FileEntryThumbnailLoaderTest {
         )
     }
 
+    @Test fun `browser preview should treat pdf file as previewable`() = runTest {
+        val source = FakeFileSource(emptyMap())
+        val loader = FileEntryThumbnailLoader(source)
+
+        assertEquals(
+            "root/book.pdf",
+            loader.findPreviewEntry(pdf("book.pdf", "root/book.pdf"), ThumbnailSearchPolicy.DIRECT_CHILD)?.relativePath,
+        )
+    }
+
+    @Test fun `browser folder preview should prefer direct pdf after images and videos`() = runTest {
+        val source = FakeFileSource(
+            mapOf(
+                "root" to listOf(
+                    pdf("book.pdf", "root/book.pdf"),
+                    text("readme.txt", "root/readme.txt"),
+                ),
+            ),
+        )
+        val loader = FileEntryThumbnailLoader(source)
+
+        assertEquals(
+            "root/book.pdf",
+            loader.findPreviewEntry(directory("root", "root"), ThumbnailSearchPolicy.DIRECT_CHILD)?.relativePath,
+        )
+    }
+
     private class FakeFileSource(private val directories: Map<String, List<FileEntry>>) : FileSource {
         override val sourceId = "test"
         override suspend fun listDirectory(relativePath: String) = directories[relativePath].orEmpty()
@@ -50,5 +77,7 @@ class FileEntryThumbnailLoaderTest {
     private companion object {
         fun directory(name: String, path: String) = FileEntry(name, path, true, 0, 0)
         fun image(name: String, path: String) = FileEntry(name, path, false, 10, 0, name.substringAfterLast('.'))
+        fun pdf(name: String, path: String) = FileEntry(name, path, false, 10, 0, "pdf")
+        fun text(name: String, path: String) = FileEntry(name, path, false, 10, 0, "txt")
     }
 }

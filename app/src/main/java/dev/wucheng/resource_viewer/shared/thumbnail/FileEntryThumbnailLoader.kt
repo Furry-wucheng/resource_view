@@ -1,10 +1,12 @@
 package dev.wucheng.resource_viewer.shared.thumbnail
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaDataSource
 import android.media.MediaMetadataRetriever
 import android.util.Log
+import dev.wucheng.resource_viewer.data.remote.pdf.PdfRenderer
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import dev.wucheng.resource_viewer.shared.media.MediaFormats
@@ -19,7 +21,10 @@ enum class ThumbnailSearchPolicy {
     RESOURCE_COVER,
 }
 
-class FileEntryThumbnailLoader(private val fileSource: FileSource) {
+class FileEntryThumbnailLoader(
+    private val fileSource: FileSource,
+    private val context: Context? = null,
+) {
     suspend fun load(
         entry: FileEntry,
         targetSize: Int = 320,
@@ -30,6 +35,7 @@ class FileEntryThumbnailLoader(private val fileSource: FileSource) {
             when {
                 MediaFormats.isImage(preview.extension) -> decodeImage(preview.relativePath, targetSize)
                 MediaFormats.isVideo(preview.extension) -> decodeVideo(preview, targetSize)
+                isPdf(preview.extension) -> decodePdf(preview.relativePath, targetSize)
                 else -> null
             }
         } catch (e: Exception) {
@@ -39,7 +45,7 @@ class FileEntryThumbnailLoader(private val fileSource: FileSource) {
     }
 
     internal suspend fun findPreviewEntry(entry: FileEntry, policy: ThumbnailSearchPolicy): FileEntry? {
-        if (!entry.isDirectory) return entry.takeIf { MediaFormats.isPreviewable(it.extension) }
+        if (!entry.isDirectory) return entry.takeIf { isPreviewableEntry(it) }
         return when (policy) {
             ThumbnailSearchPolicy.DIRECT_CHILD -> firstSupported(fileSource.listDirectory(entry.relativePath))
             ThumbnailSearchPolicy.RESOURCE_COVER -> findResourceCover(entry.relativePath)
@@ -63,6 +69,12 @@ class FileEntryThumbnailLoader(private val fileSource: FileSource) {
     private fun firstSupported(entries: List<FileEntry>): FileEntry? =
         entries.firstOrNull { !it.isDirectory && MediaFormats.isImage(it.extension) }
             ?: entries.firstOrNull { !it.isDirectory && MediaFormats.isVideo(it.extension) }
+            ?: entries.firstOrNull { !it.isDirectory && isPdf(it.extension) }
+
+    private fun isPreviewableEntry(entry: FileEntry): Boolean =
+        MediaFormats.isPreviewable(entry.extension) || isPdf(entry.extension)
+
+    private fun isPdf(extension: String): Boolean = extension.equals("pdf", ignoreCase = true)
 
     private suspend fun decodeImage(path: String, target: Int): Bitmap? {
         val bytes = fileSource.readFile(path)
@@ -84,6 +96,21 @@ class FileEntryThumbnailLoader(private val fileSource: FileSource) {
             null
         } finally {
             retriever.release()
+        }
+    }
+
+    private suspend fun decodePdf(path: String, target: Int): Bitmap? {
+        val appContext = context ?: return null
+        val bytes = fileSource.readFile(path)
+        if (bytes.isEmpty()) return null
+
+        return PdfRenderer(appContext, bytes).use { renderer ->
+            if (renderer.pageCount == 0) return@use null
+            val pageSize = renderer.getPageSize(0)
+            val scale = target.toFloat() / maxOf(pageSize.first, pageSize.second).coerceAtLeast(1)
+            val width = (pageSize.first * scale).toInt().coerceAtLeast(1)
+            val height = (pageSize.second * scale).toInt().coerceAtLeast(1)
+            renderer.renderPage(0, width, height)
         }
     }
 

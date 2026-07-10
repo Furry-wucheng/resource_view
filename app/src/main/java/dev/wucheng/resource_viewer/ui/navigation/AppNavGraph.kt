@@ -31,7 +31,7 @@ fun AppNavGraph(
         composable(Screen.Home.route) {
             HomeScreen(
                 onNavigateToViewer = { resource ->
-                    val route = when (resolveResourceDestination(resource.organizationMode)) {
+                    val route = when (resolveResourceDestination(resource)) {
                         ResourceDestination.CHAPTER_LIST -> Screen.ChapterList.createRoute(resource.id)
                         ResourceDestination.FLAT_GRID -> Screen.FlatGrid.createRoute(resource.id)
                         ResourceDestination.GALLERY -> Screen.Gallery.createRoute(resource.id)
