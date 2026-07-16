@@ -1,9 +1,25 @@
 package dev.wucheng.resource_viewer.ui.screens.viewer
 
 import dev.wucheng.resource_viewer.data.local.converter.DoublePageMode
+import dev.wucheng.resource_viewer.data.local.converter.PageDirection
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
+import dev.wucheng.resource_viewer.ui.components.WIDE_LAYOUT_MIN_WIDTH_DP
 
 data class ViewerSpread(val itemIndices: List<Int>)
+
+fun shouldUseDoublePage(
+    pageDirection: PageDirection,
+    doublePageMode: DoublePageMode,
+    widthDp: Int,
+    heightDp: Int,
+): Boolean {
+    if (pageDirection == PageDirection.VERTICAL || widthDp < WIDE_LAYOUT_MIN_WIDTH_DP) return false
+    return when (doublePageMode) {
+        DoublePageMode.DOUBLE -> true
+        DoublePageMode.SINGLE -> false
+        DoublePageMode.AUTO -> widthDp > heightDp
+    }
+}
 
 fun buildViewerSpreads(items: List<ViewerItem>, mode: DoublePageMode): List<ViewerSpread> {
     if (mode == DoublePageMode.SINGLE) return items.indices.map { ViewerSpread(listOf(it)) }

@@ -10,15 +10,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.wucheng.resource_viewer.domain.model.Source
 import dev.wucheng.resource_viewer.ui.components.EmptyState
+import dev.wucheng.resource_viewer.ui.components.useCompactSourceActions
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -261,10 +264,13 @@ private fun SourceCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-    ) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val compactActions = useCompactSourceActions(maxWidth.value)
+        var showActionsMenu by remember { mutableStateOf(false) }
+        Card(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -303,11 +309,15 @@ private fun SourceCard(
                 Text(
                     text = source.name,
                     style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = source.rootPath,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = when (source.type) {
@@ -321,31 +331,44 @@ private fun SourceCard(
             }
 
             // 操作按钮
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                if (onEditSmb != null) {
-                    IconButton(onClick = onEditSmb) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "编辑凭据",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            if (compactActions) {
+                Box {
+                    IconButton(onClick = { showActionsMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "更多操作")
+                    }
+                    DropdownMenu(
+                        expanded = showActionsMenu,
+                        onDismissRequest = { showActionsMenu = false },
+                    ) {
+                        if (onEditSmb != null) {
+                            DropdownMenuItem(
+                                text = { Text("编辑凭据") },
+                                onClick = { showActionsMenu = false; onEditSmb() },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("重命名") },
+                            onClick = { showActionsMenu = false; onRename() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                            onClick = { showActionsMenu = false; onDelete() },
                         )
                     }
                 }
-                IconButton(onClick = onRename) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "重命名",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "删除",
-                        tint = MaterialTheme.colorScheme.error,
-                    )
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (onEditSmb != null) {
+                        IconButton(onClick = onEditSmb) {
+                            Icon(Icons.Default.Settings, "编辑凭据", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    IconButton(onClick = onRename) {
+                        Icon(Icons.Default.Edit, "重命名", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, "删除", tint = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
 
@@ -355,5 +378,6 @@ private fun SourceCard(
                 onCheckedChange = { onToggleEnabled() },
             )
         }
+    }
     }
 }

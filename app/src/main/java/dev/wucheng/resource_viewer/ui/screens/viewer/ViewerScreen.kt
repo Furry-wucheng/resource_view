@@ -157,11 +157,12 @@ fun ViewerScreenContent(
                     )
                 } else {
                     val configuration = LocalConfiguration.current
-                    val useDoublePage = pageDirection != PageDirection.VERTICAL && when (doublePageMode) {
-                        DoublePageMode.DOUBLE -> true
-                        DoublePageMode.SINGLE -> false
-                        DoublePageMode.AUTO -> configuration.screenWidthDp > configuration.screenHeightDp
-                    }
+                    val useDoublePage = shouldUseDoublePage(
+                        pageDirection = pageDirection,
+                        doublePageMode = doublePageMode,
+                        widthDp = configuration.screenWidthDp,
+                        heightDp = configuration.screenHeightDp,
+                    )
                     val spreads = remember(items, useDoublePage, doublePageMode) {
                         buildViewerSpreads(items, if (useDoublePage) doublePageMode else DoublePageMode.SINGLE)
                     }

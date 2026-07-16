@@ -4,7 +4,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,6 +46,7 @@ import dev.wucheng.resource_viewer.domain.model.TreeFileNode
 
 enum class ResourcePickerMode { BATCH_ADD, SPLIT_KEEP, SPLIT_DELETE }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ResourcePickerDialog(
     rootName: String,
@@ -67,17 +71,23 @@ fun ResourcePickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = titleText, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = "已选 $selectedCount 项",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val stacked = useStackedDialogFields(maxWidth.value)
+                if (stacked) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(text = titleText, style = MaterialTheme.typography.titleMedium)
+                        SelectedCountText(selectedCount)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(text = titleText, style = MaterialTheme.typography.titleMedium)
+                        SelectedCountText(selectedCount)
+                    }
+                }
             }
         },
         text = {
@@ -105,7 +115,10 @@ fun ResourcePickerDialog(
                     TextButton(onClick = onConfirm, enabled = selectedCount > 0) { Text("批量添加资源 ($selectedCount)") }
                 }
                 ResourcePickerMode.SPLIT_KEEP, ResourcePickerMode.SPLIT_DELETE -> {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         TextButton(onClick = onConfirmDelete, enabled = selectedCount > 0) {
                             Text("删除原资源 ($selectedCount)", color = MaterialTheme.colorScheme.error)
                         }
@@ -124,6 +137,15 @@ fun ResourcePickerDialog(
             }
         },
         modifier = modifier,
+    )
+}
+
+@Composable
+private fun SelectedCountText(selectedCount: Int) {
+    Text(
+        text = "已选 $selectedCount 项",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
     )
 }
 

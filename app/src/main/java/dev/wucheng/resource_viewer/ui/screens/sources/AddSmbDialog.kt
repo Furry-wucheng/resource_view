@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import dev.wucheng.resource_viewer.ui.components.useStackedDialogFields
 
 /**
  * SMB 源添加/编辑弹窗。
@@ -26,7 +27,7 @@ import androidx.compose.ui.unit.dp
  * @param title 弹窗标题
  * @param confirmText 确认按钮文本
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddSmbDialog(
     formData: SmbFormData,
@@ -47,12 +48,14 @@ fun AddSmbDialog(
             Text(title)
         },
         text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val useStackedFields = useStackedDialogFields(maxWidth.value)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                 // 源名称
                 OutlinedTextField(
                     value = formData.name,
@@ -74,10 +77,9 @@ fun AddSmbDialog(
                 )
 
                 // 端口和域名
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
+                ResponsiveFieldPair(
+                    stacked = useStackedFields,
+                    first = {
                     OutlinedTextField(
                         value = formData.port.toString(),
                         onValueChange = {
@@ -87,39 +89,44 @@ fun AddSmbDialog(
                         label = { Text("端口") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     )
+                    },
+                    second = {
                     OutlinedTextField(
                         value = formData.domain,
                         onValueChange = { onFormChange(null, null, null, null, null, it, null) },
                         label = { Text("域名") },
                         placeholder = { Text("WORKGROUP") },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                }
+                    },
+                )
 
                 // 用户名和密码
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
+                ResponsiveFieldPair(
+                    stacked = useStackedFields,
+                    first = {
                     OutlinedTextField(
                         value = formData.username,
                         onValueChange = { onFormChange(null, null, null, it, null, null, null) },
                         label = { Text("用户名") },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     )
+                    },
+                    second = {
                     OutlinedTextField(
                         value = formData.password,
                         onValueChange = { onFormChange(null, null, null, null, it, null, null) },
                         label = { Text("密码") },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                }
+                    },
+                )
 
                 // 共享名称
                 OutlinedTextField(
@@ -169,10 +176,12 @@ fun AddSmbDialog(
                     }
                 }
             }
+            }
         },
         confirmButton = {
-            Row(
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 // 测试连接按钮
                 OutlinedButton(
@@ -210,4 +219,29 @@ fun AddSmbDialog(
         },
         modifier = modifier,
     )
+}
+
+@Composable
+internal fun ResponsiveFieldPair(
+    stacked: Boolean,
+    first: @Composable () -> Unit,
+    second: @Composable () -> Unit,
+) {
+    if (stacked) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            first()
+            second()
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(modifier = Modifier.weight(1f)) { first() }
+            Box(modifier = Modifier.weight(1f)) { second() }
+        }
+    }
 }

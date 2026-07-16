@@ -74,6 +74,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.Image
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -87,6 +88,9 @@ import dev.wucheng.resource_viewer.ui.components.ResourcePickerMode
 import dev.wucheng.resource_viewer.ui.components.ResourcePickerViewModel
 import dev.wucheng.resource_viewer.ui.components.fileTypeColor
 import dev.wucheng.resource_viewer.ui.components.fileTypeIcon
+import dev.wucheng.resource_viewer.ui.components.isWideLayout
+import dev.wucheng.resource_viewer.ui.components.shouldCloseDirectoryTreeAfterNavigation
+import dev.wucheng.resource_viewer.ui.components.shouldOpenDirectoryTreeInitially
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -103,7 +107,8 @@ fun FileBrowserScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showSortMenu by remember { mutableStateOf(false) }
-    var showDirectoryTree by remember { mutableStateOf(uiState.showDirectoryTree) }
+    val isWide = isWideLayout(LocalConfiguration.current.screenWidthDp)
+    var showDirectoryTree by remember { mutableStateOf(false) }
 
     val showFlexibleAddDialog by viewModel.showFlexibleAddDialog.collectAsState()
     val flexibleAddRootPath by viewModel.flexibleAddRootPath.collectAsState()
@@ -131,6 +136,9 @@ fun FileBrowserScreen(
     val performOpenDirectory: (String) -> Unit = { path ->
         saveScrollPosition()
         viewModel.openDirectory(path)
+        if (shouldCloseDirectoryTreeAfterNavigation(isWide)) {
+            showDirectoryTree = false
+        }
     }
     val performGoUp: () -> Boolean = {
         saveScrollPosition()
@@ -146,10 +154,18 @@ fun FileBrowserScreen(
     }
 
     LaunchedEffect(sourceId) { viewModel.load() }
-    LaunchedEffect(uiState.showDirectoryTree) { showDirectoryTree = uiState.showDirectoryTree }
+    LaunchedEffect(isWide, uiState.showDirectoryTree) {
+        showDirectoryTree = shouldOpenDirectoryTreeInitially(
+            isWide = isWide,
+            isEnabled = uiState.showDirectoryTree,
+        )
+    }
 
     BackHandler(enabled = uiState.isMultiSelectMode) { viewModel.exitMultiSelect() }
-    BackHandler(enabled = !uiState.isMultiSelectMode) {
+    BackHandler(enabled = !uiState.isMultiSelectMode && !isWide && showDirectoryTree) {
+        showDirectoryTree = false
+    }
+    BackHandler(enabled = !uiState.isMultiSelectMode && (isWide || !showDirectoryTree)) {
         if (!performGoUp()) onNavigateBack()
     }
 
@@ -234,42 +250,50 @@ fun FileBrowserScreen(
             },
         )
 
-        Row(modifier = Modifier.weight(1f)) {
-            if (showDirectoryTree) {
-                Box(
-                    modifier = Modifier
-                        .width(260.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    uiState.source?.let { source ->
-                        DirectoryTree(
-                            source = source,
-                            filesystemRepository = filesystemRepository,
-                            currentPath = uiState.currentPath,
-                            onDirectoryTap = performOpenDirectory,
+        Box(modifier = Modifier.weight(1f)) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                if (isWide && showDirectoryTree) {
+                    DirectoryTreePanel(
+                        uiState = uiState,
+                        filesystemRepository = filesystemRepository,
+                        widthDp = 260,
+                        onDirectoryTap = performOpenDirectory,
+                    )
+                }
+
+                Box(modifier = Modifier.weight(1f)) {
+                    Column {
+                        BreadcrumbBar(
+                            pathSegments = uiState.pathSegments,
+                            sourceName = uiState.source?.name ?: "",
+                            onNavigateToSegment = performNavigateToSegment,
+                            onNavigateToRoot = performNavigateToRoot,
+                        )
+                        FileContentArea(
+                            uiState = uiState,
+                            viewModel = viewModel,
+                            onOpenFile = onOpenFile,
+                            listState = listState,
+                            gridState = gridState,
+                            onOpenDirectory = performOpenDirectory,
                         )
                     }
                 }
             }
 
-            Box(modifier = Modifier.weight(1f)) {
-                Column {
-                    BreadcrumbBar(
-                        pathSegments = uiState.pathSegments,
-                        sourceName = uiState.source?.name ?: "",
-                        onNavigateToSegment = performNavigateToSegment,
-                        onNavigateToRoot = performNavigateToRoot,
-                    )
-                    FileContentArea(
-                        uiState = uiState,
-                        viewModel = viewModel,
-                        onOpenFile = onOpenFile,
-                        listState = listState,
-                        gridState = gridState,
-                        onOpenDirectory = performOpenDirectory,
-                    )
-                }
+            if (!isWide && showDirectoryTree) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.32f))
+                        .clickable { showDirectoryTree = false },
+                )
+                DirectoryTreePanel(
+                    uiState = uiState,
+                    filesystemRepository = filesystemRepository,
+                    widthDp = 280,
+                    onDirectoryTap = performOpenDirectory,
+                )
             }
         }
 
@@ -353,6 +377,31 @@ fun FileBrowserScreen(
             modifier = Modifier.padding(16.dp),
             action = { TextButton(onClick = { viewModel.dismissFlexibleAddResult() }) { Text("关闭") } },
         ) { Text(msg) }
+    }
+}
+
+@Composable
+private fun DirectoryTreePanel(
+    uiState: FileBrowserUiState,
+    filesystemRepository: FilesystemRepository,
+    widthDp: Int,
+    onDirectoryTap: (String) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .width(widthDp.dp)
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = {}),
+    ) {
+        uiState.source?.let { source ->
+            DirectoryTree(
+                source = source,
+                filesystemRepository = filesystemRepository,
+                currentPath = uiState.currentPath,
+                onDirectoryTap = onDirectoryTap,
+            )
+        }
     }
 }
 
