@@ -163,4 +163,13 @@ class ChapterListViewModel(
             thumbnailLoadManager.load(state.sourceId, path, policy)
         }
     }
+
+    suspend fun loadLooseFileThumbnail(entry: FileEntry): Bitmap? {
+        val state = _uiState.value as? ChapterListUiState.Success ?: return null
+        return thumbnailLoadManager.load(
+            state.sourceId,
+            entry,
+            ThumbnailSearchPolicy.DIRECT_CHILD,
+        )
+    }
 }

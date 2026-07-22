@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.domain.model.Chapter
 import dev.wucheng.resource_viewer.domain.model.FileEntry
+import dev.wucheng.resource_viewer.ui.components.FileThumbnailCard
 import dev.wucheng.resource_viewer.ui.components.GRID_CARD_TITLE_MAX_LINES
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.OrgModeSwitcher
 import org.koin.androidx.compose.koinViewModel
@@ -370,6 +371,7 @@ private fun ChapterContent(
                     ) { file ->
                         LooseFileItem(
                             file = file,
+                            viewModel = viewModel,
                             onClick = {
                                 onOpenVideo(state.sourceId, file.relativePath)
                             },
@@ -409,8 +411,9 @@ private fun ChapterContent(
                         items = state.looseFiles,
                         key = { "loose_${it.relativePath}" },
                     ) { file ->
-                        LooseFileGridItem(
-                            file = file,
+                        FileThumbnailCard(
+                            entry = file,
+                            loadThumbnail = { viewModel.loadLooseFileThumbnail(it) },
                             onClick = {
                                 onOpenVideo(state.sourceId, file.relativePath)
                             },
@@ -492,11 +495,12 @@ private fun ChapterItem(
 
 /**
  * 散落文件列表项。
- * 显示文件名 + 文件类型图标。
+ * 显示文件名 + 内容缩略图。
  */
 @Composable
 private fun LooseFileItem(
     file: FileEntry,
+    viewModel: ChapterListViewModel,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -513,12 +517,12 @@ private fun LooseFileItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // 文件图标
-            Icon(
-                imageVector = Icons.Default.Folder,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(40.dp),
+            LooseFileThumbnail(
+                file = file,
+                viewModel = viewModel,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(MaterialTheme.shapes.small),
             )
 
             // 文件信息
@@ -604,37 +608,32 @@ private fun ChapterGridItem(
     }
 }
 
-/**
- * 散落文件网格项。
- */
 @Composable
-private fun LooseFileGridItem(
+private fun LooseFileThumbnail(
     file: FileEntry,
-    onClick: () -> Unit,
+    viewModel: ChapterListViewModel,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+    val bitmap by produceState<Bitmap?>(null, file.relativePath) {
+        value = viewModel.loadLooseFileThumbnail(file)
+    }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap!!.asImageBitmap(),
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Box(
+            modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Default.Folder,
                 contentDescription = null,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = file.name,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = GRID_CARD_TITLE_MAX_LINES,
-                overflow = TextOverflow.Ellipsis,
             )
         }
     }
