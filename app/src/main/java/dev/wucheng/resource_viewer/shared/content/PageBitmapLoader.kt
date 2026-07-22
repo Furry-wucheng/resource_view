@@ -125,9 +125,23 @@ class PageBitmapLoader(
         }
     }
 
-    private companion object {
-        val cacheMutex = Mutex()
-        const val COPY_BUFFER_SIZE = 256 * 1024
-        const val DEFAULT_CACHE_LIMIT = 500L * 1024 * 1024
+    companion object {
+        fun decodeImageBytes(imageBytes: ByteArray, targetWidth: Int, targetHeight: Int): Bitmap? {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
+            options.inSampleSize = sampleSizeStatic(options.outWidth, options.outHeight, targetWidth, targetHeight)
+            options.inJustDecodeBounds = false
+            return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
+        }
+
+        private fun sampleSizeStatic(sourceWidth: Int, sourceHeight: Int, targetWidth: Int, targetHeight: Int): Int {
+            var sample = 1
+            while (sourceWidth / (sample * 2) >= targetWidth && sourceHeight / (sample * 2) >= targetHeight) sample *= 2
+            return sample
+        }
+
+        private val cacheMutex = Mutex()
+        private const val COPY_BUFFER_SIZE = 256 * 1024
+        private const val DEFAULT_CACHE_LIMIT = 500L * 1024 * 1024
     }
 }

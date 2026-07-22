@@ -23,6 +23,8 @@ import dev.wucheng.resource_viewer.domain.model.Chapter
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.VideoMediaSource
 import dev.wucheng.resource_viewer.domain.model.ViewerItem
+import dev.wucheng.resource_viewer.shared.content.ArchiveContentProvider
+import dev.wucheng.resource_viewer.shared.content.UnsupportedArchiveFormatException
 import dev.wucheng.resource_viewer.shared.content.ContentProvider
 import dev.wucheng.resource_viewer.shared.content.ImageFolderProvider
 import dev.wucheng.resource_viewer.shared.content.MixedFolderProvider
@@ -184,6 +186,19 @@ class ViewerViewModel(
                                         _uiState.value = ViewerUiState.Error("加载 PDF 失败")
                                     }
                                 }
+                                MediaFormats.isArchive(ext) -> {
+                                    _resourceName.value = fileName
+                                    try {
+                                        val provider = withContext(ioDispatcher) {
+                                            ArchiveContentProvider(fileSource, filePath)
+                                        }
+                                        setupContentProvider(provider, "file:$sourceId:$filePath", fileName)
+                                    } catch (e: UnsupportedArchiveFormatException) {
+                                        _uiState.value = ViewerUiState.Error("RAR/CBR 暂不支持")
+                                    } catch (e: Exception) {
+                                        _uiState.value = ViewerUiState.Error("加载压缩包失败")
+                                    }
+                                }
                                 MediaFormats.isPreviewable(ext) -> {
                                     // 图片或视频：用 MixedFolderProvider 加载所在目录，支持图片/视频无缝浏览
                                     val dirPath = filePath.substringBeforeLast('/', "")
@@ -271,6 +286,7 @@ class ViewerViewModel(
         val items = (0 until provider.pageCount).map { index ->
             val extension = when (provider) {
                 is ImageFolderProvider -> provider.getPageExtension(index)
+                is ArchiveContentProvider -> provider.getPageExtension(index)
                 else -> ""
             }
             ViewerItem.ImagePage(
@@ -499,6 +515,14 @@ class ViewerViewModel(
                             items = items,
                             resourceName = resource.name,
                         )
+                    } else if (resource.type == ResourceType.ARCHIVE) {
+                        val provider = withContext(ioDispatcher) {
+                            ArchiveContentProvider(
+                                fileSource = fileSource,
+                                relativePath = resource.relativePath,
+                            )
+                        }
+                        setupContentProvider(provider, resourceId, resource.name, initialPage)
                     } else {
                         // 图片文件夹/画廊/章节：使用 MixedFolderProvider 支持图片+视频无缝浏览
                         val isRecursive = resource.organizationMode in setOf(
@@ -545,6 +569,8 @@ class ViewerViewModel(
                             resourceName = resource.name,
                         )
                     }
+                } catch (e: UnsupportedArchiveFormatException) {
+                    _uiState.value = ViewerUiState.Error("RAR/CBR 暂不支持")
                 } catch (e: IOException) {
                     // 加密 PDF 或其他 IO 错误
                     _uiState.value = ViewerUiState.Error(

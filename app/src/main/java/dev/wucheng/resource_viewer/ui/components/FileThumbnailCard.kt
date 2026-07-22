@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -33,6 +34,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.wucheng.resource_viewer.domain.model.FileEntry
+import dev.wucheng.resource_viewer.shared.content.archiveExtension
+import dev.wucheng.resource_viewer.shared.media.MediaFormats
 
 /** 缩略图宽高比 */
 private const val THUMBNAIL_CARD_ASPECT_RATIO = 3f / 4f
@@ -41,6 +44,7 @@ fun fileTypeColor(entry: FileEntry): Color = when {
     entry.isDirectory -> Color(0xFF1565C0)
     entry.extension.lowercase() in setOf("mp4", "mkv", "avi", "mov", "webm", "wmv") -> Color(0xFF2E7D32)
     entry.extension.lowercase() == "pdf" -> Color(0xFFC62828)
+    MediaFormats.isArchive(entry.archiveExtension()) -> Color(0xFF6D4C41)
     else -> Color(0xFF757575)
 }
 
@@ -48,6 +52,7 @@ fun fileTypeIcon(entry: FileEntry): ImageVector = when {
     entry.isDirectory -> Icons.Default.Folder
     entry.extension.lowercase() in setOf("mp4", "mkv", "avi", "mov", "webm", "wmv") -> Icons.Default.Movie
     entry.extension.lowercase() == "pdf" -> Icons.Default.PictureAsPdf
+    MediaFormats.isArchive(entry.archiveExtension()) -> Icons.Default.Archive
     else -> Icons.Default.Folder
 }
 

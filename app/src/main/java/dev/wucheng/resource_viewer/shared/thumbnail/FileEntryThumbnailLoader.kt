@@ -7,9 +7,12 @@ import android.media.MediaDataSource
 import android.media.MediaMetadataRetriever
 import android.util.Log
 import dev.wucheng.resource_viewer.data.remote.pdf.PdfRenderer
+import dev.wucheng.resource_viewer.shared.content.ArchiveImageReader
+import dev.wucheng.resource_viewer.shared.content.archiveExtension
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import dev.wucheng.resource_viewer.shared.media.MediaFormats
+import dev.wucheng.resource_viewer.shared.content.PageBitmapLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -36,6 +39,7 @@ class FileEntryThumbnailLoader(
                 MediaFormats.isImage(preview.extension) -> decodeImage(preview.relativePath, targetSize)
                 MediaFormats.isVideo(preview.extension) -> decodeVideo(preview, targetSize)
                 isPdf(preview.extension) -> decodePdf(preview.relativePath, targetSize)
+                MediaFormats.isArchive(preview.archiveExtension()) -> decodeArchive(preview, targetSize)
                 else -> null
             }
         } catch (e: Exception) {
@@ -70,9 +74,11 @@ class FileEntryThumbnailLoader(
         entries.firstOrNull { !it.isDirectory && MediaFormats.isImage(it.extension) }
             ?: entries.firstOrNull { !it.isDirectory && MediaFormats.isVideo(it.extension) }
             ?: entries.firstOrNull { !it.isDirectory && isPdf(it.extension) }
+            ?: entries.firstOrNull { !it.isDirectory && MediaFormats.isArchive(it.archiveExtension()) }
 
     private fun isPreviewableEntry(entry: FileEntry): Boolean =
-        MediaFormats.isPreviewable(entry.extension) || isPdf(entry.extension)
+        MediaFormats.isPreviewable(entry.extension) || isPdf(entry.extension) ||
+            MediaFormats.isArchive(entry.archiveExtension())
 
     private fun isPdf(extension: String): Boolean = extension.equals("pdf", ignoreCase = true)
 
@@ -112,6 +118,13 @@ class FileEntryThumbnailLoader(
             val height = (pageSize.second * scale).toInt().coerceAtLeast(1)
             renderer.renderPage(0, width, height)
         }
+    }
+
+    private suspend fun decodeArchive(entry: FileEntry, target: Int): Bitmap? {
+        if (!MediaFormats.isReadableArchive(entry.archiveExtension())) return null
+        val archiveBytes = fileSource.readFile(entry.relativePath)
+        val (_, imageBytes) = ArchiveImageReader.firstImageEntry(archiveBytes, entry.archiveExtension()) ?: return null
+        return PageBitmapLoader.decodeImageBytes(imageBytes, target, target)
     }
 
     companion object {

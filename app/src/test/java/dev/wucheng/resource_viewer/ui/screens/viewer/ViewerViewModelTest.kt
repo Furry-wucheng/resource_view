@@ -25,6 +25,9 @@ import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import java.io.ByteArrayOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 /**
  * ViewerViewModel 测试。
@@ -449,6 +452,40 @@ class ViewerViewModelTest {
         assertEquals(1, sortedViewerViewModel.currentPage.value)
     }
 
+    @Test
+    fun `loadFromSource should open readable archive file as image pages`() = runTest {
+        val source = Source(
+            id = "source-1",
+            name = "Local Source",
+            type = SourceType.LOCAL,
+            rootPath = "/storage/emulated/0",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+        )
+        val archiveViewModel = ViewerViewModel(
+            resourceId = "__file__",
+            resourceRepository = mockResourceRepository,
+            filesystemRepository = mockFilesystemRepository,
+            context = mockContext,
+            ioDispatcher = testDispatcher,
+        )
+        coEvery { mockFilesystemRepository.getSource("source-1") } returns Result.Ok(source)
+        coEvery { mockFilesystemRepository.getFileSource("source-1") } returns Result.Ok(mockFileSource)
+        coEvery { mockFileSource.readFile("books/book.cbz") } returns zipBytes(
+            "page2.jpg" to byteArrayOf(2),
+            "page1.png" to byteArrayOf(1),
+        )
+
+        archiveViewModel.loadFromSource("source-1", "books/book.cbz")
+        advanceUntilIdle()
+
+        val state = archiveViewModel.uiState.value
+        assertTrue("Expected Success state", state is ViewerUiState.Success)
+        val success = state as ViewerUiState.Success
+        assertEquals(2, success.items.size)
+        assertEquals(listOf("png", "jpg"), success.items.map { (it as ViewerItem.ImagePage).extension })
+    }
+
     // ===== RED: 测试 PDF 资源加载 =====
 
     private val pdfResource = dev.wucheng.resource_viewer.domain.model.Resource(
@@ -582,4 +619,16 @@ class ViewerViewModelTest {
     // ===== RED: 测试 dispose =====
     // 注意：onCleared 是 protected 方法，无法直接测试
     // 在实际集成测试中验证 dispose 行为
+
+    private fun zipBytes(vararg entries: Pair<String, ByteArray>): ByteArray {
+        val output = ByteArrayOutputStream()
+        ZipOutputStream(output).use { zip ->
+            entries.forEach { (name, bytes) ->
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
+        return output.toByteArray()
+    }
 }

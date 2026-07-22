@@ -63,6 +63,16 @@ class FileEntryThumbnailLoaderTest {
         )
     }
 
+    @Test fun `browser preview should treat archive file as previewable`() = runTest {
+        val source = FakeFileSource(emptyMap())
+        val loader = FileEntryThumbnailLoader(source)
+
+        assertEquals(
+            "root/book.cbz",
+            loader.findPreviewEntry(archive("book.cbz", "root/book.cbz"), ThumbnailSearchPolicy.DIRECT_CHILD)?.relativePath,
+        )
+    }
+
     private class FakeFileSource(private val directories: Map<String, List<FileEntry>>) : FileSource {
         override val sourceId = "test"
         override suspend fun listDirectory(relativePath: String) = directories[relativePath].orEmpty()
@@ -78,6 +88,7 @@ class FileEntryThumbnailLoaderTest {
         fun directory(name: String, path: String) = FileEntry(name, path, true, 0, 0)
         fun image(name: String, path: String) = FileEntry(name, path, false, 10, 0, name.substringAfterLast('.'))
         fun pdf(name: String, path: String) = FileEntry(name, path, false, 10, 0, "pdf")
+        fun archive(name: String, path: String) = FileEntry(name, path, false, 10, 0, name.substringAfterLast('.'))
         fun text(name: String, path: String) = FileEntry(name, path, false, 10, 0, "txt")
     }
 }

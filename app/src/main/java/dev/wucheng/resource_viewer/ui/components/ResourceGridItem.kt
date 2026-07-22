@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Movie
@@ -163,14 +164,14 @@ private fun resourceTypeColor(type: ResourceType): Color = when (type) {
     ResourceType.FOLDER -> Color(0xFF1565C0)
     ResourceType.PDF -> Color(0xFFC62828)
     ResourceType.VIDEO -> Color(0xFF2E7D32)
-    ResourceType.ARCHIVE -> Color(0xFF757575)
+    ResourceType.ARCHIVE -> Color(0xFF6D4C41)
 }
 
 private fun resourceTypeIcon(type: ResourceType): ImageVector = when (type) {
     ResourceType.FOLDER -> Icons.Default.Folder
     ResourceType.PDF -> Icons.Default.PictureAsPdf
     ResourceType.VIDEO -> Icons.Default.Movie
-    ResourceType.ARCHIVE -> Icons.Default.Folder
+    ResourceType.ARCHIVE -> Icons.Default.Archive
 }
 
 /** 缩略图宽高比（与文件浏览器一致） */

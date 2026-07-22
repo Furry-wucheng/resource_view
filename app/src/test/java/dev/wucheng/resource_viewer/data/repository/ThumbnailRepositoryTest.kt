@@ -20,6 +20,7 @@ class ThumbnailRepositoryTest {
 
     private lateinit var mockVideoGenerator: ThumbnailGenerator
     private lateinit var mockPdfGenerator: ThumbnailGenerator
+    private lateinit var mockArchiveGenerator: ThumbnailGenerator
     private lateinit var repository: ThumbnailRepository
     private lateinit var mockFileSource: FileSource
     private lateinit var mockCacheDir: File
@@ -78,10 +79,29 @@ class ThumbnailRepositoryTest {
         updatedAt = System.currentTimeMillis(),
     )
 
+    private val archiveResource = Resource(
+        id = "archive-1",
+        sourceId = "source-1",
+        sourceName = "Test Source",
+        name = "book.cbz",
+        type = ResourceType.ARCHIVE,
+        organizationMode = null,
+        relativePath = "books/book.cbz",
+        thumbnailPath = null,
+        fileCount = null,
+        fileSize = 1024 * 50,
+        isAvailable = true,
+        lastScannedAt = System.currentTimeMillis(),
+        tags = emptyList(),
+        createdAt = System.currentTimeMillis(),
+        updatedAt = System.currentTimeMillis(),
+    )
+
     @Before
     fun setup() {
         mockVideoGenerator = mockk(relaxed = true)
         mockPdfGenerator = mockk(relaxed = true)
+        mockArchiveGenerator = mockk(relaxed = true)
         mockFileSource = mockk(relaxed = true)
         mockCacheDir = mockk(relaxed = true)
 
@@ -96,7 +116,12 @@ class ThumbnailRepositoryTest {
         every { mockPdfGenerator.canHandle(ResourceType.FOLDER) } returns false
         every { mockPdfGenerator.canHandle(ResourceType.ARCHIVE) } returns false
 
-        repository = ThumbnailRepository(setOf(mockVideoGenerator, mockPdfGenerator))
+        every { mockArchiveGenerator.canHandle(ResourceType.VIDEO) } returns false
+        every { mockArchiveGenerator.canHandle(ResourceType.PDF) } returns false
+        every { mockArchiveGenerator.canHandle(ResourceType.FOLDER) } returns false
+        every { mockArchiveGenerator.canHandle(ResourceType.ARCHIVE) } returns true
+
+        repository = ThumbnailRepository(setOf(mockVideoGenerator, mockPdfGenerator, mockArchiveGenerator))
     }
 
     // ===== generateThumbnail =====
@@ -129,6 +154,18 @@ class ThumbnailRepositoryTest {
         assertTrue(result is dev.wucheng.resource_viewer.domain.error.Result.Ok)
         assertEquals(expectedFile, (result as dev.wucheng.resource_viewer.domain.error.Result.Ok).value)
         coVerify { mockPdfGenerator.generate(pdfResource, mockFileSource, mockCacheDir) }
+    }
+
+    @Test
+    fun `generateThumbnail should use archive generator for ARCHIVE resource`() = runTest {
+        val expectedFile = mockk<File>()
+        coEvery { mockArchiveGenerator.generate(archiveResource, mockFileSource, mockCacheDir) } returns expectedFile
+
+        val result = repository.generateThumbnail(archiveResource, mockFileSource, mockCacheDir)
+
+        assertTrue(result is dev.wucheng.resource_viewer.domain.error.Result.Ok)
+        assertEquals(expectedFile, (result as dev.wucheng.resource_viewer.domain.error.Result.Ok).value)
+        coVerify { mockArchiveGenerator.generate(archiveResource, mockFileSource, mockCacheDir) }
     }
 
     @Test
@@ -204,8 +241,8 @@ class ThumbnailRepositoryTest {
     }
 
     @Test
-    fun `hasGenerator should return false for ARCHIVE type`() {
-        assertFalse(repository.hasGenerator(ResourceType.ARCHIVE))
+    fun `hasGenerator should return true for ARCHIVE type`() {
+        assertTrue(repository.hasGenerator(ResourceType.ARCHIVE))
     }
 
     @Test
