@@ -12,8 +12,9 @@
 .externalNativeBuild
 .cxx
 
-# local.properties
-#/local.properties
+local.properties
+
+app/release
 
 resource_viewer_flutter/
 .understand-anything/
