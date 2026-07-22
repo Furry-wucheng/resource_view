@@ -5,6 +5,7 @@ import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.shared.content.ArchiveImageReader
+import dev.wucheng.resource_viewer.shared.content.MAX_IN_MEMORY_ARCHIVE_THUMBNAIL_BYTES
 import dev.wucheng.resource_viewer.shared.content.PageBitmapLoader
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import java.io.File
@@ -25,6 +26,7 @@ class ArchiveThumbnailGenerator(
             if (outputFile.exists() && outputFile.length() > 0) return outputFile
 
             val entry = FileEntry(resource.name, resource.relativePath, false, resource.fileSize ?: 0L, resource.updatedAt)
+            if (entry.size > MAX_IN_MEMORY_ARCHIVE_THUMBNAIL_BYTES) return null
             if (thumbnailDiskCache != null) {
                 val cached = thumbnailDiskCache.get(resource.sourceId, entry, ThumbnailSearchPolicy.RESOURCE_COVER)
                 if (cached.isCached && cached.bitmap != null) {

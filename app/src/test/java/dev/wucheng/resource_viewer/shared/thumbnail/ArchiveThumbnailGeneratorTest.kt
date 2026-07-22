@@ -4,6 +4,7 @@ import dev.wucheng.resource_viewer.data.local.converter.ResourceType
 import dev.wucheng.resource_viewer.domain.model.Resource
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertFalse
@@ -44,6 +45,30 @@ class ArchiveThumbnailGeneratorTest {
         coEvery { source.readFile("book.rar") } returns byteArrayOf(1, 2, 3)
 
         assertNull(generator.generate(resource, source, File("build/tmp/archive-thumb-test")))
+    }
+
+    @Test fun `generate does not read archive when resource exceeds memory limit`() = runTest {
+        val source = mockk<FileSource>()
+        val resource = Resource(
+            id = "large-archive",
+            sourceId = "source-1",
+            sourceName = "Source",
+            name = "large.cbz",
+            type = ResourceType.ARCHIVE,
+            organizationMode = null,
+            relativePath = "large.cbz",
+            thumbnailPath = null,
+            fileCount = null,
+            fileSize = 33L * 1024 * 1024,
+            isAvailable = true,
+            lastScannedAt = 0,
+            tags = emptyList(),
+            createdAt = 0,
+            updatedAt = 0,
+        )
+
+        assertNull(generator.generate(resource, source, File("build/tmp/archive-thumb-large-test")))
+        coVerify(exactly = 0) { source.readFile(any()) }
     }
 
 }

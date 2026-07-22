@@ -8,6 +8,7 @@ import android.media.MediaMetadataRetriever
 import android.util.Log
 import dev.wucheng.resource_viewer.data.remote.pdf.PdfRenderer
 import dev.wucheng.resource_viewer.shared.content.ArchiveImageReader
+import dev.wucheng.resource_viewer.shared.content.MAX_IN_MEMORY_ARCHIVE_THUMBNAIL_BYTES
 import dev.wucheng.resource_viewer.shared.content.archiveExtension
 import dev.wucheng.resource_viewer.domain.model.FileEntry
 import dev.wucheng.resource_viewer.shared.filesource.FileSource
@@ -122,6 +123,7 @@ class FileEntryThumbnailLoader(
 
     private suspend fun decodeArchive(entry: FileEntry, target: Int): Bitmap? {
         if (!MediaFormats.isReadableArchive(entry.archiveExtension())) return null
+        if (entry.size > MAX_IN_MEMORY_ARCHIVE_THUMBNAIL_BYTES) return null
         val archiveBytes = fileSource.readFile(entry.relativePath)
         val (_, imageBytes) = ArchiveImageReader.firstImageEntry(archiveBytes, entry.archiveExtension()) ?: return null
         return PageBitmapLoader.decodeImageBytes(imageBytes, target, target)

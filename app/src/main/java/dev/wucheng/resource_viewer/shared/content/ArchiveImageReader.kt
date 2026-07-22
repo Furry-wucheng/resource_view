@@ -9,6 +9,8 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.zip.ZipInputStream
 
+internal const val MAX_IN_MEMORY_ARCHIVE_THUMBNAIL_BYTES: Long = 32L * 1024 * 1024
+
 data class ArchiveImageEntry(
     val name: String,
     val size: Long,

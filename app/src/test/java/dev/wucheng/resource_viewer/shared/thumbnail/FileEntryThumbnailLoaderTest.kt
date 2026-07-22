@@ -5,6 +5,7 @@ import dev.wucheng.resource_viewer.shared.filesource.FileSource
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import java.io.ByteArrayInputStream
 
@@ -73,11 +74,29 @@ class FileEntryThumbnailLoaderTest {
         )
     }
 
+    @Test fun `archive thumbnail should not read file when archive exceeds memory limit`() = runTest {
+        val source = FakeFileSource(emptyMap())
+        val loader = FileEntryThumbnailLoader(source)
+
+        assertNull(
+            loader.load(
+                archive("large.cbz", "root/large.cbz", 33L * 1024 * 1024),
+                policy = ThumbnailSearchPolicy.DIRECT_CHILD,
+            ),
+        )
+        assertFalse(source.wasFileRead)
+    }
+
     private class FakeFileSource(private val directories: Map<String, List<FileEntry>>) : FileSource {
         override val sourceId = "test"
+        var wasFileRead = false
+            private set
         override suspend fun listDirectory(relativePath: String) = directories[relativePath].orEmpty()
         override suspend fun stat(relativePath: String) = null
-        override suspend fun readFile(relativePath: String) = ByteArray(0)
+        override suspend fun readFile(relativePath: String): ByteArray {
+            wasFileRead = true
+            return ByteArray(0)
+        }
         override suspend fun readRange(relativePath: String, offset: Long, length: Long) = ByteArray(0)
         override fun openInputStream(relativePath: String) = ByteArrayInputStream(ByteArray(0))
         override suspend fun testConnection() = true
@@ -88,7 +107,8 @@ class FileEntryThumbnailLoaderTest {
         fun directory(name: String, path: String) = FileEntry(name, path, true, 0, 0)
         fun image(name: String, path: String) = FileEntry(name, path, false, 10, 0, name.substringAfterLast('.'))
         fun pdf(name: String, path: String) = FileEntry(name, path, false, 10, 0, "pdf")
-        fun archive(name: String, path: String) = FileEntry(name, path, false, 10, 0, name.substringAfterLast('.'))
+        fun archive(name: String, path: String, size: Long = 10) =
+            FileEntry(name, path, false, size, 0, name.substringAfterLast('.'))
         fun text(name: String, path: String) = FileEntry(name, path, false, 10, 0, "txt")
     }
 }
