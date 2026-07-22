@@ -39,6 +39,7 @@ import dev.wucheng.resource_viewer.shared.media.MediaFormats
 
 /** 缩略图宽高比 */
 private const val THUMBNAIL_CARD_ASPECT_RATIO = 3f / 4f
+internal const val GRID_CARD_TITLE_MAX_LINES = 1
 
 fun fileTypeColor(entry: FileEntry): Color = when {
     entry.isDirectory -> Color(0xFF1565C0)
@@ -146,7 +147,7 @@ fun FileThumbnailCard(
                     text = entry.name,
                     color = Color.White,
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
+                    maxLines = GRID_CARD_TITLE_MAX_LINES,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.wucheng.resource_viewer.data.local.converter.OrganizationMode
 import dev.wucheng.resource_viewer.domain.model.Chapter
 import dev.wucheng.resource_viewer.domain.model.FileEntry
+import dev.wucheng.resource_viewer.ui.components.GRID_CARD_TITLE_MAX_LINES
 import dev.wucheng.resource_viewer.ui.screens.viewer.components.OrgModeSwitcher
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -590,7 +591,7 @@ private fun ChapterGridItem(
                 Text(
                     text = chapter.name,
                     style = MaterialTheme.typography.titleSmall,
-                    maxLines = 2,
+                    maxLines = GRID_CARD_TITLE_MAX_LINES,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
@@ -632,7 +633,7 @@ private fun LooseFileGridItem(
             Text(
                 text = file.name,
                 style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
+                maxLines = GRID_CARD_TITLE_MAX_LINES,
                 overflow = TextOverflow.Ellipsis,
             )
         }
